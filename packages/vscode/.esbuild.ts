@@ -33,6 +33,8 @@ async function main() {
   const webviewCtx = await buildContext({
     entryPoints: [
       { in: 'src/webview/main.ts', out: 'main' },
+      // Injected into the previewed page itself (openspec add-preview-bridge).
+      { in: 'src/webview/bridge/main.ts', out: 'bridge' },
       { in: 'src/webview/gallery/main.ts', out: 'gallery' },
       { in: 'src/webview/preview/main.ts', out: 'preview' },
       { in: 'src/webview/designSystem/main.ts', out: 'designSystem' },

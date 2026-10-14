@@ -6,6 +6,7 @@
 export * from './content/contentIndex';
 export * from './content/listSkillsPayload';
 export * from './content/exampleHtml';
+export { startStaticServer, urlForPath, type StaticServer, type StaticServerOptions } from './export/staticServer';
 export * from './content/localPrompts';
 
 export * from './generation/composeInstructions';

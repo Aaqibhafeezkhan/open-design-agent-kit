@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -19,9 +20,12 @@ import {
   saveTweakVariant,
   isContractToken,
   injectPreviewBase,
+  injectPreviewBridge,
   injectPreviewErrorReporter,
   localRelativePath,
   injectScriptNonce,
+  startStaticServer,
+  urlForPath,
   readArtifact,
   readArtifactComments,
   resolveFigmaCaptureAssets,
@@ -35,6 +39,7 @@ import {
   sortFindings,
   type ArtifactComment,
   type FigmaCaptureDocument,
+  type StaticServer,
 } from '@feimacode/open-design-agent-kit-core';
 import type { ILogService } from '../log/logService';
 import { OD_TOKENS_CSS, odFontFaceCss } from '../webviews/openDesignTheme';
@@ -231,17 +236,52 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
       }
     };
     // The top document also reports its failed loads and script errors to the
-    // preview, which shows them (a dead CDN URL otherwise just renders nothing).
+    // preview, which shows them (a dead CDN URL otherwise just renders nothing),
+    // and runs the preview bridge Comment, Edit and Figma capture talk to
+    // (openspec add-preview-bridge).
+    const bridgeCode = await this.previewBridgeCode();
     const previewHtml = async () =>
       injectScriptNonce(
         injectPreviewErrorReporter(
-          prepareHtml(
-            await inlineLocalFrames(await inlineLocalImages(document.getText(), readImage), readFramed, (html, resolved) => prepareHtml(html, vscode.Uri.joinPath(vscode.Uri.parse(resolved), '..'))),
-            documentDir,
+          injectPreviewBridge(
+            prepareHtml(
+              await inlineLocalFrames(await inlineLocalImages(document.getText(), readImage), readFramed, (html, resolved) => prepareHtml(html, vscode.Uri.joinPath(vscode.Uri.parse(resolved), '..'))),
+              documentDir,
+            ),
+            bridgeCode,
           ),
         ),
         panelNonce,
       );
+
+    // Served preview pilot (openDesign.experimental.servedPreview): View mode
+    // loads the design from a loopback server, over a real URL with its own
+    // origin, instead of as srcdoc text. Relative files, modules, fetch() and
+    // inline handlers then work as in a browser, with none of the shims
+    // above. The entry is served from the editor buffer, so unsaved edits
+    // show. Comment, Edit and Tweaks still use srcdoc (they read the page's
+    // DOM directly, which a cross-origin frame doesn't allow).
+    let served: { server: StaticServer; url: string } | undefined;
+    const servedUrl = async (): Promise<string | undefined> => {
+      if (!location || !vscode.workspace.getConfiguration('openDesign').get<boolean>('experimental.servedPreview', false)) return undefined;
+      try {
+        if (!served) {
+          const server = await startStaticServer(location.workspaceRoot, {
+            entryPath: location.entryPath,
+            pathToken: randomBytes(16).toString('hex'),
+            transformEntry: () => injectPreviewErrorReporter(injectPreviewBridge(document.getText(), bridgeCode)),
+          });
+          // In a remote window this is a forwarded address the UI can reach.
+          const external = (await vscode.env.asExternalUri(vscode.Uri.parse(server.baseUrl))).toString(true);
+          served = { server, url: urlForPath(external.endsWith('/') ? external : `${external}/`, location.entryPath) };
+          this.log.info(`ArtifactEditorProvider: served preview for ${location.entryPath} at ${server.baseUrl.replace(/[0-9a-f]{32}\/$/, '<token>/')} (external ${external.replace(/[0-9a-f]{32}\/?$/, '<token>/')})`);
+        }
+        return `${served.url}?v=${document.version}`;
+      } catch (err) {
+        this.log.warn(`ArtifactEditorProvider: served preview unavailable, using srcdoc: ${err instanceof Error ? err.message : String(err)}`);
+        return undefined;
+      }
+    };
 
     // Tweaks panel (openspec add-preview-tweaks): the knobs, plus the custom
     // design system "Apply to design system" would write, when there is one.
@@ -251,14 +291,14 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
       const comments = location ? await readArtifactComments(location.workspaceRoot, location.entryPath) : [];
       const collection = await resolveCollectionNav(location);
       const shape = await resolveShapeInfo(document.getText(), location);
-      webviewPanel.webview.postMessage({ type: 'init', html: await previewHtml(), comments, collection, shape, tweaks: await tweaksInfo() });
+      webviewPanel.webview.postMessage({ type: 'init', html: await previewHtml(), servedUrl: await servedUrl(), comments, collection, shape, tweaks: await tweaksInfo() });
     };
 
     const changeSub = vscode.workspace.onDidChangeTextDocument(async (e) => {
       if (e.document.uri.toString() === document.uri.toString()) {
         const collection = await resolveCollectionNav(location);
         const shape = await resolveShapeInfo(document.getText(), location);
-        webviewPanel.webview.postMessage({ type: 'source-updated', html: await previewHtml(), collection, shape, tweaks: await tweaksInfo() });
+        webviewPanel.webview.postMessage({ type: 'source-updated', html: await previewHtml(), servedUrl: await servedUrl(), collection, shape, tweaks: await tweaksInfo() });
       }
     });
 
@@ -502,7 +542,20 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
       changeSub.dispose();
       messageSub.dispose();
       for (const sub of navSubs) sub.dispose();
+      void served?.server.close();
     });
+  }
+
+  private bridgeCodePromise: Promise<string> | undefined;
+
+  /** The built in-page preview bridge (dist/webview/bridge.js), read once. */
+  private previewBridgeCode(): Promise<string> {
+    this.bridgeCodePromise ??= fs.readFile(path.join(this.context.extensionUri.fsPath, 'dist', 'webview', 'bridge.js'), 'utf8').catch((err) => {
+      this.log.warn(`ArtifactEditorProvider: preview bridge missing, Comment and Edit will be unavailable: ${err instanceof Error ? err.message : String(err)}`);
+      this.bridgeCodePromise = undefined;
+      return '';
+    });
+    return this.bridgeCodePromise;
   }
 
   private async applyPatch(document: vscode.TextDocument, newSource: string): Promise<void> {

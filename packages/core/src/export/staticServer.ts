@@ -37,7 +37,7 @@ const CONTENT_TYPES: Record<string, string> = {
 };
 
 export interface StaticServer {
-  /** Base URL with a trailing slash, e.g. http://127.0.0.1:43123/ */
+  /** Base URL with a trailing slash, e.g. http://127.0.0.1:43123/ (plus the path token, when there is one) */
   baseUrl: string;
   close(): Promise<void>;
 }
@@ -47,6 +47,12 @@ export interface StaticServerOptions {
   entryPath?: string;
   /** Rewrites the entry document as served (never the file on disk), e.g. to inject the <deck-stage> fallback. */
   transformEntry?: (html: string) => string;
+  /**
+   * A secret first path segment every request must carry (`/<token>/…`).
+   * For long-lived servers (the VS Code served preview), so another local
+   * process that finds the port still can't read the workspace.
+   */
+  pathToken?: string;
 }
 
 export async function startStaticServer(root: string, options: StaticServerOptions = {}): Promise<StaticServer> {
@@ -63,6 +69,14 @@ export async function startStaticServer(root: string, options: StaticServerOptio
     } catch {
       res.writeHead(400).end();
       return;
+    }
+    if (options.pathToken) {
+      const prefix = `/${options.pathToken}/`;
+      if (!rel.startsWith(prefix)) {
+        res.writeHead(404).end();
+        return;
+      }
+      rel = rel.slice(prefix.length - 1);
     }
     const abs = path.resolve(absRoot, '.' + rel);
     const within = path.relative(absRoot, abs);
@@ -92,7 +106,7 @@ export async function startStaticServer(root: string, options: StaticServerOptio
   });
   const { port } = server.address() as AddressInfo;
   return {
-    baseUrl: `http://127.0.0.1:${port}/`,
+    baseUrl: `http://127.0.0.1:${port}/${options.pathToken ? `${options.pathToken}/` : ''}`,
     close: () =>
       new Promise<void>((resolve) => {
         server.closeAllConnections?.();

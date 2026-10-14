@@ -258,6 +258,22 @@ export const PREVIEW_ERROR_REPORTER =
   'addEventListener("error",function(e){var t=e.target;if(t&&t!==window&&t.nodeType===1){var u=t.src||t.href||"";if(u)report("Failed to load "+u)}else if(e.message){report(e.message)}},true);' +
   'addEventListener("unhandledrejection",function(e){var r=e.reason;report((r&&r.message)||r)})})();</script>';
 
+/**
+ * `html` with the VS Code preview bridge (`code`, the built bridge script;
+ * openspec add-preview-bridge) as an inline preview-only script, first in
+ * `<head>` after a preview `<base>`. Apply before injectPreviewErrorReporter,
+ * which then goes in front of it. Any `</script` in the code is escaped so it
+ * can't close the tag early.
+ */
+export function injectPreviewBridge(html: string, code: string): string {
+  const tag = `<script data-od-preview-only data-od-preview-bridge>${code.replace(/<\/script/gi, '<\\/script')}</script>`;
+  const base = /<base\b[^>]*data-od-preview-only[^>]*>/i.exec(html);
+  if (base) return html.slice(0, base.index + base[0].length) + tag + html.slice(base.index + base[0].length);
+  const head = /<head(\s[^>]*)?>/i.exec(html);
+  if (head) return html.slice(0, head.index + head[0].length) + tag + html.slice(head.index + head[0].length);
+  return tag + html;
+}
+
 /** `html` with PREVIEW_ERROR_REPORTER as the first thing in `<head>` (after a preview `<base>`), so it sees every later script. */
 export function injectPreviewErrorReporter(html: string): string {
   const base = /<base\b[^>]*data-od-preview-only[^>]*>/i.exec(html);
