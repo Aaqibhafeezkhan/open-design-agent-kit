@@ -1,7 +1,6 @@
-import { ensureDataOdId, cssSelectorFor, htmlHintFor } from './dom/elementTargeting';
-import { applyPatch, serializeDocument, PREVIEW_ONLY_ATTR, PREVIEW_SRC_ATTR, type ManualEditPatch, type CuratedStyles } from './dom/sourcePatches';
-import { computePinPosition, type ArtifactComment } from './dom/commentOverlay';
-import { captureFigmaIr } from '@feimacode/open-design-agent-kit-core/src/figma/captureIr';
+import { PREVIEW_ONLY_ATTR, type ManualEditPatch, type CuratedStyles } from './dom/sourcePatches';
+import type { ArtifactComment } from './dom/commentOverlay';
+import { BRIDGE_TAG, isBridgeMessage, type BridgeRect, type ElementSnapshot, type FromBridge, type StyleSnapshot, type ToBridge, type Untagged } from './bridge/protocol';
 import { icon } from './dom/icons';
 import { attachMenu } from './dom/menuButton';
 import { createTweaksPanel } from './tweaksPanel';
@@ -101,17 +100,23 @@ let comments: ArtifactComment[] = [];
 // Hover/selection state, ported (simplified) from open-design's own
 // comment-mode overlay approach (apps/web/src/runtime/srcdoc.ts's
 // injectSelectionBridge): one positioned box per state, hover thin,
-// selection thick, same box shape — chosen over their edit-mode bridge
-// (which draws Figma-style alignment/measurement guides between hover and
-// selection) as the simpler model that's still a real, visible affordance
-// for "what am I about to click" / "what's currently selected". Our iframe
-// is same-origin srcdoc (`allow-same-origin`), so this reads
-// `getBoundingClientRect()` directly rather than needing their
-// cross-origin postMessage bridge.
-let hoverElement: Element | null = null;
-let selectedElement: Element | null = null;
+// selection thick. The preview bridge inside the page (openspec
+// add-preview-bridge) reports them as rects in the page's viewport; the
+// preview keeps no references to the page's elements, since a served page
+// has its own origin.
+let hoverRect: BridgeRect | null = null;
+let selection: ElementSnapshot | null = null;
+let selectionRect: BridgeRect | null = null;
+let pinRects: { commentId: string; rect: BridgeRect | null }[] = [];
+// The bridge says `ready` once per loaded page; Comment and Edit need it.
+let bridgeReady = false;
+let iframeLoaded = false;
 
 function setMode(next: Mode): void {
+  if (next !== 'view' && iframeLoaded && !bridgeReady) {
+    showBridgeUnavailable();
+    return;
+  }
   mode = next;
   modeButtons.forEach((btn) => {
     const active = btn.dataset.mode === next;
@@ -123,9 +128,12 @@ function setMode(next: Mode): void {
   panel.hidden = true;
   if (next !== 'view') tweaks.toggle(false);
   syncIframeSource();
-  selectedElement = null;
-  hoverElement = null;
-  updatePickMode();
+  selection = null;
+  selectionRect = null;
+  hoverRect = null;
+  pinRects = [];
+  toBridge({ type: 'set-mode', mode: next });
+  sendCommentsToBridge();
   renderOverlays();
 }
 
@@ -170,16 +178,21 @@ window.addEventListener('message', (event) => {
   previewErrors.push(text);
   renderPreviewErrors();
 });
+window.addEventListener('message', (event) => {
+  if (event.source !== iframe.contentWindow || !isBridgeMessage(event.data)) return;
+  onBridgeMessage(event.data as FromBridge);
+});
 document.getElementById('od-errors-fix')!.addEventListener('click', () => vscode.postMessage({ type: 'preview-errors-to-chat', errors: previewErrors }));
 document.getElementById('od-errors-close')!.addEventListener('click', () => {
   errorsBanner.hidden = true;
 });
 
-// Served preview pilot (openDesign.experimental.servedPreview): when the
-// extension sends a servedUrl, View mode loads the design from it, a real
-// URL with its own origin, so it behaves exactly as in a browser. Comment,
-// Edit and Tweaks read the page's DOM directly, which a cross-origin frame
-// doesn't allow, so they keep using the srcdoc copy.
+// Served preview (openDesign.experimental.servedPreview): when the extension
+// sends a servedUrl, the design loads from it, a real URL with its own
+// origin, so it behaves exactly as in a browser. Comment and Edit work on it
+// through the preview bridge. Tweaks and the fluid-poster shape override
+// still read the page's DOM directly, which a cross-origin frame doesn't
+// allow, so they use the srcdoc copy (openspec add-preview-bridge).
 let currentHtml = '';
 let currentServedUrl: string | undefined;
 function setIframeContent(html: string, servedUrl?: string): void {
@@ -188,11 +201,13 @@ function setIframeContent(html: string, servedUrl?: string): void {
   syncIframeSource(true);
 }
 function syncIframeSource(contentChanged = false): void {
-  const useServed = Boolean(currentServedUrl) && mode === 'view' && !tweaks.isOpen();
+  const useServed = Boolean(currentServedUrl) && !tweaks.isOpen() && !shapeInfo?.fluid;
   const showingServed = !iframe.hasAttribute('srcdoc') && iframe.getAttribute('src') === currentServedUrl;
   if (!contentChanged && useServed === showingServed) return;
   previewErrors = [];
   renderPreviewErrors();
+  bridgeReady = false;
+  iframeLoaded = false;
   if (useServed) {
     iframe.removeAttribute('srcdoc');
     iframe.src = currentServedUrl!;
@@ -203,127 +218,80 @@ function syncIframeSource(contentChanged = false): void {
 }
 
 iframe.addEventListener('load', () => {
-  const doc = iframe.contentDocument;
-  if (!doc) return;
-  doc.addEventListener('click', onIframeClick, true);
-  doc.addEventListener('mouseover', onIframeMouseOver, true);
-  doc.addEventListener('mouseout', onIframeMouseOut, true);
-  updatePickMode();
+  iframeLoaded = true;
+  // The bridge also announces itself as it starts; asking again covers a
+  // `ready` sent before this listener's state was reset for the new page.
+  toBridge({ type: 'hello' });
   applyShapeOverride();
   tweaks.reapply();
   renderOverlays();
 });
 
-const INSPECT_OVERRIDE_STYLE_ID = 'od-inspect-override';
+// ── Preview bridge client (openspec add-preview-bridge) ─────────────────
+// Messages from the page are untrusted (it runs generated code): only this
+// iframe's window is listened to (see the listener above), and a patch or
+// capture result is acted on only when it answers a request sent from here.
+function toBridge(message: Untagged<ToBridge>): void {
+  iframe.contentWindow?.postMessage({ od: BRIDGE_TAG, ...message }, '*');
+}
 
-// Comment/Edit mode need EVERY element selectable for annotation/editing —
-// but many generated artifacts set `pointer-events: none` on most of the
-// page as part of a loading/entrance-animation state (common with
-// GSAP/IntersectionObserver-driven reveal effects), only lifted once a
-// "ready" script runs — a script that may never fire correctly inside this
-// sandboxed srcdoc iframe (same general class of issue as the earlier
-// "navigation not working" sandbox fix). Only genuinely-interactive
-// elements like <button> escape it via their own default stacking, which
-// is exactly the "only buttons are selectable" symptom this fixes: force
-// every element hit-testable while picking, regardless of what the
-// artifact's own live interactivity styling says, and drop the override in
-// View mode so the artifact still behaves exactly as a real visitor sees it.
-function updateInspectOverride(): void {
-  const doc = iframe.contentDocument;
-  if (!doc?.head) return;
-  const existing = doc.getElementById(INSPECT_OVERRIDE_STYLE_ID) as HTMLStyleElement | null;
-  if (mode === 'view') {
-    existing?.remove();
-    return;
+const pendingPatches = new Set<string>();
+const pendingCaptures = new Set<string>();
+function newRequestId(): string {
+  return `r-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function sendCommentsToBridge(): void {
+  toBridge({ type: 'set-comments', comments: comments.map((c) => ({ id: c.id, elementId: c.elementId, selector: c.selector, status: c.status })) });
+}
+
+function onBridgeMessage(message: FromBridge): void {
+  switch (message.type) {
+    case 'ready':
+      bridgeReady = true;
+      toBridge({ type: 'set-mode', mode });
+      sendCommentsToBridge();
+      break;
+    case 'select':
+      if (mode === 'view') break;
+      selection = message.element;
+      selectionRect = message.element.rect;
+      hoverRect = null;
+      renderOverlays();
+      if (mode === 'comment') openCommentInput(selection);
+      else openEditPanel(selection);
+      break;
+    case 'rects':
+      hoverRect = message.hover;
+      selectionRect = selection ? message.selection : null;
+      pinRects = Array.isArray(message.pins) ? message.pins : [];
+      renderOverlays();
+      break;
+    case 'patched':
+      if (!pendingPatches.delete(message.requestId)) break;
+      if (message.ok && typeof message.newSource === 'string') vscode.postMessage({ type: 'apply-patch', newSource: message.newSource });
+      break;
+    case 'figma-capture':
+      if (!pendingCaptures.delete(message.requestId)) break;
+      vscode.postMessage({ type: 'figma-capture', capture: message.capture, truncated: Boolean(message.truncated) });
+      break;
+    case 'open-local-link':
+      vscode.postMessage({ type: 'open-local-link', href: String(message.href ?? '') });
+      break;
   }
-  const styleEl = existing ?? doc.createElement('style');
-  styleEl.id = INSPECT_OVERRIDE_STYLE_ID;
-  styleEl.setAttribute(PREVIEW_ONLY_ATTR, '');
-  styleEl.textContent = '* { pointer-events: auto !important; } body { cursor: pointer !important; }';
-  if (!existing) doc.head.appendChild(styleEl);
 }
 
-// Ambient "you're in pick mode" signal, matching upstream forcing
-// cursor:pointer/crosshair on the whole preview body while comment/edit
-// mode is active — visible even before hovering a specific element.
-function updatePickMode(): void {
-  updateInspectOverride();
-}
-
-function isHighlightable(el: Element | null): el is HTMLElement {
-  if (!el) return false;
-  const tag = el.tagName.toLowerCase();
-  if (tag === 'html' || tag === 'body') return false;
-  const rect = el.getBoundingClientRect();
-  return rect.width > 0 && rect.height > 0;
-}
-
-function onIframeMouseOver(event: MouseEvent): void {
-  if (mode === 'view') return;
-  const target = event.target as Element | null;
-  hoverElement = isHighlightable(target) && target !== selectedElement ? target : null;
-  renderOverlays();
-}
-
-function onIframeMouseOut(): void {
-  hoverElement = null;
-  renderOverlays();
-}
-
-// The preview can't navigate to a local file, and its <base> (see
-// injectPreviewBase) points at the design's folder, so a plain
-// `href="#pricing"` would resolve to that folder too. Scroll to an in-page
-// target, as a browser does for a file opened directly, and ask the extension
-// to open a link to a neighbouring file (e.g. a comparison page's
-// "Open full size") in its own tab.
-function followInPageLink(event: MouseEvent): void {
-  const link = (event.target as Element | null)?.closest?.('a[href]');
-  if (!link || event.defaultPrevented) return;
-  const href = (link.getAttribute('href') ?? '').trim();
-  if (!href.startsWith('#')) {
-    if (!href || href.startsWith('/') || /^[a-z][a-z0-9+.-]*:/i.test(href)) return;
-    event.preventDefault();
-    vscode.postMessage({ type: 'open-local-link', href });
-    return;
-  }
-  const doc = iframe.contentDocument;
-  if (!doc) return;
-  event.preventDefault();
-  const id = decodeURIComponent(href.slice(1));
-  if (!id) {
-    doc.defaultView?.scrollTo({ top: 0 });
-    return;
-  }
-  (doc.getElementById(id) ?? doc.getElementsByName(id)[0])?.scrollIntoView();
-}
-
-function onIframeClick(event: MouseEvent): void {
-  if (mode === 'view') {
-    followInPageLink(event);
-    return;
-  }
-  event.preventDefault();
-  event.stopPropagation();
-  const target = event.target as Element | null;
-  if (!target) return;
-
-  const id = ensureDataOdId(target);
-  selectedElement = target;
-  hoverElement = null;
-  renderOverlays();
-
-  if (mode === 'comment') {
-    openCommentInput(target, id);
-  } else if (mode === 'edit') {
-    // `target` comes from the iframe's own document — a separate JS realm
-    // from this script's — so `target instanceof HTMLElement` (checked
-    // against THIS frame's HTMLElement constructor) always fails silently
-    // even for a genuine element, no matter what's clicked. A real click
-    // event's target is always an element (never a bare text node), so the
-    // check added nothing but the cross-realm bug; a plain type assertion
-    // is correct here.
-    openEditPanel(target as HTMLElement, id);
-  }
+function showBridgeUnavailable(): void {
+  panel.hidden = false;
+  panel.innerHTML = `
+    <div class="od-panel-header">
+      <span class="od-panel-header-title">Comment and Edit unavailable</span>
+      <button id="od-bridge-close" class="od-panel-close" aria-label="Close">×</button>
+    </div>
+    <div class="od-panel-body"><p>This design's page didn't start the preview helper that Comment and Edit rely on, usually because one of its own scripts failed first. Check the error banner, or ask the agent to fix the page.</p></div>`;
+  document.getElementById('od-bridge-close')!.addEventListener('click', () => {
+    panel.hidden = true;
+  });
 }
 
 // Shared by openCommentInput/openEditPanel: hides the panel and clears the
@@ -333,11 +301,13 @@ function onIframeClick(event: MouseEvent): void {
 // no separate "panel closed but still selected" state.
 function closePanel(): void {
   panel.hidden = true;
-  selectedElement = null;
+  selection = null;
+  selectionRect = null;
+  toBridge({ type: 'clear-selection' });
   renderOverlays();
 }
 
-function openCommentInput(target: Element, elementId: string): void {
+function openCommentInput(target: ElementSnapshot): void {
   panel.hidden = false;
   panel.innerHTML = `
     <div class="od-panel-header">
@@ -361,9 +331,9 @@ function openCommentInput(target: Element, elementId: string): void {
     const now = new Date().toISOString();
     comments.push({
       id: `c-${Math.random().toString(36).slice(2, 10)}`,
-      elementId,
-      selector: cssSelectorFor(target),
-      htmlHint: htmlHintFor(target),
+      elementId: target.elementId,
+      selector: target.selector,
+      htmlHint: target.htmlHint,
       note: text,
       status: 'open',
       createdAt: now,
@@ -385,15 +355,15 @@ function openCommentInput(target: Element, elementId: string): void {
 // already covers every applied patch), not full parity.
 type EditKind = 'image' | 'link' | 'text' | 'container';
 
-function classifyEditKind(el: HTMLElement): EditKind {
-  if (el.tagName === 'IMG') return 'image';
-  if (el.tagName === 'A') return 'link';
-  return el.children.length > 0 ? 'container' : 'text';
+function classifyEditKind(el: ElementSnapshot): EditKind {
+  if (el.tag === 'IMG') return 'image';
+  if (el.tag === 'A') return 'link';
+  return el.childCount > 0 ? 'container' : 'text';
 }
 
-function describeElement(el: HTMLElement): string {
-  const tag = el.tagName.toLowerCase();
-  const text = (el.textContent ?? '').trim().slice(0, 28);
+function describeElement(el: ElementSnapshot): string {
+  const tag = el.tag.toLowerCase();
+  const text = el.text.trim().slice(0, 28);
   return text ? `&lt;${tag}&gt; — ${escapeHtml(text)}` : `&lt;${tag}&gt;`;
 }
 
@@ -421,23 +391,23 @@ function optionsFor(values: string[], selected: string): string {
   return values.map((v) => `<option value="${v}" ${v === selected ? 'selected' : ''}>${v}</option>`).join('');
 }
 
-function contentSectionHtml(target: HTMLElement, kind: EditKind): string {
+function contentSectionHtml(target: ElementSnapshot, kind: EditKind): string {
   if (kind === 'image') {
     return `
       <div class="od-panel-section-title">Content</div>
       <label>Image URL</label>
-      <input id="od-edit-src" class="od-input" type="text" value="${escapeHtml(target.getAttribute(PREVIEW_SRC_ATTR) ?? target.getAttribute('src') ?? '')}" />
+      <input id="od-edit-src" class="od-input" type="text" value="${escapeHtml(target.attrs.src ?? '')}" />
       <label>Alt text</label>
-      <input id="od-edit-alt" class="od-input" type="text" value="${escapeHtml(target.getAttribute('alt') ?? '')}" />
+      <input id="od-edit-alt" class="od-input" type="text" value="${escapeHtml(target.attrs.alt ?? '')}" />
     `;
   }
   if (kind === 'link') {
     return `
       <div class="od-panel-section-title">Content</div>
       <label>Text</label>
-      <textarea id="od-edit-text" class="od-textarea" rows="2">${escapeHtml(target.textContent ?? '')}</textarea>
+      <textarea id="od-edit-text" class="od-textarea" rows="2">${escapeHtml(target.text)}</textarea>
       <label>Link URL (href)</label>
-      <input id="od-edit-href" class="od-input" type="text" value="${escapeHtml(target.getAttribute('href') ?? '')}" />
+      <input id="od-edit-href" class="od-input" type="text" value="${escapeHtml(target.attrs.href ?? '')}" />
     `;
   }
   if (kind === 'container') {
@@ -449,11 +419,11 @@ function contentSectionHtml(target: HTMLElement, kind: EditKind): string {
   return `
     <div class="od-panel-section-title">Content</div>
     <label>Text</label>
-    <textarea id="od-edit-text" class="od-textarea" rows="3">${escapeHtml(target.textContent ?? '')}</textarea>
+    <textarea id="od-edit-text" class="od-textarea" rows="3">${escapeHtml(target.text)}</textarea>
   `;
 }
 
-function styleSectionHtml(cs: CSSStyleDeclaration): string {
+function styleSectionHtml(cs: StyleSnapshot): string {
   return `
     <div class="od-panel-section-title">Style</div>
     <div class="od-row-pair">
@@ -501,9 +471,35 @@ function styleSectionHtml(cs: CSSStyleDeclaration): string {
   `;
 }
 
-function openEditPanel(target: HTMLElement, elementId: string): void {
+// The Style section's input for each CuratedStyles field.
+const STYLE_FIELD_IDS: Record<keyof CuratedStyles, string> = {
+  color: 'od-edit-color',
+  backgroundColor: 'od-edit-bg',
+  fontSize: 'od-edit-font-size',
+  fontWeight: 'od-edit-font-weight',
+  lineHeight: 'od-edit-line-height',
+  letterSpacing: 'od-edit-letter-spacing',
+  fontFamily: 'od-edit-font-family',
+  textAlign: 'od-edit-text-align',
+  borderRadius: 'od-edit-radius',
+  opacity: 'od-edit-opacity',
+  borderColor: 'od-edit-border-color',
+  borderWidth: 'od-edit-border-width',
+  borderStyle: 'od-edit-border-style',
+  paddingTop: 'od-edit-pad-t',
+  paddingRight: 'od-edit-pad-r',
+  paddingBottom: 'od-edit-pad-b',
+  paddingLeft: 'od-edit-pad-l',
+  marginTop: 'od-edit-mar-t',
+  marginRight: 'od-edit-mar-r',
+  marginBottom: 'od-edit-mar-b',
+  marginLeft: 'od-edit-mar-l',
+};
+
+function openEditPanel(target: ElementSnapshot): void {
   const kind = classifyEditKind(target);
-  const cs = getComputedStyle(target);
+  const cs = target.styles;
+  const elementId = target.elementId;
 
   panel.hidden = false;
   panel.innerHTML = `
@@ -523,31 +519,41 @@ function openEditPanel(target: HTMLElement, elementId: string): void {
     </div>
   `;
 
+  // Every Style field is prefilled from the computed style (a transparent
+  // background reads as #000000 in a color input), so only fields the user
+  // actually changed are written; otherwise one text edit would pin a dozen
+  // inline styles, including a black background.
+  const initialValues = new Map(
+    Array.from(panel.querySelectorAll<HTMLInputElement | HTMLSelectElement>('input[id^="od-edit-"], select[id^="od-edit-"]')).map((el) => [el.id, el.value]),
+  );
+  const changed = (id: string): boolean => (document.getElementById(id) as HTMLInputElement | HTMLSelectElement).value !== initialValues.get(id);
+
   document.getElementById('od-edit-close')!.addEventListener('click', closePanel);
   document.getElementById('od-edit-cancel')!.addEventListener('click', closePanel);
   document.getElementById('od-edit-remove')!.addEventListener('click', () => {
-    commitPatch({ kind: 'remove-element', elementId });
+    commitPatches([{ kind: 'remove-element', elementId }]);
     closePanel();
   });
   document.getElementById('od-edit-apply')!.addEventListener('click', () => {
+    const patches: ManualEditPatch[] = [];
     if (kind === 'image') {
-      commitPatch({
+      patches.push({
         kind: 'set-image',
         elementId,
         src: (document.getElementById('od-edit-src') as HTMLInputElement).value,
         alt: (document.getElementById('od-edit-alt') as HTMLInputElement).value,
       });
     } else if (kind === 'link') {
-      commitPatch({
+      patches.push({
         kind: 'set-link',
         elementId,
         text: (document.getElementById('od-edit-text') as HTMLTextAreaElement).value,
         href: (document.getElementById('od-edit-href') as HTMLInputElement).value,
       });
     } else if (kind === 'container') {
-      commitPatch({ kind: 'set-outer-html', elementId, html: (document.getElementById('od-edit-html') as HTMLTextAreaElement).value });
+      patches.push({ kind: 'set-outer-html', elementId, html: (document.getElementById('od-edit-html') as HTMLTextAreaElement).value });
     } else {
-      commitPatch({ kind: 'set-text', elementId, value: (document.getElementById('od-edit-text') as HTMLTextAreaElement).value });
+      patches.push({ kind: 'set-text', elementId, value: (document.getElementById('od-edit-text') as HTMLTextAreaElement).value });
     }
 
     const styles: CuratedStyles = {
@@ -573,33 +579,35 @@ function openEditPanel(target: HTMLElement, elementId: string): void {
       marginBottom: pxPatchValue((document.getElementById('od-edit-mar-b') as HTMLInputElement).value),
       marginLeft: pxPatchValue((document.getElementById('od-edit-mar-l') as HTMLInputElement).value),
     };
-    commitPatch({ kind: 'set-style', elementId, styles });
+    for (const [key, id] of Object.entries(STYLE_FIELD_IDS) as [keyof CuratedStyles, string][]) {
+      if (!changed(id)) delete styles[key];
+    }
+    if (Object.values(styles).some((v) => v !== undefined)) patches.push({ kind: 'set-style', elementId, styles });
+    commitPatches(patches);
     closePanel();
   });
 }
 
-function commitPatch(patch: ManualEditPatch): void {
-  const doc = iframe.contentDocument;
-  if (!doc) return;
-  const applied = applyPatch(doc, patch);
-  if (!applied) return;
-  const newSource = serializeDocument(doc);
-  vscode.postMessage({ type: 'apply-patch', newSource });
-  renderOverlays();
+// The bridge applies the patches to the page and returns the serialized
+// source; the 'patched' reply is written back only if it answers this request.
+function commitPatches(patches: ManualEditPatch[]): void {
+  if (!bridgeReady || patches.length === 0) return;
+  const requestId = newRequestId();
+  pendingPatches.add(requestId);
+  toBridge({ type: 'apply-patches', requestId, patches });
 }
 
 function persistComments(): void {
   vscode.postMessage({ type: 'comments-changed', comments });
   updateSendComments();
+  sendCommentsToBridge();
 }
 
-// Rect of `el` in the HOST document's coordinate space — the iframe's own
-// rect plus the element's rect within it, same technique
-// commentOverlay.ts's computePinPosition already uses for pins.
-function hostRectOf(el: Element): { left: number; top: number; width: number; height: number } {
+// A bridge rect (page viewport) in the HOST document's coordinate space: the
+// iframe's own rect plus the element's rect within it.
+function hostRectOf(r: BridgeRect): { left: number; top: number; width: number; height: number } {
   const iframeRect = iframe.getBoundingClientRect();
-  const elRect = el.getBoundingClientRect();
-  return { left: iframeRect.left + elRect.left, top: iframeRect.top + elRect.top, width: elRect.width, height: elRect.height };
+  return { left: iframeRect.left + r.left, top: iframeRect.top + r.top, width: r.width, height: r.height };
 }
 
 function highlightBox(rect: { left: number; top: number; width: number; height: number }, className: string): HTMLDivElement {
@@ -642,21 +650,21 @@ function selectionGuides(rect: { left: number; top: number; width: number; heigh
 function renderOverlays(): void {
   pinsLayer.innerHTML = '';
 
-  if (hoverElement && isHighlightable(hoverElement)) {
-    pinsLayer.appendChild(highlightBox(hostRectOf(hoverElement), 'od-hover-box'));
+  if (mode === 'view') return;
+  if (hoverRect) {
+    pinsLayer.appendChild(highlightBox(hostRectOf(hoverRect), 'od-hover-box'));
   }
-  if (selectedElement && isHighlightable(selectedElement)) {
-    const rect = hostRectOf(selectedElement);
+  if (selection && selectionRect) {
+    const rect = hostRectOf(selectionRect);
     selectionGuides(rect).forEach((line) => pinsLayer.appendChild(line));
     pinsLayer.appendChild(highlightBox(rect, 'od-select-box'));
   }
 
   if (mode !== 'comment') return;
-  const doc = iframe.contentDocument;
-  if (!doc) return;
   for (const comment of comments) {
     if (comment.status === 'resolved') continue;
-    const pos = computePinPosition(iframe, doc, comment);
+    const anchor = pinRects.find((p) => p.commentId === comment.id)?.rect;
+    const pos = anchor ? { x: hostRectOf(anchor).left + anchor.width / 2, y: hostRectOf(anchor).top } : null;
     const pin = document.createElement('div');
     pin.className = `od-pin ${pos ? 'anchored' : 'lost'}`;
     pin.title = comment.note;
@@ -688,11 +696,15 @@ promoteToAppBtn.addEventListener('click', () => {
   vscode.postMessage({ type: 'promote-to-app-code' });
 });
 
+// The capture is taken inside the page by the bridge, served or embedded.
 function pushToFigma(): void {
-  const iframeDoc = iframe.contentDocument;
-  if (!iframeDoc) return;
-  const { capture, truncated } = captureFigmaIr(iframeDoc, { title: iframeDoc.title || 'Artifact' });
-  vscode.postMessage({ type: 'figma-capture', capture, truncated });
+  if (!bridgeReady) {
+    showBridgeUnavailable();
+    return;
+  }
+  const requestId = newRequestId();
+  pendingCaptures.add(requestId);
+  toBridge({ type: 'capture-figma', requestId });
 }
 
 // New export targets go in this menu rather than as more toolbar buttons.
@@ -785,11 +797,12 @@ window.addEventListener('message', (event) => {
     case 'source-updated':
       // External change (e.g. the model regenerated the file) wins over any
       // in-progress local edit — no version/diff UI in v1, see plan. The old
-      // hover/selection element references belong to a now-replaced
-      // document and would be stale (and the iframe's own 'load' handler
-      // re-renders once the new document is ready), so drop them now too.
-      hoverElement = null;
-      selectedElement = null;
+      // hover/selection belong to a now-replaced page (the new page's bridge
+      // reports afresh once it's ready), so drop them now too.
+      hoverRect = null;
+      selection = null;
+      selectionRect = null;
+      pinRects = [];
       panel.hidden = true;
       applyCollectionInfo(message.collection);
       applyShapeInfo(message.shape);

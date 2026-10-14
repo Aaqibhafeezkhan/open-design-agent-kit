@@ -1801,7 +1801,8 @@
     "package": "tsx .esbuild.ts",
     "vscode:prepublish": "npm run package",
     "lint": "eslint src --ext ts && npm run check-sync --workspace=@feimacode/open-design-agent-kit-content && node scripts/check-content-mirror.mjs",
-    "typecheck": "tsc -p . --noEmit && tsc -p src/webview --noEmit"
+    "typecheck": "tsc -p . --noEmit && tsc -p src/webview --noEmit",
+    "test:unit": "npm run compile && node --import tsx --test src/test/*.test.ts"
   },
   "dependencies": {
     "@feimacode/open-design-agent-kit-core": "*",

@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { inlineLocalFrames, inlineLocalImages, injectPreviewBase, injectPreviewErrorReporter, PREVIEW_ERROR_REPORTER, injectScriptNonce, loadExampleHtml, localRelativePath } from '../../content/exampleHtml';
+import { inlineLocalFrames, inlineLocalImages, injectPreviewBase, injectPreviewBridge, injectPreviewErrorReporter, PREVIEW_ERROR_REPORTER, injectScriptNonce, loadExampleHtml, localRelativePath } from '../../content/exampleHtml';
 
 async function makeExample(files: Record<string, string>): Promise<{ assetsRoot: string; entryPath: string }> {
   const assetsRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'od-ext-examplehtml-'));
@@ -168,5 +168,16 @@ describe('injectPreviewErrorReporter', () => {
     assert.ok(withBase.indexOf('data-od-preview-only>') < withBase.indexOf(PREVIEW_ERROR_REPORTER));
     assert.ok(withBase.indexOf(PREVIEW_ERROR_REPORTER) < withBase.indexOf('x.js'));
     assert.strictEqual(injectPreviewErrorReporter('<html><head><title>t</title></head></html>'), `<html><head>${PREVIEW_ERROR_REPORTER}<title>t</title></head></html>`);
+  });
+});
+
+describe('injectPreviewBridge', () => {
+  it('goes after the preview base and after the error reporter, before any page script, with </script escaped', () => {
+    const html = injectPreviewErrorReporter(injectPreviewBridge(injectPreviewBase('<html><head><script src="x.js"></script></head></html>', 'https://b/'), 'var s="</script>";'));
+    const bridge = html.indexOf('data-od-preview-bridge');
+    assert.ok(html.indexOf(PREVIEW_ERROR_REPORTER) < bridge, 'error reporter first');
+    assert.ok(bridge < html.indexOf('x.js'), 'before page scripts');
+    assert.ok(html.includes('var s="<\\/script>";'), 'closing tag escaped');
+    assert.match(html, /<script data-od-preview-only data-od-preview-bridge>/);
   });
 });

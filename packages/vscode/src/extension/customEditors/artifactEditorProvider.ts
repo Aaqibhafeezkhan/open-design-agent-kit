@@ -20,6 +20,7 @@ import {
   saveTweakVariant,
   isContractToken,
   injectPreviewBase,
+  injectPreviewBridge,
   injectPreviewErrorReporter,
   localRelativePath,
   injectScriptNonce,
@@ -235,13 +236,19 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
       }
     };
     // The top document also reports its failed loads and script errors to the
-    // preview, which shows them (a dead CDN URL otherwise just renders nothing).
+    // preview, which shows them (a dead CDN URL otherwise just renders nothing),
+    // and runs the preview bridge Comment, Edit and Figma capture talk to
+    // (openspec add-preview-bridge).
+    const bridgeCode = await this.previewBridgeCode();
     const previewHtml = async () =>
       injectScriptNonce(
         injectPreviewErrorReporter(
-          prepareHtml(
-            await inlineLocalFrames(await inlineLocalImages(document.getText(), readImage), readFramed, (html, resolved) => prepareHtml(html, vscode.Uri.joinPath(vscode.Uri.parse(resolved), '..'))),
-            documentDir,
+          injectPreviewBridge(
+            prepareHtml(
+              await inlineLocalFrames(await inlineLocalImages(document.getText(), readImage), readFramed, (html, resolved) => prepareHtml(html, vscode.Uri.joinPath(vscode.Uri.parse(resolved), '..'))),
+              documentDir,
+            ),
+            bridgeCode,
           ),
         ),
         panelNonce,
@@ -262,7 +269,7 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
           const server = await startStaticServer(location.workspaceRoot, {
             entryPath: location.entryPath,
             pathToken: randomBytes(16).toString('hex'),
-            transformEntry: () => injectPreviewErrorReporter(document.getText()),
+            transformEntry: () => injectPreviewErrorReporter(injectPreviewBridge(document.getText(), bridgeCode)),
           });
           // In a remote window this is a forwarded address the UI can reach.
           const external = (await vscode.env.asExternalUri(vscode.Uri.parse(server.baseUrl))).toString(true);
@@ -537,6 +544,18 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
       for (const sub of navSubs) sub.dispose();
       void served?.server.close();
     });
+  }
+
+  private bridgeCodePromise: Promise<string> | undefined;
+
+  /** The built in-page preview bridge (dist/webview/bridge.js), read once. */
+  private previewBridgeCode(): Promise<string> {
+    this.bridgeCodePromise ??= fs.readFile(path.join(this.context.extensionUri.fsPath, 'dist', 'webview', 'bridge.js'), 'utf8').catch((err) => {
+      this.log.warn(`ArtifactEditorProvider: preview bridge missing, Comment and Edit will be unavailable: ${err instanceof Error ? err.message : String(err)}`);
+      this.bridgeCodePromise = undefined;
+      return '';
+    });
+    return this.bridgeCodePromise;
   }
 
   private async applyPatch(document: vscode.TextDocument, newSource: string): Promise<void> {
