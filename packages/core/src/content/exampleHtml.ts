@@ -193,6 +193,53 @@ export async function inlineLocalFrames(
   return out + html.slice(last);
 }
 
+/** Marks an `<img>` whose `src` the preview replaced with a data: URI; holds the original `src` for the WYSIWYG save. */
+export const PREVIEW_SRC_ATTR = 'data-od-preview-src';
+
+const IMAGE_MIME_TYPES: Record<string, string> = {
+  svg: 'image/svg+xml',
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  avif: 'image/avif',
+  ico: 'image/x-icon',
+};
+
+/**
+ * The webview's resource service worker can't serve requests made from a
+ * `srcdoc` document (its client URL is about:srcdoc, so it can't tell which
+ * webview is asking), so `<img src="assets/x.svg">` fails even with the
+ * preview <base>. This swaps each local image's `src` for a data: URI and
+ * keeps the original in PREVIEW_SRC_ATTR. Images that can't be read are left
+ * as they are.
+ */
+export async function inlineLocalImages(html: string, readLocal: (relativePath: string) => Promise<Uint8Array | undefined>): Promise<string> {
+  const dataUris = new Map<string, string | undefined>();
+  let out = '';
+  let last = 0;
+  for (const match of html.matchAll(/<img\b[^>]*>/gi)) {
+    const tag = match[0];
+    if (tag.includes(PREVIEW_SRC_ATTR)) continue;
+    const src = /\ssrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i.exec(tag);
+    const ref = src ? (src[1] ?? src[2] ?? src[3] ?? '').replace(/&amp;/g, '&').replace(/&quot;/g, '"') : '';
+    const rel = localRelativePath(ref);
+    const mime = rel ? IMAGE_MIME_TYPES[(/\.([a-z0-9]+)$/i.exec(rel)?.[1] ?? '').toLowerCase()] : undefined;
+    if (!src || !rel || !mime) continue;
+    if (!dataUris.has(rel)) {
+      const bytes = await readLocal(rel);
+      dataUris.set(rel, bytes ? `data:${mime};base64,${Buffer.from(bytes).toString('base64')}` : undefined);
+    }
+    const dataUri = dataUris.get(rel);
+    if (!dataUri) continue;
+    const original = ref.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+    out += html.slice(last, match.index) + tag.replace(src[0], ` src="${dataUri}" ${PREVIEW_SRC_ATTR}="${original}"`);
+    last = match.index + tag.length;
+  }
+  return out + html.slice(last);
+}
+
 /** `child` (relative to the file at `parent`) as a path relative to `parent`'s own base. */
 function joinRelative(parent: string, child: string): string {
   const dir = parent.includes('/') ? parent.slice(0, parent.lastIndexOf('/') + 1) : '';

@@ -14,6 +14,7 @@ import {
   discoverTweaks,
   formatTweaksForChat,
   inlineLocalFrames,
+  inlineLocalImages,
   rewriteRootValues,
   saveTweakVariant,
   isContractToken,
@@ -213,6 +214,13 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
     // own base and nonce).
     const prepareHtml = (html: string, dir: vscode.Uri) =>
       injectScriptNonce(injectPreviewBase(html, `${webviewPanel.webview.asWebviewUri(dir).toString().replace(/\/$/, '')}/`), panelNonce);
+    const readImage = async (rel: string) => {
+      try {
+        return await vscode.workspace.fs.readFile(vscode.Uri.joinPath(documentDir, rel));
+      } catch {
+        return undefined;
+      }
+    };
     const readFramed = async (rel: string) => {
       if (!/\.html?$/i.test(rel)) return undefined;
       const uri = vscode.Uri.joinPath(documentDir, rel);
@@ -228,7 +236,7 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
       injectScriptNonce(
         injectPreviewErrorReporter(
           prepareHtml(
-            await inlineLocalFrames(document.getText(), readFramed, (html, resolved) => prepareHtml(html, vscode.Uri.joinPath(vscode.Uri.parse(resolved), '..'))),
+            await inlineLocalFrames(await inlineLocalImages(document.getText(), readImage), readFramed, (html, resolved) => prepareHtml(html, vscode.Uri.joinPath(vscode.Uri.parse(resolved), '..'))),
             documentDir,
           ),
         ),

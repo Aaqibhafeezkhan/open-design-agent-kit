@@ -1,5 +1,5 @@
 import { ensureDataOdId, cssSelectorFor, htmlHintFor } from './dom/elementTargeting';
-import { applyPatch, serializeDocument, PREVIEW_ONLY_ATTR, type ManualEditPatch, type CuratedStyles } from './dom/sourcePatches';
+import { applyPatch, serializeDocument, PREVIEW_ONLY_ATTR, PREVIEW_SRC_ATTR, type ManualEditPatch, type CuratedStyles } from './dom/sourcePatches';
 import { computePinPosition, type ArtifactComment } from './dom/commentOverlay';
 import { captureFigmaIr } from '@feimacode/open-design-agent-kit-core/src/figma/captureIr';
 import { icon } from './dom/icons';
@@ -403,7 +403,7 @@ function contentSectionHtml(target: HTMLElement, kind: EditKind): string {
     return `
       <div class="od-panel-section-title">Content</div>
       <label>Image URL</label>
-      <input id="od-edit-src" class="od-input" type="text" value="${escapeHtml(target.getAttribute('src') ?? '')}" />
+      <input id="od-edit-src" class="od-input" type="text" value="${escapeHtml(target.getAttribute(PREVIEW_SRC_ATTR) ?? target.getAttribute('src') ?? '')}" />
       <label>Alt text</label>
       <input id="od-edit-alt" class="od-input" type="text" value="${escapeHtml(target.getAttribute('alt') ?? '')}" />
     `;

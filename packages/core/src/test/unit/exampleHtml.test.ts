@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { inlineLocalFrames, injectPreviewBase, injectPreviewErrorReporter, PREVIEW_ERROR_REPORTER, injectScriptNonce, loadExampleHtml, localRelativePath } from '../../content/exampleHtml';
+import { inlineLocalFrames, inlineLocalImages, injectPreviewBase, injectPreviewErrorReporter, PREVIEW_ERROR_REPORTER, injectScriptNonce, loadExampleHtml, localRelativePath } from '../../content/exampleHtml';
 
 async function makeExample(files: Record<string, string>): Promise<{ assetsRoot: string; entryPath: string }> {
   const assetsRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'od-ext-examplehtml-'));
@@ -146,6 +146,19 @@ describe('inlineLocalFrames', () => {
   it('only treats plain relative paths as local', () => {
     assert.strictEqual(localRelativePath('dir/x%20y.html?v=1#top'), 'dir/x y.html');
     for (const ref of ['#a', '/abs.html', 'https://x', 'data:text/html,x', 'mailto:a@b', '']) assert.strictEqual(localRelativePath(ref), undefined, ref);
+  });
+});
+
+describe('inlineLocalImages', () => {
+  const read = async (rel: string) => (rel === 'assets/a b.svg' ? new TextEncoder().encode('<svg/>') : undefined);
+
+  it('swaps local images for data: URIs, keeping the original src, and skips the rest', async () => {
+    const html = '<img alt="x" src="assets/a%20b.svg"><img src="https://x.test/a.svg"><img src="missing.png"><img src="notes.txt">';
+    const out = await inlineLocalImages(html, read);
+    assert.strictEqual(
+      out,
+      `<img alt="x" src="data:image/svg+xml;base64,${Buffer.from('<svg/>').toString('base64')}" data-od-preview-src="assets/a%20b.svg"><img src="https://x.test/a.svg"><img src="missing.png"><img src="notes.txt">`,
+    );
   });
 });
 

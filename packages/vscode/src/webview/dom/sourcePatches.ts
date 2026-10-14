@@ -53,6 +53,7 @@ export function applyPatch(doc: Document, patch: ManualEditPatch): boolean {
       el.setAttribute('href', patch.href);
       return true;
     case 'set-image':
+      el.removeAttribute(PREVIEW_SRC_ATTR);
       el.setAttribute('src', patch.src);
       el.setAttribute('alt', patch.alt);
       return true;
@@ -80,6 +81,8 @@ export function applyPatch(doc: Document, patch: ManualEditPatch): boolean {
 export const PREVIEW_ONLY_ATTR = 'data-od-preview-only';
 /** Mirrors core's PREVIEW_SRCDOC_ATTR (the webview bundle doesn't import core). */
 export const PREVIEW_SRCDOC_ATTR = 'data-od-preview-srcdoc';
+/** Mirrors core's PREVIEW_SRC_ATTR: an image's original src, swapped for a data: URI in the preview. */
+export const PREVIEW_SRC_ATTR = 'data-od-preview-src';
 
 export function serializeDocument(doc: Document): string {
   const doctype = doc.doctype ? `<!DOCTYPE ${doc.doctype.name}>\n` : '<!doctype html>\n';
@@ -89,6 +92,11 @@ export function serializeDocument(doc: Document): string {
   clone.querySelectorAll(`[${PREVIEW_SRCDOC_ATTR}]`).forEach((el) => {
     el.removeAttribute('srcdoc');
     el.removeAttribute(PREVIEW_SRCDOC_ATTR);
+  });
+  // Images the preview inlined from their local src (see inlineLocalImages).
+  clone.querySelectorAll(`[${PREVIEW_SRC_ATTR}]`).forEach((el) => {
+    el.setAttribute('src', el.getAttribute(PREVIEW_SRC_ATTR)!);
+    el.removeAttribute(PREVIEW_SRC_ATTR);
   });
   return doctype + clone.outerHTML;
 }
