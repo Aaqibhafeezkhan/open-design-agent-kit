@@ -30,6 +30,10 @@ Default: empty (auto-detect). The Chrome, Edge or Chromium executable used by [`
 
 Default: empty (auto-detect). The `ffmpeg` executable used to [export animations](../guides/export-animations.md) as MP4, WebM or GIF. It takes precedence over [`OPEN_DESIGN_FFMPEG_PATH`](#open_design_ffmpeg_path).
 
+### openDesign.experimental.servedPreview
+
+Default: `false`. Experimental. In the preview's View mode, load the design from a local server (bound to `127.0.0.1`, behind a random path that changes with each preview) instead of embedding its text. The design then behaves exactly as it would in a browser: tab switches and other inline click handlers, relative stylesheets, images, scripts and `fetch()` all work. Comment, Edit and Tweaks still show the embedded copy. In a remote window (WSL, SSH, Codespaces) VS Code forwards the port.
+
 ### openDesign.share.badge
 
 Default: `true`. Adds a small, closeable "Made with Open Design · Remix this" badge to pages you publish ([`publish_open_design_artifact`](tools.md#publish_open_design_artifact), export format `site`). It loads nothing from the internet and doesn't track viewers. Turn it off to never add it; one publish can still leave it out with `badge: false`. Standalone HTML files never get it unless asked. See [the badge](../guides/share-and-publish.md#the-made-with-open-design-badge).

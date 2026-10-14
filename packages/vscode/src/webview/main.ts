@@ -89,6 +89,7 @@ const tweaks = createTweaksPanel({ container: tweaksContainer, iframe, post: (m)
 new MutationObserver(() => {
   tweaksToggle.classList.toggle('active', tweaks.isOpen());
   tweaksToggle.setAttribute('aria-pressed', String(tweaks.isOpen()));
+  syncIframeSource();
 }).observe(tweaksContainer, { attributes: true, attributeFilter: ['hidden'] });
 tweaksToggle.addEventListener('click', () => {
   if (!tweaks.isOpen() && mode !== 'view') setMode('view');
@@ -121,6 +122,7 @@ function setMode(next: Mode): void {
   updateSendComments();
   panel.hidden = true;
   if (next !== 'view') tweaks.toggle(false);
+  syncIframeSource();
   selectedElement = null;
   hoverElement = null;
   updatePickMode();
@@ -173,10 +175,31 @@ document.getElementById('od-errors-close')!.addEventListener('click', () => {
   errorsBanner.hidden = true;
 });
 
-function setIframeContent(html: string): void {
+// Served preview pilot (openDesign.experimental.servedPreview): when the
+// extension sends a servedUrl, View mode loads the design from it, a real
+// URL with its own origin, so it behaves exactly as in a browser. Comment,
+// Edit and Tweaks read the page's DOM directly, which a cross-origin frame
+// doesn't allow, so they keep using the srcdoc copy.
+let currentHtml = '';
+let currentServedUrl: string | undefined;
+function setIframeContent(html: string, servedUrl?: string): void {
+  currentHtml = html;
+  currentServedUrl = servedUrl;
+  syncIframeSource(true);
+}
+function syncIframeSource(contentChanged = false): void {
+  const useServed = Boolean(currentServedUrl) && mode === 'view' && !tweaks.isOpen();
+  const showingServed = !iframe.hasAttribute('srcdoc') && iframe.getAttribute('src') === currentServedUrl;
+  if (!contentChanged && useServed === showingServed) return;
   previewErrors = [];
   renderPreviewErrors();
-  iframe.srcdoc = html;
+  if (useServed) {
+    iframe.removeAttribute('srcdoc');
+    iframe.src = currentServedUrl!;
+  } else {
+    iframe.removeAttribute('src');
+    iframe.srcdoc = currentHtml;
+  }
 }
 
 iframe.addEventListener('load', () => {
@@ -757,7 +780,7 @@ window.addEventListener('message', (event) => {
       applyCollectionInfo(message.collection);
       applyShapeInfo(message.shape);
       tweaks.update(message.tweaks);
-      setIframeContent(message.html);
+      setIframeContent(message.html, message.servedUrl);
       break;
     case 'source-updated':
       // External change (e.g. the model regenerated the file) wins over any
@@ -771,7 +794,7 @@ window.addEventListener('message', (event) => {
       applyCollectionInfo(message.collection);
       applyShapeInfo(message.shape);
       tweaks.update(message.tweaks);
-      setIframeContent(message.html);
+      setIframeContent(message.html, message.servedUrl);
       break;
     case 'shape-checked':
       showShapeCheck(message);

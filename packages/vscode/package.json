@@ -1723,6 +1723,11 @@
           "default": "",
           "markdownDescription": "Absolute path to an `ffmpeg` executable used to export animations as MP4, WebM or GIF. Leave empty to auto-detect an installed one (or set the `OPEN_DESIGN_FFMPEG_PATH` environment variable). ffmpeg is never downloaded."
         },
+        "openDesign.experimental.servedPreview": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Experimental. Show designs in the preview's View mode from a local server (bound to `127.0.0.1`, behind a random path) instead of as embedded text, so they behave exactly as in a browser: tab switches, relative files and scripts all work. Comment, Edit and Tweaks still use the embedded copy. In a remote window the port is forwarded through VS Code."
+        },
         "openDesign.share.badge": {
           "type": "boolean",
           "default": true,
