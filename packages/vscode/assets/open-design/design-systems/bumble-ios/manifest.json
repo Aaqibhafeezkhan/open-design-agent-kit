@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "od-design-system-project/v1",
+  "id": "bumble-ios",
+  "name": "Bumble (iOS)",
+  "category": "Mobile Apps",
+  "description": "Women-first dating. Bumble Yellow #FFC629 + pure-black-on-yellow text, hexagon iconography for matches and mode toggles, big confident Brando 500/700/900, 24-hour countdown chip mechanic",
+  "source": {
+    "type": "inspired",
+    "origin": "Adapted from Meliwat/awesome-ios-design-md (MIT, Copyright (c) 2026 Muhammed Eliwat)",
+    "url": "https://github.com/Meliwat/awesome-ios-design-md/tree/main/design-md/dating/bumble"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.css"
+  },
+  "craft": {
+    "applies": [],
+    "suggested": [
+      "color",
+      "accessibility-baseline"
+    ],
+    "exemptions": []
+  }
+}

@@ -1,0 +1,74 @@
+/* ─────────────────────────────────────────────────────────────────────────
+ * design-systems/cash-app-ios/tokens.css
+ * Reviewed against the source DESIGN.md on 2026-10-13.
+ *
+ * Mobile money. Pure-black canvas + single Cash Green #00D632 accent, Cash Sans / Cash Sans Mono, 96pt $-amount keypad, icon-only tab bar, matte black Cash Card
+ *
+ * Extracted from awesome-ios-design-md (MIT, Copyright (c) 2026 Muhammed Eliwat).
+ * Primary mode: dark. Sizes are iOS points mapped 1:1 to CSS px.
+ * ─────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Surface */
+  --bg: #000000;
+  --surface: #0F0F0F;
+  --surface-warm: color-mix(in oklab, var(--surface), var(--fg) 6%);
+
+  /* Foreground */
+  --fg: #FFFFFF;
+  --fg-2: color-mix(in oklab, var(--fg), var(--bg) 15%);
+  --muted: #9E9E9E;
+  --meta: color-mix(in oklab, var(--muted), var(--bg) 25%);
+
+  /* Border */
+  --border: #1F1F1F;
+  --border-soft: color-mix(in oklab, var(--border), var(--bg) 50%);
+
+  /* Accent */
+  --accent: #00D632;
+  --accent-on: #000000;
+  --accent-hover: color-mix(in oklab, var(--accent), black 8%);
+  --accent-active: color-mix(in oklab, var(--accent), black 14%);
+
+  /* Semantic */
+  --success: #00D632;
+  --warn: #FFA300;
+  --danger: #FF453A;
+
+  /* Typography — fonts */
+  --font-display: "Cash Sans", "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --font-body: "Cash Sans", "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Typography — type scale (from §3's hierarchy table) */
+  --text-xs: 0px;
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-md: 15px;
+  --text-lg: 16px;
+  --text-xl: 22px;
+  --text-2xl: 48px;
+  --text-3xl: 96px;
+  --text-4xl: 125px;
+
+  /* Typography — leading & tracking */
+  --leading-body: 1.4;
+  --leading-tight: 1.15;
+  --tracking-display: -0.01em;
+
+  /* Radius (from §4's corner radii) */
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 30px;
+  --radius-pill: 9999px;
+
+  /* Layout — a phone screen; desktop/tablet values only matter if a page is
+   * stretched beyond one. */
+  --section-y-desktop: 64px;
+  --section-y-tablet: 40px;
+  --section-y-phone: 24px;
+  --container-max: 430px;
+  --container-gutter-desktop: 24px;
+  --container-gutter-tablet: 24px;
+  --container-gutter-phone: 24px;
+}

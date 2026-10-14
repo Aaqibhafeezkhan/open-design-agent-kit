@@ -1,0 +1,74 @@
+/* ─────────────────────────────────────────────────────────────────────────
+ * design-systems/oura-ios/tokens.css
+ * Reviewed against the source DESIGN.md on 2026-10-13.
+ *
+ * Health ring. Cool-charcoal #0B0B0F instrument panel, tri-domain score rings (Readiness teal #4FD1C5 / Sleep indigo #7C6FF0 / Activity amber #F5A623), contributor bars
+ *
+ * Extracted from awesome-ios-design-md (MIT, Copyright (c) 2026 Muhammed Eliwat).
+ * Primary mode: dark. Sizes are iOS points mapped 1:1 to CSS px.
+ * ─────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Surface */
+  --bg: #0B0B0F;
+  --surface: #16161C;
+  --surface-warm: color-mix(in oklab, var(--surface), var(--fg) 6%);
+
+  /* Foreground */
+  --fg: #FFFFFF;
+  --fg-2: color-mix(in oklab, var(--fg), var(--bg) 15%);
+  --muted: #9A9AA5;
+  --meta: color-mix(in oklab, var(--muted), var(--bg) 25%);
+
+  /* Border */
+  --border: #2A2A33;
+  --border-soft: color-mix(in oklab, var(--border), var(--bg) 50%);
+
+  /* Accent */
+  --accent: #4FD1C5;
+  --accent-on: #0B0B0F;
+  --accent-hover: color-mix(in oklab, var(--accent), black 8%);
+  --accent-active: color-mix(in oklab, var(--accent), black 14%);
+
+  /* Semantic */
+  --success: #4FD1C5;
+  --warn: #F5A623;
+  --danger: #FF3B30;
+
+  /* Typography — fonts */
+  --font-display: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --font-body: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Typography — type scale (from §3's hierarchy table) */
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-md: 15px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --text-2xl: 26px;
+  --text-3xl: 52px;
+  --text-4xl: 68px;
+
+  /* Typography — leading & tracking */
+  --leading-body: 1.5;
+  --leading-tight: 1.15;
+  --tracking-display: -0.01em;
+
+  /* Radius (from §4's corner radii) */
+  --radius-sm: 6px;
+  --radius-md: 18px;
+  --radius-lg: 24px;
+  --radius-pill: 9999px;
+
+  /* Layout — a phone screen; desktop/tablet values only matter if a page is
+   * stretched beyond one. */
+  --section-y-desktop: 64px;
+  --section-y-tablet: 40px;
+  --section-y-phone: 24px;
+  --container-max: 430px;
+  --container-gutter-desktop: 16px;
+  --container-gutter-tablet: 16px;
+  --container-gutter-phone: 16px;
+}

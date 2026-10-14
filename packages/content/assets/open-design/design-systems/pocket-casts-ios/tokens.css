@@ -1,0 +1,74 @@
+/* ─────────────────────────────────────────────────────────────────────────
+ * design-systems/pocket-casts-ios/tokens.css
+ * Reviewed against the source DESIGN.md on 2026-10-13.
+ *
+ * Premium podcast player with per-podcast theming. Pocket Casts Red #F43E37 on near-black #1A1A1A, cover-art theme tint #E0533C, circular transport, and a reorderable Up Next queue.
+ *
+ * Extracted from awesome-ios-design-md (MIT, Copyright (c) 2026 Muhammed Eliwat).
+ * Primary mode: dark. Sizes are iOS points mapped 1:1 to CSS px.
+ * ─────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Surface */
+  --bg: #1A1A1A;
+  --surface: #232323;
+  --surface-warm: color-mix(in oklab, var(--surface), var(--fg) 6%);
+
+  /* Foreground */
+  --fg: #FFFFFF;
+  --fg-2: color-mix(in oklab, var(--fg), var(--bg) 15%);
+  --muted: #B8B8B8;
+  --meta: color-mix(in oklab, var(--muted), var(--bg) 25%);
+
+  /* Border */
+  --border: #383838;
+  --border-soft: color-mix(in oklab, var(--border), var(--bg) 50%);
+
+  /* Accent */
+  --accent: #F43E37;
+  --accent-on: #FFFFFF;
+  --accent-hover: color-mix(in oklab, var(--accent), black 8%);
+  --accent-active: color-mix(in oklab, var(--accent), black 14%);
+
+  /* Semantic */
+  --success: #34C759;
+  --warn: #FFB300;
+  --danger: #F43E37;
+
+  /* Typography — fonts */
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Typography — type scale (from §3's hierarchy table) */
+  --text-xs: 10px;
+  --text-sm: 15px;
+  --text-base: 16px;
+  --text-md: 16px;
+  --text-lg: 18px;
+  --text-xl: 22px;
+  --text-2xl: 32px;
+  --text-3xl: 32px;
+  --text-4xl: 42px;
+
+  /* Typography — leading & tracking */
+  --leading-body: 1.5;
+  --leading-tight: 1.15;
+  --tracking-display: -0.01em;
+
+  /* Radius (from §4's corner radii) */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-pill: 9999px;
+
+  /* Layout — a phone screen; desktop/tablet values only matter if a page is
+   * stretched beyond one. */
+  --section-y-desktop: 64px;
+  --section-y-tablet: 40px;
+  --section-y-phone: 24px;
+  --container-max: 430px;
+  --container-gutter-desktop: 16px;
+  --container-gutter-tablet: 16px;
+  --container-gutter-phone: 16px;
+}

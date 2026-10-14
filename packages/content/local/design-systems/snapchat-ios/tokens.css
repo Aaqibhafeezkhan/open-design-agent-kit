@@ -1,0 +1,74 @@
+/* ─────────────────────────────────────────────────────────────────────────
+ * design-systems/snapchat-ios/tokens.css
+ * Reviewed against the source DESIGN.md on 2026-10-13.
+ *
+ * Camera-first social. Snap Yellow #FFFC00, 5-screen swipe nav, 82pt yellow capture button, color-coded snap types, Avenir Next
+ *
+ * Extracted from awesome-ios-design-md (MIT, Copyright (c) 2026 Muhammed Eliwat).
+ * Primary mode: dark. Sizes are iOS points mapped 1:1 to CSS px.
+ * ─────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Surface */
+  --bg: #000000;
+  --surface: #1A1A1A;
+  --surface-warm: color-mix(in oklab, var(--surface), var(--fg) 6%);
+
+  /* Foreground */
+  --fg: #FFFFFF;
+  --fg-2: color-mix(in oklab, var(--fg), var(--bg) 15%);
+  --muted: #8A8A8F;
+  --meta: color-mix(in oklab, var(--muted), var(--bg) 25%);
+
+  /* Border */
+  --border: #333333;
+  --border-soft: color-mix(in oklab, var(--border), var(--bg) 50%);
+
+  /* Accent */
+  --accent: #FFFC00;
+  --accent-on: #000000;
+  --accent-hover: color-mix(in oklab, var(--accent), black 8%);
+  --accent-active: color-mix(in oklab, var(--accent), black 14%);
+
+  /* Semantic */
+  --success: #00D873;
+  --warn: #FF9500;
+  --danger: #FF3B30;
+
+  /* Typography — fonts */
+  --font-display: "Avenir Next", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --font-body: "Avenir Next", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Typography — type scale (from §3's hierarchy table) */
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-md: 16px;
+  --text-lg: 18px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 48px;
+  --text-4xl: 62px;
+
+  /* Typography — leading & tracking */
+  --leading-body: 1.4;
+  --leading-tight: 1.15;
+  --tracking-display: -0.01em;
+
+  /* Radius (from §4's corner radii) */
+  --radius-sm: 8px;
+  --radius-md: 20px;
+  --radius-lg: 24px;
+  --radius-pill: 9999px;
+
+  /* Layout — a phone screen; desktop/tablet values only matter if a page is
+   * stretched beyond one. */
+  --section-y-desktop: 64px;
+  --section-y-tablet: 40px;
+  --section-y-phone: 24px;
+  --container-max: 430px;
+  --container-gutter-desktop: 16px;
+  --container-gutter-tablet: 16px;
+  --container-gutter-phone: 16px;
+}

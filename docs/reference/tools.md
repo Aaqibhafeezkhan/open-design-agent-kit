@@ -90,7 +90,7 @@ Mode `design-system` means "a skill that helps author a design-system deliverabl
 
 ### list_open_design_design_systems
 
-Lists the brand design systems (~150 bundled, plus any custom ones in the workspace).
+Lists the brand design systems (~150 bundled, 30 iOS app systems in the `Mobile Apps` category, plus any custom ones in the workspace).
 
 | Argument | Type | Required | Meaning |
 |---|---|---|---|

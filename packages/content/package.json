@@ -26,6 +26,7 @@
     "apply-overlay": "node ./scripts/apply-local-overlay.mjs",
     "check-sync": "node ./scripts/check-content-sync.mjs",
     "extract-typeui": "node ./scripts/extract-typeui-design-system.mjs",
+    "extract-ios": "node ./scripts/extract-ios-design-system.mjs",
     "test:unit": "node --test scripts/test/*.test.mjs"
   },
   "dependencies": {

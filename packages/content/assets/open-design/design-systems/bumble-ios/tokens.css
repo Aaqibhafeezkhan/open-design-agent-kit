@@ -1,0 +1,74 @@
+/* ─────────────────────────────────────────────────────────────────────────
+ * design-systems/bumble-ios/tokens.css
+ * Reviewed against the source DESIGN.md on 2026-10-13.
+ *
+ * Women-first dating. Bumble Yellow #FFC629 + pure-black-on-yellow text, hexagon iconography for matches and mode toggles, big confident Brando 500/700/900, 24-hour countdown chip mechanic
+ *
+ * Extracted from awesome-ios-design-md (MIT, Copyright (c) 2026 Muhammed Eliwat).
+ * Primary mode: light. Sizes are iOS points mapped 1:1 to CSS px.
+ * ─────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Surface */
+  --bg: #FFFFFF;
+  --surface: #F5F5F5;
+  --surface-warm: color-mix(in oklab, var(--surface), var(--fg) 6%);
+
+  /* Foreground */
+  --fg: #1F1F1F;
+  --fg-2: color-mix(in oklab, var(--fg), var(--bg) 15%);
+  --muted: #5A5A5A;
+  --meta: color-mix(in oklab, var(--muted), var(--bg) 25%);
+
+  /* Border */
+  --border: #E5E5E5;
+  --border-soft: color-mix(in oklab, var(--border), var(--bg) 50%);
+
+  /* Accent */
+  --accent: #FFC629;
+  --accent-on: #000000;
+  --accent-hover: color-mix(in oklab, var(--accent), black 8%);
+  --accent-active: color-mix(in oklab, var(--accent), black 14%);
+
+  /* Semantic */
+  --success: #00A86B;
+  --warn: #FF9500;
+  --danger: #D72638;
+
+  /* Typography — fonts */
+  --font-display: "Brando", "Bricolage Grotesque", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --font-body: "Brando", "Bricolage Grotesque", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Typography — type scale (from §3's hierarchy table) */
+  --text-xs: 10px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-md: 16px;
+  --text-lg: 18px;
+  --text-xl: 24px;
+  --text-2xl: 32px;
+  --text-3xl: 44px;
+  --text-4xl: 57px;
+
+  /* Typography — leading & tracking */
+  --leading-body: 1.4;
+  --leading-tight: 1.15;
+  --tracking-display: -0.01em;
+
+  /* Radius (from §4's corner radii) */
+  --radius-sm: 8px;
+  --radius-md: 24px;
+  --radius-lg: 28px;
+  --radius-pill: 9999px;
+
+  /* Layout — a phone screen; desktop/tablet values only matter if a page is
+   * stretched beyond one. */
+  --section-y-desktop: 64px;
+  --section-y-tablet: 40px;
+  --section-y-phone: 24px;
+  --container-max: 430px;
+  --container-gutter-desktop: 16px;
+  --container-gutter-tablet: 16px;
+  --container-gutter-phone: 16px;
+}

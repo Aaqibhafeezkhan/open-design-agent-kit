@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "od-design-system-project/v1",
+  "id": "bluesky-ios",
+  "name": "Bluesky (iOS)",
+  "category": "Mobile Apps",
+  "description": "Custom-feeds social. Bluesky Blue #1185FE, butterfly mark, switchable pinned custom feeds, reply-control chips, three themes (light / dim #1E2936 / dark #0B0F14)",
+  "source": {
+    "type": "inspired",
+    "origin": "Adapted from Meliwat/awesome-ios-design-md (MIT, Copyright (c) 2026 Muhammed Eliwat)",
+    "url": "https://github.com/Meliwat/awesome-ios-design-md/tree/main/design-md/social/bluesky"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.css"
+  },
+  "craft": {
+    "applies": [],
+    "suggested": [
+      "color",
+      "accessibility-baseline"
+    ],
+    "exemptions": []
+  }
+}

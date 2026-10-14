@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "od-design-system-project/v1",
+  "id": "feeld-ios",
+  "name": "Feeld (iOS)",
+  "category": "Mobile Apps",
+  "description": "Open-minded dating, dark-native. True-black canvas #000000 with one rationed acid-yellow #E8FF63 accent, desire pink #FF5C8A, a full-bleed 28pt Discover card with couple-aware names and a heavy rgba(0,0,0,0.72)→0.92 gradient, plus the three-state Desire chip system.",
+  "source": {
+    "type": "inspired",
+    "origin": "Adapted from Meliwat/awesome-ios-design-md (MIT, Copyright (c) 2026 Muhammed Eliwat)",
+    "url": "https://github.com/Meliwat/awesome-ios-design-md/tree/main/design-md/dating/feeld"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.css"
+  },
+  "craft": {
+    "applies": [],
+    "suggested": [
+      "color",
+      "accessibility-baseline"
+    ],
+    "exemptions": []
+  }
+}

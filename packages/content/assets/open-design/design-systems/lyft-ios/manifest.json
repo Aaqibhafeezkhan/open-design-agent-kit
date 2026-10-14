@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "od-design-system-project/v1",
+  "id": "lyft-ios",
+  "name": "Lyft (iOS)",
+  "category": "Mobile Apps",
+  "description": "Ride-hailing. Single Lyft Pink #FF00BF accent, map-as-hero with no tab bar, very-rounded springy ride-type selector sheet (Wait & Save / Standard / XL / Lux Black)",
+  "source": {
+    "type": "inspired",
+    "origin": "Adapted from Meliwat/awesome-ios-design-md (MIT, Copyright (c) 2026 Muhammed Eliwat)",
+    "url": "https://github.com/Meliwat/awesome-ios-design-md/tree/main/design-md/travel/lyft"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.css"
+  },
+  "craft": {
+    "applies": [],
+    "suggested": [
+      "color",
+      "accessibility-baseline"
+    ],
+    "exemptions": []
+  }
+}

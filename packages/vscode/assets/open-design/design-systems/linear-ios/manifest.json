@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "od-design-system-project/v1",
+  "id": "linear-ios",
+  "name": "Linear (iOS)",
+  "category": "Mobile Apps",
+  "description": "Fast issue tracker. Linear Purple #5E6AD2 on near-OLED #08090A, ultra-dense issue list, the Cmd+K command menu, cycle bars, drawn status iconography",
+  "source": {
+    "type": "inspired",
+    "origin": "Adapted from Meliwat/awesome-ios-design-md (MIT, Copyright (c) 2026 Muhammed Eliwat)",
+    "url": "https://github.com/Meliwat/awesome-ios-design-md/tree/main/design-md/productivity/linear"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.css"
+  },
+  "craft": {
+    "applies": [],
+    "suggested": [
+      "color",
+      "accessibility-baseline"
+    ],
+    "exemptions": []
+  }
+}

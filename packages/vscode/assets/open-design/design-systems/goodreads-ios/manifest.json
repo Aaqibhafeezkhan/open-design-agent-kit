@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "od-design-system-project/v1",
+  "id": "goodreads-ios",
+  "name": "Goodreads (iOS)",
+  "category": "Mobile Apps",
+  "description": "Books, reviews & reading tracking. Warm tan paper canvas (#F4F1EA light, ink-brown #161310 dark) with literary brown #382110 chrome, full-color cover grids, the load-bearing amber five-star rating #E9A100, a green Want-to-Read CTA #409D69, teal links #00635D, and a serif 1.6 reading rhythm.",
+  "source": {
+    "type": "inspired",
+    "origin": "Adapted from Meliwat/awesome-ios-design-md (MIT, Copyright (c) 2026 Muhammed Eliwat)",
+    "url": "https://github.com/Meliwat/awesome-ios-design-md/tree/main/design-md/misc/goodreads"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.css"
+  },
+  "craft": {
+    "applies": [],
+    "suggested": [
+      "color",
+      "accessibility-baseline"
+    ],
+    "exemptions": []
+  }
+}

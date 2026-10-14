@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "od-design-system-project/v1",
+  "id": "nubank-ios",
+  "name": "Nubank (iOS)",
+  "category": "Mobile Apps",
+  "description": "Latin America's purple neobank. Full-bleed Nu Purple hero (#820AD1) over a calm tile stack on deep aubergine #15101C, the Roxinho credit card as a #9B2BE0 gradient, pill buttons, and Pix-first quick actions with positive green #2ED47A.",
+  "source": {
+    "type": "inspired",
+    "origin": "Adapted from Meliwat/awesome-ios-design-md (MIT, Copyright (c) 2026 Muhammed Eliwat)",
+    "url": "https://github.com/Meliwat/awesome-ios-design-md/tree/main/design-md/finance/nubank"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.css"
+  },
+  "craft": {
+    "applies": [],
+    "suggested": [
+      "color",
+      "accessibility-baseline"
+    ],
+    "exemptions": []
+  }
+}

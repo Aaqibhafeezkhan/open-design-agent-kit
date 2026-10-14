@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "od-design-system-project/v1",
+  "id": "cash-app-ios",
+  "name": "Cash App (iOS)",
+  "category": "Mobile Apps",
+  "description": "Mobile money. Pure-black canvas + single Cash Green #00D632 accent, Cash Sans / Cash Sans Mono, 96pt $-amount keypad, icon-only tab bar, matte black Cash Card",
+  "source": {
+    "type": "inspired",
+    "origin": "Adapted from Meliwat/awesome-ios-design-md (MIT, Copyright (c) 2026 Muhammed Eliwat)",
+    "url": "https://github.com/Meliwat/awesome-ios-design-md/tree/main/design-md/finance/cash-app"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.css"
+  },
+  "craft": {
+    "applies": [],
+    "suggested": [
+      "color",
+      "accessibility-baseline"
+    ],
+    "exemptions": []
+  }
+}

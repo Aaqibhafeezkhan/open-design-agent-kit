@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "od-design-system-project/v1",
+  "id": "todoist-ios",
+  "name": "Todoist (iOS)",
+  "category": "Mobile Apps",
+  "description": "Tasks + projects. Todoist Red #DC4C3E for FAB + P1 flag + brand, tinted-red FAB shadow, four-tier priority via checkbox stroke (P1 red, P2 #EB8909, P3 #246FE0, P4 gray), 52pt edge-to-edge task rows, SF Pro system font",
+  "source": {
+    "type": "inspired",
+    "origin": "Adapted from Meliwat/awesome-ios-design-md (MIT, Copyright (c) 2026 Muhammed Eliwat)",
+    "url": "https://github.com/Meliwat/awesome-ios-design-md/tree/main/design-md/productivity/todoist"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.css"
+  },
+  "craft": {
+    "applies": [],
+    "suggested": [
+      "color",
+      "accessibility-baseline"
+    ],
+    "exemptions": []
+  }
+}

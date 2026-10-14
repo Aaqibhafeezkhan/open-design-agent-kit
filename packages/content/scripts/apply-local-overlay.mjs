@@ -22,6 +22,8 @@ export const OVERLAY_MARKER = '.od-local-overlay';
 export const SURFACES_FILE = 'surfaces.json';
 /** Trusted third-party MCP servers (openspec add-integration-registry): local/integrations.json, copied to the assets root. */
 export const INTEGRATIONS_FILE = 'integrations.json';
+/** Third-party licence notices for ported content (openspec add-mobile-design-systems): local/notices/*, copied to the assets' notices/. */
+export const NOTICES_DIR = 'notices';
 // The only file an overlay may contribute to an EXISTING upstream design
 // system: additive token overrides, applied on top of (never instead of) the
 // vendored tokens.css by core's resolveDesignSystemTokens().
@@ -72,6 +74,7 @@ export async function listOverlayFiles(localRoot = LOCAL_ROOT) {
   for (const id of await listDirs(path.join(localRoot, 'skills'))) await walk(path.join('skills', id));
   for (const id of await listDirs(path.join(localRoot, 'examples'))) await walk(path.join('examples', id));
   for (const name of await listFiles(path.join(localRoot, 'prompts'))) files.push(path.join('prompts', name));
+  for (const name of await listFiles(path.join(localRoot, NOTICES_DIR))) files.push(path.join(NOTICES_DIR, name));
   if (await pathExists(path.join(localRoot, SURFACES_FILE))) files.push(SURFACES_FILE);
   if (await pathExists(path.join(localRoot, INTEGRATIONS_FILE))) files.push(INTEGRATIONS_FILE);
   for (const id of await listDirs(path.join(localRoot, 'design-systems'))) {
@@ -195,6 +198,15 @@ export async function applyLocalOverlay(targetRoot, localRoot = LOCAL_ROOT) {
   if (promptNames.length > 0) {
     await fs.mkdir(promptsDst, { recursive: true });
     for (const name of promptNames) await fs.copyFile(path.join(localRoot, 'prompts', name), path.join(promptsDst, name));
+  }
+
+  // notices/ is overlay-owned too: shipped with the assets so every host that mirrors them carries the licences.
+  const noticesDst = path.join(targetRoot, NOTICES_DIR);
+  await fs.rm(noticesDst, { recursive: true, force: true });
+  const noticeNames = await listFiles(path.join(localRoot, NOTICES_DIR));
+  if (noticeNames.length > 0) {
+    await fs.mkdir(noticesDst, { recursive: true });
+    for (const name of noticeNames) await fs.copyFile(path.join(localRoot, NOTICES_DIR, name), path.join(noticesDst, name));
   }
 
   // surfaces.json has no upstream counterpart either: copied, or removed when local/ has none.

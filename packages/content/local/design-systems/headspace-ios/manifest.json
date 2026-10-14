@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "od-design-system-project/v1",
+  "id": "headspace-ios",
+  "name": "Headspace (iOS)",
+  "category": "Mobile Apps",
+  "description": "Meditation + sleep. Butter-cream canvas #FFF7E7, Marigold #FF6B35 primary + Aurora gradient (peach → butter → marigold) wash, 234pt breathing meditation sphere on a 12s 4-2-4-2 ease-in-out cycle, Apercu/Nunito title case with 1.5 line-height",
+  "source": {
+    "type": "inspired",
+    "origin": "Adapted from Meliwat/awesome-ios-design-md (MIT, Copyright (c) 2026 Muhammed Eliwat)",
+    "url": "https://github.com/Meliwat/awesome-ios-design-md/tree/main/design-md/fitness/headspace"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.css"
+  },
+  "craft": {
+    "applies": [],
+    "suggested": [
+      "color",
+      "accessibility-baseline"
+    ],
+    "exemptions": []
+  }
+}

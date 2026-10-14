@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "od-design-system-project/v1",
+  "id": "signal-ios",
+  "name": "Signal (iOS)",
+  "category": "Mobile Apps",
+  "description": "Privacy-first messaging. Single Signal Blue #3A76F0 accent, disappearing-message timer chips, sealed-sender glyphs, zero-vanity minimalism, light + #1B1B1B dark",
+  "source": {
+    "type": "inspired",
+    "origin": "Adapted from Meliwat/awesome-ios-design-md (MIT, Copyright (c) 2026 Muhammed Eliwat)",
+    "url": "https://github.com/Meliwat/awesome-ios-design-md/tree/main/design-md/messaging/signal"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.css"
+  },
+  "craft": {
+    "applies": [],
+    "suggested": [
+      "color",
+      "accessibility-baseline"
+    ],
+    "exemptions": []
+  }
+}

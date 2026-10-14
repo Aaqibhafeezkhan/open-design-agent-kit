@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "od-design-system-project/v1",
+  "id": "telegram-ios",
+  "name": "Telegram (iOS)",
+  "category": "Mobile Apps",
+  "description": "Fast, themeable chat. Telegram Blue #0088CC, 17pt bubbles with 6pt notch tails, silent-send long-press, Lottie animated emoji, floating voice mini-player",
+  "source": {
+    "type": "inspired",
+    "origin": "Adapted from Meliwat/awesome-ios-design-md (MIT, Copyright (c) 2026 Muhammed Eliwat)",
+    "url": "https://github.com/Meliwat/awesome-ios-design-md/tree/main/design-md/messaging/telegram"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.css"
+  },
+  "craft": {
+    "applies": [],
+    "suggested": [
+      "color",
+      "accessibility-baseline"
+    ],
+    "exemptions": []
+  }
+}

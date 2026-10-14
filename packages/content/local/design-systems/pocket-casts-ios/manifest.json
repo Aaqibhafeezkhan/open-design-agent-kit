@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "od-design-system-project/v1",
+  "id": "pocket-casts-ios",
+  "name": "Pocket Casts (iOS)",
+  "category": "Mobile Apps",
+  "description": "Premium podcast player with per-podcast theming. Pocket Casts Red #F43E37 on near-black #1A1A1A, cover-art theme tint #E0533C, circular transport, and a reorderable Up Next queue.",
+  "source": {
+    "type": "inspired",
+    "origin": "Adapted from Meliwat/awesome-ios-design-md (MIT, Copyright (c) 2026 Muhammed Eliwat)",
+    "url": "https://github.com/Meliwat/awesome-ios-design-md/tree/main/design-md/music/pocket-casts"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.css"
+  },
+  "craft": {
+    "applies": [],
+    "suggested": [
+      "color",
+      "accessibility-baseline"
+    ],
+    "exemptions": []
+  }
+}

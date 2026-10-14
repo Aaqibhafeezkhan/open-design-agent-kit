@@ -88,12 +88,37 @@ Some ids you might reach for: `apple`, `stripe`, `linear-app`, `notion`, `vercel
 - **Open Design: Browse Design Systems:** a searchable list grouped by category, with the active one ticked. Picking one makes it active and prefills Copilot Chat with `Using the Open Design design system "<id>" (<name>) — ` so your next request names it explicitly. The list also has **Clear active design system** and **Import a design system…**.
 - **Design Systems view:** in the Open Design activity bar, every design system grouped by category, your custom ones first under **Custom**, the active one ticked. Clicking one opens its [preview](#preview-a-design-system); it doesn't make it active. Hover for **Use in chat**, **Set as active** and **Preview**; custom ones also have **Generate tokens.css** on the right-click menu. The title bar has **Import** and **Refresh**.
 
+### Mobile app design systems
+
+For phone screens there's a separate `Mobile Apps` category: 30 systems adapted from real iOS apps, with ids ending in `-ios`:
+
+| Kind | Systems |
+|---|---|
+| Finance | `monzo-ios`, `cash-app-ios`, `nubank-ios` |
+| Fitness and health | `strava-ios`, `oura-ios`, `headspace-ios`, `nike-run-club-ios` |
+| Food | `uber-eats-ios`, `doordash-ios`, `resy-ios` |
+| Messaging | `telegram-ios`, `whatsapp-ios`, `signal-ios` |
+| Music and video | `spotify-ios`, `apple-music-ios`, `pocket-casts-ios`, `netflix-ios`, `twitch-ios` |
+| Productivity | `linear-ios`, `things-3-ios`, `todoist-ios` |
+| Social and dating | `bluesky-ios`, `reddit-ios`, `snapchat-ios`, `bumble-ios`, `feeld-ios` |
+| Travel and reading | `booking-ios`, `lyft-ios`, `flighty-ios`, `goodreads-ios` |
+
+Their `DESIGN.md` describes the app rather than a website: tab bars, navigation bars, sheets, list rows, 44pt hit targets, safe areas and haptics, with sizes in iOS points (1pt is treated as 1 CSS px). `tokens.css` carries the app's main colour mode, and the other mode is described in the `DESIGN.md`.
+
+Ask for an app the way you'd describe it:
+
+> A budgeting app home screen that feels like Monzo.
+
+For phone screens, the agent picks `monzo-ios`. Some brands have both kinds: for a Spotify-style now-playing screen it uses `spotify-ios`, and for a Spotify-style landing page it uses the web system `spotify`. The Mobile app surface also asks which app's look to follow.
+
+These systems are adapted from [awesome-ios-design-md](https://github.com/Meliwat/awesome-ios-design-md) (MIT), whose specs were reverse-engineered from the apps. They are inspired by those apps, not official, and their values were reviewed against the source rather than measured from the apps themselves.
+
 ### Preview a design system
 
 See what a design system looks like before you commit to it. Open it from the Design Systems view, or run **Open Design: Preview Design System**. The preview is read-only: it writes nothing and doesn't change the active system.
 
 - **Visualize:** identity, typography specimens, palette (each token with its value and role, plus any other colours the `DESIGN.md` names), voice, imagery and layout (radius, spacing, elevation), and the **component kit**, with a Light/Dark switch.
-- **Showcase:** a full product page (navigation, hero, features, pricing, FAQ…) styled with the system.
+- **Showcase:** a full product page (navigation, hero, features, pricing, FAQ…) styled with the system. For a `Mobile Apps` system this is still a web page, so judge those by **Visualize**.
 - **Side panel:** the system's `DESIGN.md` or `tokens.css` source. Collapse it with the thin bar on its left edge.
 - **Set as active** and **Use in chat** buttons in the header.
 

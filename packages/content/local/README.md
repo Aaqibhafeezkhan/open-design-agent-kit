@@ -37,6 +37,9 @@ the extension adds lives here instead:
     `design-systems/README.md` upstream, or any bundled `manifest.json` for
     the shape). Copied wholesale into `assets/open-design/design-systems/`
     the same way `skills/<id>/` is.
+- `notices/`: licence notices for content ported from other projects,
+  copied verbatim to `assets/open-design/notices/` so every host that mirrors
+  the assets carries them.
 - `curated.json`: extra entry ids that get a curated slash command even
   though upstream frontmatter doesn't flag them. Read by
   `scripts/curatedEntries.mjs`. An unknown id fails generation.
@@ -74,6 +77,39 @@ content.** Resolve every item in `NOTES.md` (checking the source prose and
 the marketing screenshot), then move the three real files into
 `design-systems/<slug>/` here, delete `NOTES.md`, and continue with
 `npm run apply-overlay` as above.
+
+## Porting a mobile app system from Meliwat/awesome-ios-design-md
+
+Entries in the `Mobile Apps` category (id `<app>-ios`) come from
+[awesome-ios-design-md](https://github.com/Meliwat/awesome-ios-design-md)
+(MIT): 200 reverse-engineered iOS app specs, all in the same nine-section
+DESIGN.md format. Unlike typeui, that format is regular enough for the
+tokens to be *extracted*: the scaffold's DESIGN.md is the source file with
+our header and an attribution line, and its tokens.css is read from §2
+(colours), §3 (type), §4 (radii) and §5 (margins), cross-checked against
+the file's own §9 Quick Color Reference. Extraction is still not final
+content. A hand check found about 86% of values right, and the misses are
+systemic: light-mode "Surface Gray" vs white cards, "Text Secondary" that is
+really body text, apps with several data-coloured "primary" hues, and
+gradient or rgba palettes. Each scaffold's `NOTES.md` lists what to confirm.
+See `scripts/iosExtraction.mjs`'s header for details.
+
+```
+# Coverage and §9 agreement of the extractor across every app:
+npm run extract-ios --workspace=@feimacode/open-design-agent-kit-content -- --report
+
+# Which apps are not ported yet (and which share a brand with an upstream web system):
+npm run extract-ios --workspace=@feimacode/open-design-agent-kit-content -- --list-candidates
+
+# Scaffold one or more apps:
+npm run extract-ios --workspace=@feimacode/open-design-agent-kit-content -- spotify monzo
+```
+
+Set `IOS_DESIGN_MD_SRC` (or pass `--source`) to a local checkout; without
+it, files are fetched from GitHub. Scaffolds land in the gitignored
+`scripts/.ios-scaffold/<id>/`. Resolve `NOTES.md`, remove the `TODO`
+comments from `tokens.css`, then move the three files into
+`design-systems/<id>/` here as above.
 
 Run `npm run apply-overlay --workspace=@feimacode/open-design-agent-kit-content`
 to re-apply the overlay without re-cloning upstream. This only refreshes

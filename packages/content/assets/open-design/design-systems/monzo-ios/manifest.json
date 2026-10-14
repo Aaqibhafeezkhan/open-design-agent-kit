@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "od-design-system-project/v1",
+  "id": "monzo-ios",
+  "name": "Monzo (iOS)",
+  "category": "Mobile Apps",
+  "description": "Neobank with the iconic Hot Coral card. Coral-and-navy palette (#FF3464 card hero on #14233C navy), round Pot coins with savings goals, and a day-grouped emoji transaction feed with income in green #2FCB8F.",
+  "source": {
+    "type": "inspired",
+    "origin": "Adapted from Meliwat/awesome-ios-design-md (MIT, Copyright (c) 2026 Muhammed Eliwat)",
+    "url": "https://github.com/Meliwat/awesome-ios-design-md/tree/main/design-md/finance/monzo"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.css"
+  },
+  "craft": {
+    "applies": [],
+    "suggested": [
+      "color",
+      "accessibility-baseline"
+    ],
+    "exemptions": []
+  }
+}

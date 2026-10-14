@@ -1,0 +1,74 @@
+/* ─────────────────────────────────────────────────────────────────────────
+ * design-systems/resy-ios/tokens.css
+ * Reviewed against the source DESIGN.md on 2026-10-13.
+ *
+ * Restaurant reservations. A black-first editorial system on a pure-black canvas #000000 where Playfair-style display-serif restaurant names contrast with clean Inter UI, a single disciplined Resy Red #C73E3A (brightened to #E2504B for the active tab on black) drives booking, available reservation slots are red-OUTLINED while the primary slot is SOLID red, sold-out times become dashed amber #D99A2B Notify (waitlist) chips, a muted gold #C9A24B carries the /10 rating + Hit List, and hairline #262626 borders replace shadows
+ *
+ * Extracted from awesome-ios-design-md (MIT, Copyright (c) 2026 Muhammed Eliwat).
+ * Primary mode: dark. Sizes are iOS points mapped 1:1 to CSS px.
+ * ─────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Surface */
+  --bg: #000000;
+  --surface: #121212;
+  --surface-warm: color-mix(in oklab, var(--surface), var(--fg) 6%);
+
+  /* Foreground */
+  --fg: #F5F5F5;
+  --fg-2: color-mix(in oklab, var(--fg), var(--bg) 15%);
+  --muted: #9E9E9E;
+  --meta: color-mix(in oklab, var(--muted), var(--bg) 25%);
+
+  /* Border */
+  --border: #262626;
+  --border-soft: color-mix(in oklab, var(--border), var(--bg) 50%);
+
+  /* Accent */
+  --accent: #C73E3A;
+  --accent-on: #FFFFFF;
+  --accent-hover: color-mix(in oklab, var(--accent), black 8%);
+  --accent-active: color-mix(in oklab, var(--accent), black 14%);
+
+  /* Semantic */
+  --success: #4FA773;
+  --warn: #D99A2B;
+  --danger: #E2504B;
+
+  /* Typography — fonts */
+  --font-display: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --font-body: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Typography — type scale (from §3's hierarchy table) */
+  --text-xs: 9px;
+  --text-sm: 15px;
+  --text-base: 16px;
+  --text-md: 16px;
+  --text-lg: 18px;
+  --text-xl: 22px;
+  --text-2xl: 27px;
+  --text-3xl: 34px;
+  --text-4xl: 44px;
+
+  /* Typography — leading & tracking */
+  --leading-body: 1.5;
+  --leading-tight: 1.15;
+  --tracking-display: -0.01em;
+
+  /* Radius (from §4's corner radii) */
+  --radius-sm: 8px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-pill: 9999px;
+
+  /* Layout — a phone screen; desktop/tablet values only matter if a page is
+   * stretched beyond one. */
+  --section-y-desktop: 64px;
+  --section-y-tablet: 40px;
+  --section-y-phone: 24px;
+  --container-max: 430px;
+  --container-gutter-desktop: 22px;
+  --container-gutter-tablet: 22px;
+  --container-gutter-phone: 22px;
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "od-design-system-project/v1",
+  "id": "nike-run-club-ios",
+  "name": "Nike Run Club (iOS)",
+  "category": "Mobile Apps",
+  "description": "Run coaching. True-black canvas + Volt #CCFF00 accent on the 280pt progress ring, 88pt Trade Gothic Heavy Condensed elapsed time, hexagonal achievement medals, white-pill primary CTA, heavy haptics on START RUN",
+  "source": {
+    "type": "inspired",
+    "origin": "Adapted from Meliwat/awesome-ios-design-md (MIT, Copyright (c) 2026 Muhammed Eliwat)",
+    "url": "https://github.com/Meliwat/awesome-ios-design-md/tree/main/design-md/fitness/nike-run-club"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.css"
+  },
+  "craft": {
+    "applies": [],
+    "suggested": [
+      "color",
+      "accessibility-baseline"
+    ],
+    "exemptions": []
+  }
+}

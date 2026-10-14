@@ -261,3 +261,16 @@ test('integrations.json is copied to the assets root, and removed when local/ ha
   await applyLocalOverlay(target, local);
   await assert.rejects(fs.access(path.join(target, 'integrations.json')));
 });
+
+test('notices/ is copied to the assets, and removed when local/ has none', async () => {
+  const local = await tmp();
+  const target = await tmp();
+  await fs.mkdir(path.join(local, 'notices'));
+  await fs.writeFile(path.join(local, 'notices', 'LICENSE-x.txt'), 'MIT License');
+  await applyLocalOverlay(target, local);
+  assert.equal(await fs.readFile(path.join(target, 'notices', 'LICENSE-x.txt'), 'utf8'), 'MIT License');
+  assert.ok((await listOverlayFiles(local)).includes(path.join('notices', 'LICENSE-x.txt')));
+  await fs.rm(path.join(local, 'notices'), { recursive: true });
+  await applyLocalOverlay(target, local);
+  await assert.rejects(fs.access(path.join(target, 'notices')));
+});

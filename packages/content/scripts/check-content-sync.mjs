@@ -14,6 +14,7 @@ import { LOCAL_ROOT, findRedundantOverrides, listOverlayFiles } from './apply-lo
 import { checkSurfaces } from './surfaces.mjs';
 import { checkIntegrations } from './integrations.mjs';
 import { checkPorts } from './ports.mjs';
+import { SCAFFOLD_MARKERS, findUnreviewedScaffolds } from './scaffoldGuard.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const assetsRoot = path.join(__dirname, '..', 'assets', 'open-design');
@@ -100,6 +101,17 @@ async function checkIntegrationRegistry() {
   }
 }
 
+async function checkUnreviewedScaffolds() {
+  const found = await findUnreviewedScaffolds(LOCAL_ROOT);
+  if (found.length > 0) {
+    console.error(
+      `Unreviewed design-system scaffolds in packages/content/local/design-systems/: ${found.join(', ')}.\n` +
+        `Their tokens.css still contains ${SCAFFOLD_MARKERS.map((m) => `"${m}"`).join(' or ')}. Resolve the scaffold's NOTES.md and remove the markers.`,
+    );
+    process.exit(1);
+  }
+}
+
 // Ported content keeps its provenance (openspec add-dev-doc-templates).
 async function checkPortProvenance() {
   const problems = await checkPorts(LOCAL_ROOT, path.join(__dirname, '..', '..', '..', 'docs', 'contributing', 'upstream-ports.md'));
@@ -111,6 +123,7 @@ async function checkPortProvenance() {
 
 async function main() {
   await checkLocalOverlay();
+  await checkUnreviewedScaffolds();
   await checkSurfaceCatalog();
   await checkIntegrationRegistry();
   await checkPortProvenance();

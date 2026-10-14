@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "od-design-system-project/v1",
+  "id": "resy-ios",
+  "name": "Resy (iOS)",
+  "category": "Mobile Apps",
+  "description": "Restaurant reservations. A black-first editorial system on a pure-black canvas #000000 where Playfair-style display-serif restaurant names contrast with clean Inter UI, a single disciplined Resy Red #C73E3A (brightened to #E2504B for the active tab on black) drives booking, available reservation slots are red-OUTLINED while the primary slot is SOLID red, sold-out times become dashed amber #D99A2B Notify (waitlist) chips, a muted gold #C9A24B carries the /10 rating + Hit List, and hairline #262626 borders replace shadows",
+  "source": {
+    "type": "inspired",
+    "origin": "Adapted from Meliwat/awesome-ios-design-md (MIT, Copyright (c) 2026 Muhammed Eliwat)",
+    "url": "https://github.com/Meliwat/awesome-ios-design-md/tree/main/design-md/food/resy"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.css"
+  },
+  "craft": {
+    "applies": [],
+    "suggested": [
+      "color",
+      "accessibility-baseline"
+    ],
+    "exemptions": []
+  }
+}

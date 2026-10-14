@@ -34,7 +34,8 @@
         "gamified-app"
       ],
       "questions": [
-        "What does the app do, and which screens matter most?"
+        "What does the app do, and which screens matter most?",
+        "Should it look like a particular app (Spotify, Monzo, Strava…)?"
       ]
     },
     {

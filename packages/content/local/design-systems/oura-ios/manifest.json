@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "od-design-system-project/v1",
+  "id": "oura-ios",
+  "name": "Oura (iOS)",
+  "category": "Mobile Apps",
+  "description": "Health ring. Cool-charcoal #0B0B0F instrument panel, tri-domain score rings (Readiness teal #4FD1C5 / Sleep indigo #7C6FF0 / Activity amber #F5A623), contributor bars",
+  "source": {
+    "type": "inspired",
+    "origin": "Adapted from Meliwat/awesome-ios-design-md (MIT, Copyright (c) 2026 Muhammed Eliwat)",
+    "url": "https://github.com/Meliwat/awesome-ios-design-md/tree/main/design-md/fitness/oura"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.css"
+  },
+  "craft": {
+    "applies": [],
+    "suggested": [
+      "color",
+      "accessibility-baseline"
+    ],
+    "exemptions": []
+  }
+}

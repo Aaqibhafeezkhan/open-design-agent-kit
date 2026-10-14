@@ -6,3 +6,4 @@ out-webview/
 .vscode-test/
 *.log
 packages/content/scripts/.typeui-scaffold/
+packages/content/scripts/.ios-scaffold/

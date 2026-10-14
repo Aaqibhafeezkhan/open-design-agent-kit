@@ -32,6 +32,10 @@ Five document templates are ported from [html-anything](https://github.com/nexu-
 
 The examples are kept as upstream wrote them. They target desktop reading or fixed-width long images, so at phone width their tables clip and the sketchnote scrolls sideways. `check_open_design_artifact` reports these as `mobile` findings when an agent remixes one, and the agent fixes them in its copy.
 
+## Design systems from awesome-ios-design-md
+
+The `Mobile Apps` design systems (`packages/content/local/design-systems/<app>-ios/`) are adapted from [awesome-ios-design-md](https://github.com/Meliwat/awesome-ios-design-md), Copyright (c) 2026 Muhammed Eliwat, MIT License. Each package's `DESIGN.md` is the source file with our header and an attribution footer, and its `tokens.css` was extracted with `npm run extract-ios` and then reviewed by hand (see `packages/content/local/README.md`). The source has no tags, so each package is a snapshot of `main` as of 2026-10-13. The MIT notice is kept at `packages/content/local/notices/LICENSE-awesome-ios-design-md.txt`, and the overlay ships it as `notices/` in the content assets, so every host carries it.
+
 ## Rules for porting
 
 1. Start every ported file with a header naming the upstream file and commit, and the license.
