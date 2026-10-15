@@ -436,5 +436,13 @@ export function formatSceneEvidence(evidence: SceneEvidence): string[] {
     lines.push(`Renderer: ${r.calls} draw calls, ${r.triangles.toLocaleString('en-US')} triangles, ${r.geometries} geometries, ${r.textures} textures.`);
   }
   if (evidence.note) lines.push(evidence.note);
+  if (evidence.views.length > 0) lines.push(CRITIQUE_REMINDER);
   return lines;
 }
+
+/**
+ * Said in the check result itself, where the agent decides it's done
+ * (add-3d-critic-loop): a clean check only means the scene renders.
+ */
+export const CRITIQUE_REMINDER =
+  "NOT DONE YET (3D): a clean check only means the scene renders, not that it looks right. Before telling the user it's done, get a critique of this review sheet and the desktop/mobile screenshots against the user's brief: from a subagent if your host has one (the Agent tool in Claude Code, runSubagent in VS Code), otherwise in a separate critic pass that judges only these images and the brief. Use the 3d-object skill's scorecard: form, materials, light, composition (judged on the desktop/mobile shots), stage, fidelity, technical, each 0–3, plus its automatic failures, and at least three flaws, each with the view, where, and a fix. Fix them, check again and get a new critique until every category is at least 2 with no automatic failure, for at most three critique rounds; then tell the user the scores and anything left. (If you are the critic, just score and list the flaws.)";

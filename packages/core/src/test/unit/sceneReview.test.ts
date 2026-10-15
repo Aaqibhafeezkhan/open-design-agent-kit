@@ -237,6 +237,7 @@ describe('scene review in a real browser (skipped when none is installed)', func
     const text = formatCheckResult(result);
     assert.match(text, /3D review sheet: overview, closeup, low, wireframe/);
     assert.match(text, /Renderer: \d+ draw calls, 450,000 triangles/);
+    assert.match(text, /NOT DONE YET \(3D\).*critique.*at most three critique rounds/s, 'asks for the critique where the agent decides it is done');
   });
 
   it('honors views: a subset, false, and invalid names', async () => {
@@ -256,5 +257,6 @@ describe('scene review in a real browser (skipped when none is installed)', func
     if (!result.ok) return;
     assert.deepStrictEqual(result.images.map((i) => i.label), ['desktop', 'mobile']);
     assert.match(formatCheckResult(result), /expose window\.odScene\.scene, window\.odScene\.camera and window\.odScene\.renderer/);
+    assert.doesNotMatch(formatCheckResult(result), /NOT DONE YET/, 'no critique reminder without a review sheet');
   });
 });

@@ -90,7 +90,7 @@ The `open-design-agent-kit` CLI SHALL provide `check <entryPath>`, accepting `--
 - **THEN** a review sheet showing the overview and low views SHALL be written to `shots`
 
 ### Requirement: Check-Before-Done Guidance
-The instructions shipped to every host (VS Code chat instructions, the Claude Code and Codex `open-design` skills) SHALL tell the agent to call `check_open_design_artifact` after creating or substantially editing an artifact and before reporting it as done; to fix every `error`; to review the images for composition problems the checks can't measure; to stop after at most two fix rounds and tell the user about any remaining findings; and, when the result is `no-browser`, to skip the check and tell the user once that visual checking needs Chrome, Edge or Chromium.
+The instructions shipped to every host (VS Code chat instructions, the Claude Code and Codex `open-design` skills) SHALL tell the agent to call `check_open_design_artifact` after creating or substantially editing an artifact and before reporting it as done; to fix every `error`; to review the images for composition problems the checks can't measure; to stop after at most two fix rounds and tell the user about any remaining findings, except that for a 3D design with a review sheet the agent SHALL run the critique the check result asks for, for up to three critique rounds; and, when the result is `no-browser`, to skip the check and tell the user once that visual checking needs Chrome, Edge or Chromium.
 
 #### Scenario: Instruction sources stay in sync
 - **WHEN** the instruction files are generated or checked for drift
@@ -116,11 +116,15 @@ When a checked page exposes `window.odScene.scene`, `camera` and `renderer` afte
 - **THEN** the check SHALL return today's screenshots and a note naming `odScene.scene`, `odScene.camera` and `odScene.renderer`
 
 ### Requirement: 3D Evidence
-When review views are rendered, the check result SHALL report, as advisory text that is not a finding, pixel metrics of the overview view (color entropy in bits, edge density, luminance contrast as p95 − p5, and dominant-color share) and renderer statistics after the overview render (draw calls, triangles, geometries, textures). It SHALL report a `webgl-budget` warning when the scene exceeds 300,000 triangles, 400 draw calls or 64 textures, stating that the budget is for software-rendered checks and exports. The pixel-metric formula's provenance (adapted from majidmanzarpour/threejs-game-skills, MIT) SHALL be recorded.
+When review views are rendered, the check result SHALL report, as advisory text that is not a finding, pixel metrics of the overview view (color entropy in bits, edge density, luminance contrast as p95 − p5, and dominant-color share) and renderer statistics after the overview render (draw calls, triangles, geometries, textures). It SHALL report a `webgl-budget` warning when the scene exceeds 300,000 triangles, 400 draw calls or 64 textures, stating that the budget is for software-rendered checks and exports. With a review sheet, the result text SHALL end with a request to critique the design before reporting it done. The pixel-metric formula's provenance (adapted from majidmanzarpour/threejs-game-skills, MIT) SHALL be recorded.
 
 #### Scenario: Sparse framing evidence
 - **WHEN** the overview of a small object on a flat background is measured
 - **THEN** the result text SHALL include its color entropy, edge density, contrast and dominant-color share, and no finding SHALL be raised from those metrics alone
+
+#### Scenario: Critique requested where the agent decides
+- **WHEN** a check returns a 3D review sheet with no errors
+- **THEN** the result text SHALL say the design isn't done until it passes a critique, and name the scorecard, the pass bar and the three-round limit; and it SHALL tell a critic reading it to score only
 
 #### Scenario: Heavy scene
 - **WHEN** the scene renders 450,000 triangles
