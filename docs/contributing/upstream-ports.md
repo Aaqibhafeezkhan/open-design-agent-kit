@@ -36,6 +36,17 @@ The examples are kept as upstream wrote them. They target desktop reading or fix
 
 The `Mobile Apps` design systems (`packages/content/local/design-systems/<app>-ios/`) are adapted from [awesome-ios-design-md](https://github.com/Meliwat/awesome-ios-design-md), Copyright (c) 2026 Muhammed Eliwat, MIT License. Each package's `DESIGN.md` is the source file with our header and an attribution footer, and its `tokens.css` was extracted with `npm run extract-ios` and then reviewed by hand (see `packages/content/local/README.md`). The source has no tags, so each package is a snapshot of `main` as of 2026-10-13. The MIT notice is kept at `packages/content/local/notices/LICENSE-awesome-ios-design-md.txt`, and the overlay ships it as `notices/` in the content assets, so every host carries it.
 
+## 3D review from threejs-game-skills
+
+Two pieces of the 3D critic loop (openspec `add-3d-critic-loop`) are adapted from [majidmanzarpour/threejs-game-skills](https://github.com/majidmanzarpour/threejs-game-skills) at commit `8286774`, licensed MIT (Copyright (c) 2026 Majid Manzarpour):
+
+| Ours | Source | Divergences |
+|---|---|---|
+| `computePixelMetrics` in `packages/core/src/export/sceneReview.ts` | `computePixelMetrics` in `skills/threejs-qa-release/scripts/inspect-threejs-canvas.mjs` | TypeScript over a PNG buffer; fewer fields. Details in `SOURCE.md`. |
+| The scorecard in the `3d-object` skill (`packages/content/local/skills/3d-object/SKILL.md`, "Critique") | The structure of `skills/threejs-aaa-graphics-builder/references/visual-scorecard.md`: categories scored 0–3, a pass threshold, automatic failures | Our own wording. Seven categories for a single designed object instead of ten for a game: the HUD, enemy and reward categories are dropped, and fidelity to the brief and stage are added. |
+
+[OpenMontage](https://github.com/calesthio/OpenMontage) is AGPL-3.0. Its ideas informed the critique rules (cite evidence, look for more of the same kind of flaw, give a fix), but none of its code or text is used. Keep it that way.
+
 ## Rules for porting
 
 1. Start every ported file with a header naming the upstream file and commit, and the license.

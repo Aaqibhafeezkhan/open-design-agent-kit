@@ -56,6 +56,7 @@ export * from './export/browserDiscovery';
 export * from './export/exportArtifact';
 export * from './export/checkArtifact';
 export * from './export/webgl';
+export * from './export/sceneReview';
 export * from './export/inlineExport';
 export * from './export/motion/ffmpeg';
 export * from './export/motion/motionExport';

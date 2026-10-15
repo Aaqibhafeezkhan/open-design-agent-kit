@@ -56,6 +56,13 @@ describe('check command', () => {
     assert.throws(() => parseCheckFlags({ viewport: ['768x1024'] }), /--viewport must look like/);
     assert.throws(() => parseCheckFlags({ slides: '0' }), /--slides/);
     assert.throws(() => parseCheckFlags({ failOn: 'info' }), /--fail-on/);
+    assert.throws(() => parseCheckFlags({ views: 'overview,top' }), /--views must be/);
+  });
+
+  it('parses --views as a list of review views or none', () => {
+    assert.deepStrictEqual(parseCheckFlags({ views: 'overview, low' }).options.views, ['overview', 'low']);
+    assert.strictEqual(parseCheckFlags({ views: 'none' }).options.views, false);
+    assert.strictEqual(parseCheckFlags({}).options.views, undefined);
   });
 
   it('exits 1 with --fail-on error when an error is found', async () => {

@@ -66,7 +66,7 @@ Don't write three.js script tags from memory: `build/three.min.js` no longer exi
 - **Color:** `outputColorSpace = SRGBColorSpace`, `toneMapping = ACESFilmicToneMapping`.
 - **Materials:** physically based (`MeshStandardMaterial` / `MeshPhysicalMaterial`), with colors read from the design system's tokens (`getComputedStyle(document.documentElement).getPropertyValue('--accent')`) so the object matches the page: the body from `--surface` or `--fg`, one detail from `--accent`. Choose roughness and metalness for the real material (matte plastic 0.6–0.9 rough, brushed metal metalness 1 at 0.25–0.4 rough, glossy paint with `clearcoat`). Keep a user model's own materials unless asked to recolor it.
 - **Light:** studio light from a generated room: `scene.environment = new PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture`, plus one shadow-casting key `DirectionalLight` (soft shadows: `PCFSoftShadowMap`, `shadow.radius` about 6). No HDR files.
-- **Stage:** a large ground plane with `ShadowMaterial` (opacity 0.12–0.2) under the object, nothing else. `scene.background` is the `--bg` color, or `null` for a transparent cut-out.
+- **Stage:** a large ground plane with `ShadowMaterial` (opacity 0.12–0.2) under the object. When the brief asks for a setting (a hall, a desk, a shelf), build it as an environment: put it in its own group with `userData.odStage = true`, and keep it darker, softer and less detailed than the object so it never competes with it. Review views frame the object and leave the stage out. `scene.background` is the `--bg` color, or `null` for a transparent cut-out.
 - **Controls:** `OrbitControls` with damping, no pan for single objects, `maxPolarAngle` just under 90° so the camera never goes below the floor, and min/max distance around the framed distance.
 - **Budget:** at most about 200k triangles and 2048 px textures, so it stays smooth in software rendering. Lathe and torus segments of 64–160 are plenty.
 - **Transparent option:** a `TRANSPARENT` constant at the top. When true: `alpha: true` on the renderer, `scene.background = null`, and a class on `<html>` that makes the page background transparent and hides any caption.
@@ -78,7 +78,7 @@ Exports, the visual check and motion export rely on it:
 
 ```js
 const start = performance.now();
-window.odScene = { rotate: true, rotationSeconds: ROTATION_SECONDS, ready: undefined };
+window.odScene = { rotate: true, rotationSeconds: ROTATION_SECONDS, ready: undefined, scene, camera, renderer, controls };
 function pose(now) {
   const turn = window.odScene.rotate ? (((now - start) / 1000) / ROTATION_SECONDS) * Math.PI * 2 : 0;
   product.rotation.y = AUTHORED_ANGLE + turn;
@@ -94,13 +94,54 @@ renderer.setAnimationLoop((now) => { pose(now); controls.update(); renderer.rend
 - `ready` resolves only after every asset has loaded and one frame has been drawn **with a direct `render()` call**. Motion export runs the page on a virtual clock where animation frames only advance on its schedule, so a `ready` that waits for an animation frame would never resolve there.
 - The turntable angle is computed from time (`performance.now()` or the loop's timestamp), never incremented per frame, so a rotation takes exactly `ROTATION_SECONDS` at any frame rate.
 - `rotate = false` returns the object to `AUTHORED_ANGLE`. Still exports set it, so choose the authored angle as the best three-quarter view.
+- `scene`, `camera` and `renderer` are required: the check uses them to render the review views (overview, close-up, low angle, wireframe) and to read the renderer's triangle and draw-call counts. Pass `controls` too when there are orbit controls. Optional: `subject` (the group to frame, when the stage flag isn't enough), `focus` (the detail the close-up should look at: an object or `[x, y, z]`), and `views` (`{ low: { position: [x, y, z], target: [x, y, z] } }` to replace a computed view).
 
-## 4. Register, check, export
+## 4. Register and check
 
 1. `register_open_design_artifact` with kind `html` and this skill as the source.
-2. `check_open_design_artifact`, and look at the screenshot. Exports and the check switch on software WebGL for pages with `data-od-webgl` or a three.js import, so this works without a GPU. Fix every `webgl` finding: an error means no WebGL context (a script error before the renderer was made, or a canvas without the attribute's renderer); a warning means the canvas is a flat color (the model didn't load: see `broken-asset`; the camera is inside or away from the object; or `ready` resolved before anything was drawn).
-3. Exports:
-   - **Still:** `export_open_design_artifact` with `format: "png"` (or a preset). Add `selector: "#stage"` to capture only the scene.
-   - **Transparent cut-out:** set `TRANSPARENT = true` in the file (or make a copy that does), then export with `format: "png"`, `transparent: true`. A warning that no pixel is transparent means the page or scene still paints a background.
-   - **Turntable:** `format: "mp4"` (or `"gif"` for a small loop, `"webm"`) with `duration` set to exactly `ROTATION_SECONDS`, so the last frame meets the first and the loop is seamless. Keep `ROTATION_SECONDS` between 6 and 12; a GIF loops best at 6–8 seconds and 480–720 px wide.
-   - The scene loads three.js from the CDN, so viewers need a connection, including for `standalone` exports.
+2. `check_open_design_artifact`. Exports and the check switch on software WebGL for pages with `data-od-webgl` or a three.js import, so this works without a GPU. Fix every `webgl` finding: an error means no WebGL context (a script error before the renderer was made, or a canvas without the attribute's renderer); a warning means the canvas is a flat color (the model didn't load: see `broken-asset`; the camera is inside or away from the object; or `ready` resolved before anything was drawn). Fix a `webgl-budget` warning by instancing or merging repeated meshes and lowering segment counts.
+3. The second image is the **review sheet**: overview, close-up, low angle and wireframe in one picture. The text adds pixel metrics and renderer counts. A clean check only means the page renders; it says nothing about whether the object looks right. That's the critique's job.
+
+## 5. Critique (required before you say it's done)
+
+A design that passes the check can still be plainly wrong: a board with no squares, glass that reads as grey plastic, a model floating above its stand. After the check has no errors, get a critique from someone who didn't build it:
+
+- **Who critiques.** In Claude Code, launch a subagent with the Agent tool. In VS Code, use the `runSubagent` tool when it's available. Otherwise (Codex, or no subagent tool), do a separate critic pass yourself: judge only the review sheet and the brief, not what you meant the code to do.
+- **The critic's brief.** Give it the user's brief, the entry path and the scorecard below. It must call `check_open_design_artifact` itself and judge from the images. It returns:
+  - a score for each category;
+  - any automatic failure;
+  - at least three flaws, each naming the view it's visible in, where in the frame, and a concrete fix (e.g. "low view: the board floats above a smaller hexagonal base; make the base wider than the board, or put the board on legs");
+  - after finding a flaw, a check for others of the same kind (if one piece floats, look at every piece).
+- **Loop.** Fix the flaws, check again, and get a new critique. Stop when the scorecard passes, or after **three** critique rounds. Then tell the user the final scores and any flaws that remain. Don't paste the critique itself unless they ask.
+
+**Scorecard.** Score each category 0 (placeholder), 1 (basic), 2 (finished) or 3 (showcase):
+
+| Category | 1 | 2 | 3 |
+|---|---|---|---|
+| Form | primitives that only suggest the object | authored silhouette and true proportions, recognizable as a dark shape | memorable silhouette with functional detail where the camera looks |
+| Materials | flat colors, one roughness everywhere | each surface reads as its real material (glass, wood, metal, stone) | rich, cohesive materials with wear, trim or texture |
+| Light | even light, washed out or murky | intentional key, fill and contact shadow; the form reads | cinematic light that still shows the form clearly |
+| Composition | object small, cut off or off-center without reason | object fills the frame well at the authored angle and on mobile | framing that adds drama or story |
+
+Judge **composition** on the desktop and mobile screenshots, which show your own camera. The review views are framed by the check itself, so they always fill the frame.
+| Stage | missing, or competes with the object | quiet ground or environment that supports the object | an environment that adds context and depth without stealing focus |
+| Fidelity | misses or misreads what the brief asked for | everything the brief names is present and recognizable | details the brief implied but didn't spell out |
+| Technical | check errors, or budget warnings ignored | clean check, within budget, loops seamlessly | clean, light and fast to export |
+
+**Automatic failures** (the scorecard fails whatever the scores):
+
+- something the brief names is missing or unrecognizable;
+- the object is an unrefined primitive placeholder;
+- fog, darkness or glow stands in for missing geometry;
+- the object floats above, or passes through, what it rests on (low and wireframe views);
+- the object fills less than 40% of the desktop screenshot's height without a reason the brief gives;
+- the check reports an error.
+
+**Pass:** every category at least 2, and no automatic failure.
+
+## 6. Export
+
+- **Still:** `export_open_design_artifact` with `format: "png"` (or a preset). Add `selector: "#stage"` to capture only the scene.
+- **Transparent cut-out:** set `TRANSPARENT = true` in the file (or make a copy that does), then export with `format: "png"`, `transparent: true`. A warning that no pixel is transparent means the page or scene still paints a background.
+- **Turntable:** `format: "mp4"` (or `"gif"` for a small loop, `"webm"`) with `duration` set to exactly `ROTATION_SECONDS`, so the last frame meets the first and the loop is seamless. Keep `ROTATION_SECONDS` between 6 and 12; a GIF loops best at 6–8 seconds and 480–720 px wide.
+- The scene loads three.js from the CDN, so viewers need a connection, including for `standalone` exports.

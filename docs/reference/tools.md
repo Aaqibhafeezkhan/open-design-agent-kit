@@ -414,6 +414,7 @@ What it renders depends on the artifact:
 | `slides` | integer[] | no | Decks only: 1-based slide numbers to check. Default: every slide; the contact sheet shows the first 12 of them. |
 | `maxImages` | integer 0–6 | no | How many screenshots to attach. Default 3. `0` returns findings only. |
 | `at` | number[] (up to 6) | no | Animations: also capture the artifact at these times in seconds, on a virtual clock, labelled `t=<seconds>s`. They come first and share `maxImages`. |
+| `views` | (`overview` · `closeup` · `low` · `wireframe`)[] or `false` | no | 3D scenes that expose their handles (below): which review views go on the review sheet. Default all four; `false` for no sheet. |
 
 Screenshots are JPEG, at most 1568 px on the long edge. A page's first screen at each viewport comes first; further screens down a tall page fill the remaining images, and the result lists what was left out.
 
@@ -422,6 +423,14 @@ Screenshots are JPEG, at most 1568 px on the long edge. A page's first screen at
 When the artifact was registered with `sources` and any of them changed since, the findings include `stale-sources` (info).
 
 For a 3D scene (a canvas marked `data-od-webgl`, or a three.js import), the check renders with software WebGL, waits for the scene's `window.odScene.ready`, and reports `webgl`: an error when the canvas has no WebGL context, a warning when it's one flat color. Export reports the same finding. See [3D objects](../guides/3d-objects.md).
+
+When the scene also exposes `window.odScene.scene`, `camera` and `renderer` (the [3D object](../guides/3d-objects.md) ready contract), the check adds:
+
+- **A review sheet**, attached second: one image with four views of the object. **overview** is a three-quarter view at 25°, **closeup** is nearer, **low** is level with the object's base (it shows floating parts), and **wireframe** shows the geometry on grey. The check pauses the page's animation loop, frames each view on the object's bounds from that view's direction, renders it directly and then restores the page. Meshes marked `userData.odStage = true` (a ground or an environment) and `ShadowMaterial` grounds are left out of the framing. `odScene.subject`, `odScene.focus` and `odScene.views` can override the framing.
+- **3D evidence** in the text: the overview's color entropy, edge density, contrast and dominant-color share, plus the renderer's draw calls, triangles, geometries and textures. These are hints for the reviewer, not findings.
+- **`webgl-budget`** (warning): the scene renders more than 300,000 triangles, 400 draw calls or 64 textures, which is slow in the software rendering that checks and exports use.
+
+A three.js page without the handles gets a note saying how to enable the views.
 
 **Errors**, each prefixed `Check failed (<code>)`: `invalid-args`, `not-found`, `not-registered`, `unsupported-kind`, `no-browser` and `capture-failed`, with the same meanings as [export's](#export_open_design_artifact). On `no-browser`, the agent skips checking and tells you once.
 

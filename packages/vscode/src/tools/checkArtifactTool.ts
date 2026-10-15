@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { checkArtifact, formatCheckResult, type CheckViewport, type ContentIndex } from '@feimacode/open-design-agent-kit-core';
+import { checkArtifact, formatCheckResult, type CheckViewport, type ContentIndex, type ReviewView } from '@feimacode/open-design-agent-kit-core';
 import { getOutputDirectory, getWorkspaceRoot } from '../workspace/artifactWriter';
 
 interface CheckArtifactInput {
@@ -8,6 +8,7 @@ interface CheckArtifactInput {
   slides?: number[];
   maxImages?: number;
   at?: number[];
+  views?: ReviewView[] | false;
 }
 
 export class CheckArtifactTool implements vscode.LanguageModelTool<CheckArtifactInput> {

@@ -127,7 +127,8 @@ function stage(model) {
 }
 
 const start = performance.now();
-window.odScene = { rotate: true, rotationSeconds: ROTATION_SECONDS, ready: undefined };
+// The handles let checks render review views (overview, close-up, low angle, wireframe) and read renderer stats.
+window.odScene = { rotate: true, rotationSeconds: ROTATION_SECONDS, ready: undefined, scene, camera, renderer, controls };
 function pose(now) {
   const turn = window.odScene.rotate ? (((now - start) / 1000) / ROTATION_SECONDS) * Math.PI * 2 : 0;
   product.rotation.y = AUTHORED_ANGLE + turn;

@@ -22,6 +22,7 @@ import { indexCheckSlides, markCheckSlide } from './deck/pageScripts';
 import { PRESENTER_CLONE_SELECTOR, SLIDE_SELECTOR } from './deck/selectors';
 import { fitFindings, loadPage, type ExportErrorCode } from './exportArtifact';
 import { usesWebgl, webglFindings } from './webgl';
+import { captureReviewViews, composeReviewSheet, formatSceneEvidence, probeScene, REVIEW_VIEWS, reviewUnavailableNote, type ReviewView, type SceneEvidence } from './sceneReview';
 import { ELEMENT_LAYOUT_VIEWPORT, isValidDimension, resolveExportSize } from './exportSize';
 import { getFormat, isFluidHtml } from '../poster/formats';
 import { applyShape, collectHorizontalScroll, fitBoundText, type ShapeCss } from '../poster/pageScripts';
@@ -61,6 +62,8 @@ export interface CheckArtifactOptions {
   outputDir?: string;
   /** Up to 6 times in seconds: also capture the artifact at those moments on a virtual clock (animations). */
   at?: number[];
+  /** 3D pages exposing odScene handles: the review views on the sheet (default all four), or false for none. */
+  views?: ReviewView[] | false;
 }
 
 export interface CheckImage {
@@ -88,6 +91,8 @@ export type CheckArtifactResult =
       slidesChecked?: number[];
       /** The viewports checked (page mode only). */
       viewports?: CheckViewport[];
+      /** 3D pages: the review views rendered, pixel metrics and renderer statistics, or why there are none. */
+      scene3d?: SceneEvidence;
       warnings: string[];
       browserPath: string;
     }
@@ -124,6 +129,12 @@ function validateOptions(o: CheckArtifactOptions): string | undefined {
   }
   if (o.at !== undefined && (!Array.isArray(o.at) || o.at.length === 0 || o.at.length > 6 || !o.at.every((t) => typeof t === 'number' && t >= 0 && t <= 60))) {
     return 'at must list 1–6 times in seconds, each between 0 and 60.';
+  }
+  if (o.views !== undefined && o.views !== false) {
+    if (!Array.isArray(o.views) || o.views.length === 0 || o.views.length > REVIEW_VIEWS.length) return `views must list 1–${REVIEW_VIEWS.length} of ${REVIEW_VIEWS.join(', ')}, or be false.`;
+    const unknown = o.views.filter((v) => !(REVIEW_VIEWS as readonly string[]).includes(v));
+    if (unknown.length > 0) return `Unknown view(s): ${unknown.join(', ')}. Use ${REVIEW_VIEWS.join(', ')}.`;
+    if (new Set(o.views).size !== o.views.length) return 'views must not repeat a view.';
   }
   if (o.viewports !== undefined) {
     if (!Array.isArray(o.viewports) || o.viewports.length === 0 || o.viewports.length > MAX_VIEWPORTS) return `viewports must list 1–${MAX_VIEWPORTS} viewports.`;
@@ -248,11 +259,14 @@ export async function checkArtifact(options: CheckArtifactOptions): Promise<Chec
     await loadPage(page, session.url, options.readyTimeoutMs ?? 15000, options.settleMs ?? 500, warnings);
     // A 3D scene that couldn't get a WebGL context, or rendered nothing.
     const webgl = usesWebgl(artifact.entryContent) ? await webglFindings(page, warnings) : [];
+    // A 3D scene with odScene handles also gets review views (add-3d-critic-loop).
+    const probe = usesWebgl(artifact.entryContent) && options.views !== false ? await probeScene(page) : undefined;
+    const reviewable = probe !== undefined && reviewUnavailableNote(probe) === undefined;
 
     const slideCount = await countSlides(page);
     const isDeck = kind === 'deck' || renderer === 'deck-html' || (slideCount >= 2 && (sourceSkillId ?? '').startsWith('od:deck:'));
     if (options.slides !== undefined && !isDeck) return fail('invalid-args', "slides applies to decks, and this artifact isn't one.");
-    const done = (mode: CheckMode, out: { findings: Finding[]; images: CheckImage[]; omitted: string[]; slidesChecked?: number[] }): CheckArtifactResult => {
+    const done = (mode: CheckMode, out: { findings: Finding[]; images: CheckImage[]; omitted: string[]; slidesChecked?: number[]; scene3d?: SceneEvidence }): CheckArtifactResult => {
       // Timestamped captures (`at`) come first and share the image budget with the regular ones.
       const images = timed.length > 0 ? [...timed, ...out.images].slice(0, maxImages) : out.images;
       const dropped = timed.length > 0 ? [...timed, ...out.images].slice(maxImages).map((i) => i.label) : [];
@@ -265,6 +279,7 @@ export async function checkArtifact(options: CheckArtifactOptions): Promise<Chec
       omitted: [...out.omitted, ...dropped],
       slideCount: mode === 'deck' ? slideCount : undefined,
       slidesChecked: out.slidesChecked,
+      scene3d: out.scene3d,
       warnings,
       browserPath: browser.executablePath,
       };
@@ -283,7 +298,23 @@ export async function checkArtifact(options: CheckArtifactOptions): Promise<Chec
       const aspectHint = sourceSkillId && options.lookupAspectHint ? await options.lookupAspectHint(sourceSkillId) : undefined;
       return done('cards', await checkCards(instance, page, artifact.entryContent, manifest, aspectHint, sourceSkillId, maxImages));
     }
-    const result = await checkPage(instance, page, viewports, maxImages, isDiagram);
+    // The review sheet goes second, after the first viewport's first screen; other screens fill the rest of the budget.
+    const sheetSlot = reviewable && maxImages > 0 ? 1 : 0;
+    const result: { findings: Finding[]; images: CheckImage[]; omitted: string[]; scene3d?: SceneEvidence } = await checkPage(instance, page, viewports, maxImages - sheetSlot, isDiagram);
+    if (probe && reviewable) {
+      await page.setViewport({ width: viewports[0].width, height: viewports[0].height, deviceScaleFactor: 1 });
+      await page.evaluate('window.scrollTo(0, 0)');
+      await settle(page);
+      const review = await captureReviewViews(page, probe, options.views || REVIEW_VIEWS);
+      result.findings.push(...review.findings);
+      result.scene3d = review.evidence;
+      if (review.shots.length > 0 && sheetSlot > 0) {
+        const label = `3d views: ${review.shots.map((s) => s.label).join(', ')}`;
+        result.images.splice(Math.min(1, result.images.length), 0, await toCheckImage(instance, label, await composeReviewSheet(instance, review.shots)));
+      }
+    } else if (probe) {
+      result.scene3d = { views: [], note: reviewUnavailableNote(probe) };
+    }
     if (/\bdata-od-email\b/.test(artifact.entryContent)) {
       // Email artifacts (a [data-od-email] column root): the email rules too, measured at a wide client width (local images are a note here; export enforces baseUrl).
       await page.setViewport({ width: 1200, height: 900, deviceScaleFactor: 1 });
@@ -504,6 +535,7 @@ export function formatCheckResult(result: CheckArtifactResult): string {
     lines.push('Look at them for what the checks can\'t measure: balance, hierarchy, crowded or empty areas, text over busy imagery. Each is one moment: animations are captured mid-way.');
   }
   if (result.omitted.length > 0) lines.push(`Not attached: ${result.omitted.join('; ')}.`);
+  if (result.scene3d) lines.push(...formatSceneEvidence(result.scene3d));
   const warnings = result.warnings.filter((w) => !w.startsWith('Failed to load: '));
   if (warnings.length > 0) lines.push('Warnings:', ...warnings.map((w) => `- ${w}`));
   return lines.join('\n');

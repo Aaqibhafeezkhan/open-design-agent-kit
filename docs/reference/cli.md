@@ -121,6 +121,7 @@ npx @feimacode/open-design-agent-kit check <entryPath> [options]
 | `--screenshots <dir>` | Write the screenshots as JPEG files named after their labels (`desktop.jpg`, `mobile.jpg`, `slides-1-12.jpg`) to this folder. Without it, no screenshots are rendered. |
 | `--at <seconds>` | Animations: also capture these moments, comma-separated (e.g. `0,1.5,3`). Write them with `--screenshots`. |
 | `--max-images <n>` | With `--screenshots`: how many, 0–6. Default 3. |
+| `--views <list\|none>` | 3D scenes exposing their `odScene` handles: the review views on the sheet, comma-separated from `overview,closeup,low,wireframe` (default all), or `none`. The sheet is written as `3d-views-<views>.jpg`. See [the check tool](tools.md#check_open_design_artifact). |
 | `--fail-on <error\|warning>` | Exit `1` when a finding at or above this severity exists, to gate CI. |
 | `--browser <path>` | Browser executable. Default: [`OPEN_DESIGN_BROWSER_PATH`](settings-and-env.md#open_design_browser_path), then auto-detect. |
 | `--workspace <dir>` | Workspace root. Default: the nearest folder above the entry file that contains `.open-design/`, else the current directory. |

@@ -24,10 +24,13 @@ In VS Code, the gallery's **New design → 3D object** tile asks what the object
    - **From shapes:** turned profiles for bottles, speakers and cups; extruded and bevelled shapes; rounded boxes for devices.
    - **From a logo:** your SVG mark, extruded with a bevel. It needs filled paths (outlines alone don't extrude).
    - **From your model:** a `.glb` or `.gltf`, copied under `assets/` next to the design. Draco-compressed models work. Whatever the model's size, units or origin, it's set on the ground and framed automatically. Models over 50 MB load slowly; the agent suggests compressing them first (`npx @gltf-transform/cli optimize in.glb out.glb --compress draco`).
-2. **It builds the scene** as one HTML page: physically based materials in your design system's colors, studio lighting from a generated room (no image files), a ground shadow, orbit controls (drag to turn it, scroll to zoom), and a turntable that makes one full turn every 6–12 seconds.
+2. **It builds the scene** as one HTML page: physically based materials in your design system's colors, studio lighting from a generated room (no image files), a ground shadow, orbit controls (drag to turn it, scroll to zoom), and a turntable that makes one full turn every 6–12 seconds. If you ask for a setting (a stone hall, a desk), it's built as a quieter environment behind the object.
 3. **It checks the result** with [`check_open_design_artifact`](../reference/tools.md#check_open_design_artifact). Besides the screenshot, the check reports `webgl` when a scene couldn't render:
    - an **error** when the canvas has no WebGL context;
    - a **warning** when the canvas is one flat color, usually because the model didn't load (look for a `broken-asset` finding next to it).
+
+   The check also returns a **review sheet**: the object from four views in one image (a three-quarter overview, a close-up, a low angle that shows anything floating, and a wireframe). It also reports how heavy the scene is, with a `webgl-budget` warning when it's too heavy for software rendering.
+4. **A critic reviews it.** A clean check only means the page renders. So before calling it done, the agent asks a critic to judge the review sheet against your brief: a subagent in Claude Code and in VS Code when one is available, otherwise a separate review pass. The critic scores seven areas from 0 to 3: form, materials, light, composition, stage, fidelity to your brief and technical quality. It also lists at least three concrete flaws with fixes, such as "low view: the board floats above its base". Some flaws fail the design outright: something you asked for is missing, the object floats, or it's lost in an empty frame. The agent fixes the flaws and asks again, until every area scores 2 or more, or for at most three rounds. Then it tells you the scores and anything still open.
 
 ## Exports
 
@@ -46,6 +49,8 @@ Ask for what you need, for example "export a transparent PNG and a turntable GIF
 Exports, checks and turntable videos open the page in a headless browser. For pages that use WebGL (a canvas marked `data-od-webgl`, or a three.js import), the browser starts with software WebGL (SwiftShader), so it works on machines without a GPU: CI, WSL, servers. It's slower than a GPU, so scenes keep to about 200,000 triangles.
 
 Each scene tells the exporter when it's ready: it sets `window.odScene.ready`, a promise that resolves once the model and textures have loaded and the first frame is drawn. The exporter waits for it (within the usual 15-second limit), so a still never catches the scene half-loaded. For stills it then sets `odScene.rotate = false`, which puts the object back at its authored angle.
+
+The scene also exposes `odScene.scene`, `camera` and `renderer`. The check uses them to render the review views, which it frames on the object and not on the ground or environment (marked `userData.odStage`). It pauses the page's own animation while it does, then puts everything back.
 
 ## Limits
 

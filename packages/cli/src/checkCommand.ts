@@ -4,9 +4,11 @@ import {
   checkArtifact,
   ContentIndex,
   formatCheckResult,
+  REVIEW_VIEWS,
   type CheckArtifactOptions,
   type CheckArtifactResult,
   type CheckViewport,
+  type ReviewView,
 } from '@feimacode/open-design-agent-kit-core';
 import { TROUBLESHOOTING_URL } from './docsLinks';
 import { getContentAssetsRoot } from './env';
@@ -26,6 +28,8 @@ export interface CheckCliOptions {
   failOn?: string;
   /** Comma-separated seconds, e.g. 0,1.5,3. */
   at?: string;
+  /** 3D review views: comma-separated names, or "none". */
+  views?: string;
 }
 
 export type FailOn = 'error' | 'warning';
@@ -66,7 +70,18 @@ export function parseCheckFlags(flags: CheckCliOptions): { options: Omit<CheckAr
       return n;
     });
   }
-  return { options: { viewports, slides, maxImages, browserPath: flags.browser, at }, failOn };
+  let views: ReviewView[] | false | undefined;
+  if (flags.views !== undefined) {
+    const value = flags.views.trim().toLowerCase();
+    if (value === 'none' || value === 'false') views = false;
+    else {
+      const names = value.split(',').map((part) => part.trim());
+      const unknown = names.filter((n) => !(REVIEW_VIEWS as readonly string[]).includes(n));
+      if (unknown.length > 0 || names.length === 0) throw new ExportArgsError(`--views must be comma-separated names from ${REVIEW_VIEWS.join(', ')}, or none (got "${flags.views}").`);
+      views = names as ReviewView[];
+    }
+  }
+  return { options: { viewports, slides, maxImages, browserPath: flags.browser, at, views }, failOn };
 }
 
 /** A screenshot label as a file name: "desktop 2/3" → "desktop-2-3.jpg". */
