@@ -22,7 +22,7 @@ import {
   type ChooseNext,
   type ExplorationPlan,
 } from '../workspace/explorationStore';
-import { composeExplorationDirectionInstructions, composeInstructions, selectCraftSections } from './composeInstructions';
+import { composeExplorationDirectionInstructions, composeInstructions, resolveCraftSections, craftRequirementsFor } from './composeInstructions';
 import { composeTileModeSection, extractRootTokens, isStyleTileSkill, missingTileTokens, tokensCssFromTile } from './styleTiles';
 import { composeCustomDesignSystemInstructions } from './customDesignSystemInstructions';
 import { resolveExplorationDirections, slugifyExplorationPart, type CustomDirectionInput } from './explorationPlan';
@@ -91,7 +91,7 @@ export async function prepareExploration(ctx: ExplorationToolContext, input: Pre
   const directions = resolved.directions.map((d) => ({ ...d, entryPath: path.posix.join(dir, `${d.id}.html`) }));
   const appliedDesignSystem = resolved.designSystemSetAside ? undefined : designSystem;
 
-  const craftSections = selectCraftSections(await ctx.contentIndex.craftSections(), appliedDesignSystem?.craftSuggested);
+  const craftSections = resolveCraftSections(await ctx.contentIndex.craftSections(), craftRequirementsFor(skill, appliedDesignSystem));
   const sharedInstructions = composeInstructions({
     skillName: skill.name,
     skillBody: skill.body,
@@ -323,7 +323,7 @@ export async function chooseDirection(ctx: ExplorationToolContext, input: Choose
       skillBody: skill.body,
       designSystemTitle: designSystem?.name,
       designSystemBody: designSystem?.body,
-      craftSections: selectCraftSections(await ctx.contentIndex.craftSections(), designSystem?.craftSuggested),
+      craftSections: resolveCraftSections(await ctx.contentIndex.craftSections(), craftRequirementsFor(skill, designSystem)),
       brief: briefParts.join('\n\n'),
       suggestedEntryPath,
       existingAppFrameworks: ctx.existingAppFrameworks,

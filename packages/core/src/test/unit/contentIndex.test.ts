@@ -21,6 +21,10 @@ async function makeFixture(): Promise<string> {
       'od:',
       '  category: web',
       '  mode: prototype',
+      '  craft:',
+      '    requires:',
+      '      - color',
+      '      - anti-ai-slop',
       '---',
       '',
       '# landing-page',
@@ -110,7 +114,7 @@ async function makeFixture(): Promise<string> {
       name: 'Acme',
       category: 'Productivity & SaaS',
       description: 'A concise SaaS design system summary.',
-      craft: { suggested: ['typography', 'color'] },
+      craft: { suggested: ['typography', 'color'], applies: ['accessibility-baseline'], exemptions: ['anti-ai-slop'] },
     }),
   );
 
@@ -517,5 +521,15 @@ describe('ContentIndex against the real vendored assets', () => {
     assert.ok(hit.examplePrompt);
     const detail = await index.getSkill('od:prototype:social-youtube-thumbnail');
     assert.strictEqual(detail?.aspectHint, '1280×720 (16:9)');
+  });
+
+  it("reads a skill's od.craft.requires and a design system's craft applies and exemptions", async () => {
+    const index = new ContentIndex(await makeFixture());
+    const skill = await index.getSkill('landing-page');
+    assert.deepStrictEqual(skill?.craftRequires, ['color', 'anti-ai-slop']);
+    const ds = await index.getDesignSystem('acme');
+    assert.deepStrictEqual(ds?.craftApplies, ['accessibility-baseline']);
+    assert.deepStrictEqual(ds?.craftExemptions, ['anti-ai-slop']);
+    assert.deepStrictEqual(ds?.craftSuggested, ['typography', 'color']);
   });
 });

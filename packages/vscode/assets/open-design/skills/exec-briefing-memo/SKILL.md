@@ -16,6 +16,12 @@ example_desc: "把产品、销售、财务反馈压缩成一页高管可拍板 m
 en_description: "A one-page decision memo: the decision needed, a clear recommendation with confidence, key facts, tradeoffs, risks and next actions — compressed so a decision-maker can sign off in three minutes."
 od:
   mode: prototype
+  craft:
+    requires:
+      - typography
+      - typography-hierarchy
+      - color
+      - anti-ai-slop
   platform: desktop
   scenario: engineering
   upstream: "https://github.com/nexu-io/html-anything/tree/553ed98c283f9c0f489902d035416a972d6a9699/next/src/lib/templates/skills/exec-briefing-memo"

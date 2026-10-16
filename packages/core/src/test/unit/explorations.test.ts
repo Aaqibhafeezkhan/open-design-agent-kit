@@ -26,8 +26,8 @@ function fakeContentIndex(): ContentIndex {
     'od:prototype:landing': { id: 'od:prototype:landing', name: 'landing', description: 'Landing page', mode: 'prototype', body: 'LANDING SKILL BODY' },
     'od:deck:pitch': { id: 'od:deck:pitch', name: 'pitch', description: 'Pitch deck', mode: 'deck', body: 'DECK SKILL BODY' },
   };
-  const designSystems: Record<string, { id: string; name: string; summary: string; body: string; craftSuggested: string[] }> = {
-    acme: { id: 'acme', name: 'Acme', summary: 'Acme brand', body: 'ACME DESIGN SYSTEM BODY', craftSuggested: [] },
+  const designSystems: Record<string, { id: string; name: string; summary: string; body: string; craftSuggested: string[]; craftApplies: string[]; craftExemptions: string[] }> = {
+    acme: { id: 'acme', name: 'Acme', summary: 'Acme brand', body: 'ACME DESIGN SYSTEM BODY', craftSuggested: [], craftApplies: [], craftExemptions: [] },
   };
   return {
     getSkill: async (id: string) => skills[id],

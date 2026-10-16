@@ -17,6 +17,12 @@ triggers:
   - "walk me through this branch"
 od:
   mode: prototype
+  craft:
+    requires:
+      - typography
+      - typography-hierarchy
+      - color
+      - accessibility-baseline
   platform: desktop
   scenario: engineering
   preview:

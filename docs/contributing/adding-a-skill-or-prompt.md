@@ -16,9 +16,16 @@ Upstream content is never edited in place. This project's own skills and prompts
    tags: ["…"]
    od:
      mode: prototype                 # becomes od:<mode>:<id>
+     craft:
+       requires:                     # the craft docs this skill's briefs include
+         - typography
+         - color
+         - anti-ai-slop
      example_prompt: "A ready-made brief…"
    ---
    ```
+
+   `od.craft.requires` picks the docs from `craft/` that go into this skill's briefs, as in upstream Open Design: a skill that lists none gets none. Decks always get `typography`. Every skill under `local/` declares a list; keep it short and relevant, because every doc lengthens every brief.
 
    The body is the recipe the agent follows: canvas, composition rules, what to avoid, and the export call to make.
 2. Pick an `<id>` that doesn't exist upstream. The overlay step fails on a collision.

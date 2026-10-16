@@ -23,6 +23,10 @@ triggers:
   - "产品渲染"
 od:
   mode: prototype
+  craft:
+    requires:
+      - color
+      - anti-ai-slop
   platform: desktop
   scenario: marketing
   preview:

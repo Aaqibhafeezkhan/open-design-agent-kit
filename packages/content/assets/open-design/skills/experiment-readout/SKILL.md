@@ -16,6 +16,12 @@ example_desc: "把实验假设、样本、指标和结果转成产品决策报�
 en_description: "Hypothesis, metrics, results, interpretation and decision: turns an A/B test or product experiment into a ship / stop / iterate recommendation."
 od:
   mode: prototype
+  craft:
+    requires:
+      - typography
+      - typography-hierarchy
+      - color
+      - anti-ai-slop
   platform: desktop
   scenario: product
   upstream: "https://github.com/nexu-io/html-anything/tree/553ed98c283f9c0f489902d035416a972d6a9699/next/src/lib/templates/skills/experiment-readout"

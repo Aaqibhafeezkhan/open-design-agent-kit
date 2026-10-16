@@ -24,6 +24,10 @@ triggers:
   - "流程图"
 od:
   mode: prototype
+  craft:
+    requires:
+      - color
+      - accessibility-baseline
   platform: desktop
   scenario: engineering
   preview:

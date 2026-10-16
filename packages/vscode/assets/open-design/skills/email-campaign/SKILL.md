@@ -20,6 +20,11 @@ triggers:
   - "邮件"
 od:
   mode: prototype
+  craft:
+    requires:
+      - typography
+      - color
+      - accessibility-baseline
   platform: desktop
   scenario: marketing
   preview:

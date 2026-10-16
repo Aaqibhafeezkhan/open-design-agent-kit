@@ -40,7 +40,8 @@ import {
   readArtifact,
   readArtifactComments,
   resolveActiveDesignSystem,
-  selectCraftSections,
+  resolveCraftSections,
+  craftRequirementsFor,
   setActiveDesignSystem,
   suggestCollectionScreenEntryPath,
   suggestTargetComponentPath,
@@ -193,7 +194,7 @@ export async function prepareBrief(
   const { designSystemId, designSystem } = resolution;
 
   const allCraftSections = await ctx.contentIndex.craftSections();
-  const craftSections = selectCraftSections(allCraftSections, designSystem?.craftSuggested);
+  const craftSections = resolveCraftSections(allCraftSections, craftRequirementsFor(skill, designSystem));
   const existingAppFrameworks = await detectExistingApp(ctx.workspaceRoot);
 
   let suggestedEntryPath: string;

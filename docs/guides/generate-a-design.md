@@ -22,7 +22,7 @@ Open Design is set up for your host: [VS Code](../getting-started/vscode.md), [C
 3. **The agent gets instructions.** [`prepare_open_design_brief`](../reference/tools.md#prepare_open_design_brief) combines:
    - the recipe's workflow;
    - your [active design system](design-systems.md), if any;
-   - the universal craft rules (typography, color, accessibility, avoiding generic "AI" look);
+   - the craft rules the recipe asks for (for example typography, color, accessibility, or avoiding a generic "AI" look);
    - your brief.
 
    It writes nothing.

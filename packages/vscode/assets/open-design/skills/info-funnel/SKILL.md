@@ -18,6 +18,12 @@ example_source_label: "baoyu-skills · infographic/funnel"
 en_description: "A 3–6 stage narrowing funnel that makes conversion rates, drop-off and filtering ratios obvious; vertical, sized for Stories and Xiaohongshu."
 od:
   mode: prototype
+  craft:
+    requires:
+      - typography
+      - typography-hierarchy
+      - color
+      - anti-ai-slop
   platform: desktop
   scenario: marketing
   upstream: "https://github.com/nexu-io/html-anything/tree/553ed98c283f9c0f489902d035416a972d6a9699/next/src/lib/templates/skills/info-funnel"

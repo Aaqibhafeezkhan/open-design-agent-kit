@@ -15,7 +15,7 @@ const custom: DesignSystemDetail = {
   summary: 'x',
   source: 'user',
   hasTokens: false,
-  craftSuggested: [],
+  craftSuggested: [], craftApplies: [], craftExemptions: [],
   body: '# Acme\n\n## Color Palette\n\n- Rocket Red #e11d48\n',
 };
 

@@ -123,7 +123,7 @@ Turns a workspace document into source material for a design: Markdown under `<o
 
 ### prepare_open_design_brief
 
-Composes the instructions for a new design. It combines the skill's workflow, the design system's tokens, the universal craft rules and the user's brief, plus any [host override](../guides/youtube-video.md#how-it-works) for skills that assume Open Design's desktop daemon. **It writes nothing.**
+Composes the instructions for a new design. It combines the skill's workflow, the design system's tokens, the craft rules the skill asks for and the user's brief, plus any [host override](../guides/youtube-video.md#how-it-works) for skills that assume Open Design's desktop daemon. **It writes nothing.**
 
 | Argument | Type | Required | Meaning |
 |---|---|---|---|

@@ -23,7 +23,7 @@ function ctxFor(workspaceRoot: string, active?: string): ExplorationToolContext 
     [TILE_ID]: { id: TILE_ID, name: 'Style Tile', description: 'tiles', mode: 'design-system', body: 'STYLE TILE SKILL BODY' },
   };
   const systems: Record<string, unknown> = {
-    harbor: { id: 'harbor', name: 'Harbor', summary: 'calm', body: 'HARBOR BODY', craftSuggested: [], tokensCss: ':root { --accent: #1f5f8b; --bg: #f6f4ef; }' },
+    harbor: { id: 'harbor', name: 'Harbor', summary: 'calm', body: 'HARBOR BODY', craftSuggested: [], craftApplies: [], craftExemptions: [], tokensCss: ':root { --accent: #1f5f8b; --bg: #f6f4ef; }' },
   };
   let value = active;
   const store = { get: async () => value, set: async (id: string) => void (value = id), clear: async () => void (value = undefined) } as unknown as ActiveDesignSystemStore;

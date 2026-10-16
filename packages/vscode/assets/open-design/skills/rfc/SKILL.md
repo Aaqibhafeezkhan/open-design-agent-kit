@@ -17,6 +17,12 @@ triggers:
   - "技术方案"
 od:
   mode: prototype
+  craft:
+    requires:
+      - typography
+      - typography-hierarchy
+      - color
+      - accessibility-baseline
   platform: desktop
   scenario: engineering
   preview:

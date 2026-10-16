@@ -18,6 +18,12 @@ example_source_label: "lijigang/ljg-skills · ljg-card"
 en_description: "Turns one concept into a magazine-style feature dossier — the real question, early failures, the turning point, the insight and its name — across six layout moulds."
 od:
   mode: prototype
+  craft:
+    requires:
+      - typography
+      - typography-hierarchy-editorial
+      - color
+      - anti-ai-slop
   platform: desktop
   scenario: education
   upstream: "https://github.com/nexu-io/html-anything/tree/553ed98c283f9c0f489902d035416a972d6a9699/next/src/lib/templates/skills/article-sketchnote-editorial"

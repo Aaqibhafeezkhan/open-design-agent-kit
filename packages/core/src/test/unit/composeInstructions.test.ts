@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import { composeInstructions, selectCraftSections } from '../../generation/composeInstructions';
+import { composeInstructions, craftRequirementsFor, resolveCraftSections } from '../../generation/composeInstructions';
 
 describe('composeInstructions', () => {
   it('includes the skill body, brief, and suggested entry path', () => {
@@ -43,7 +43,7 @@ describe('composeInstructions', () => {
       suggestedEntryPath: 'x.html',
       craftSections: [{ id: 'typography', body: 'Use a clear type scale.' }],
     });
-    assert.match(text, /Universal craft rules/);
+    assert.match(text, /## Craft rules/);
     assert.match(text, /typography/);
   });
 
@@ -120,26 +120,38 @@ describe('composeInstructions', () => {
   });
 });
 
-describe('selectCraftSections', () => {
-  const all = [
-    { id: 'typography', body: 'a' },
-    { id: 'color', body: 'b' },
-    { id: 'accessibility-baseline', body: 'c' },
-  ];
+describe('resolveCraftSections (upstream craft resolution)', () => {
+  const all = ['typography', 'color', 'accessibility-baseline', 'anti-ai-slop'].map((id) => ({ id, body: id }));
+  const ids = (sections: Array<{ id: string }>) => sections.map((s) => s.id);
 
-  it('returns all sections when no suggestion list is given', () => {
-    assert.strictEqual(selectCraftSections(all, undefined).length, 3);
+  it("uses the skill's requires, in order, and ignores the design system's suggested list", () => {
+    const skill = { craftRequires: ['color', 'anti-ai-slop'], mode: 'prototype' as const };
+    const designSystem = { craftSuggested: ['color', 'accessibility-baseline'], craftApplies: [], craftExemptions: [] };
+    assert.deepStrictEqual(ids(resolveCraftSections(all, craftRequirementsFor(skill, designSystem))), ['color', 'anti-ai-slop']);
   });
 
-  it('returns all sections when the suggestion list is empty (legacy design system)', () => {
-    assert.strictEqual(selectCraftSections(all, []).length, 3);
+  it('gives a skill that declares nothing no craft docs', () => {
+    assert.deepStrictEqual(resolveCraftSections(all, craftRequirementsFor({ craftRequires: [], mode: 'prototype' })), []);
+    assert.deepStrictEqual(resolveCraftSections(all, craftRequirementsFor({ mode: 'prototype' }, { craftApplies: [], craftExemptions: [] })), []);
   });
 
-  it('narrows to only the suggested ids when a non-empty list is given', () => {
-    const result = selectCraftSections(all, ['color', 'accessibility-baseline']);
-    assert.deepStrictEqual(
-      result.map((s) => s.id),
-      ['color', 'accessibility-baseline'],
-    );
+  it('always gives decks typography', () => {
+    assert.deepStrictEqual(ids(resolveCraftSections(all, craftRequirementsFor({ craftRequires: [], mode: 'deck' }))), ['typography']);
+  });
+
+  it("adds the design system's applies and removes its exemptions", () => {
+    const skill = { craftRequires: ['color', 'anti-ai-slop'], mode: 'prototype' as const };
+    const designSystem = { craftApplies: ['accessibility-baseline'], craftExemptions: ['anti-ai-slop'] };
+    assert.deepStrictEqual(ids(resolveCraftSections(all, craftRequirementsFor(skill, designSystem))), ['color', 'accessibility-baseline']);
+  });
+
+  it('skips unknown slugs and normalizes and deduplicates the rest', () => {
+    const skill = { craftRequires: ['typographic-rhythm', ' Color ', 'color', 'Bad Slug!'], mode: 'prototype' as const };
+    assert.deepStrictEqual(ids(resolveCraftSections(all, craftRequirementsFor(skill))), ['color']);
+  });
+
+  it('omits the craft section from a brief when nothing resolves', () => {
+    const text = composeInstructions({ skillName: 'S', skillBody: 'body', craftSections: [], brief: 'b', suggestedEntryPath: 'x.html' });
+    assert.doesNotMatch(text, /Craft rules/);
   });
 });

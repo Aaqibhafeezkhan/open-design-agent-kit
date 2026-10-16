@@ -16,6 +16,12 @@ triggers:
   - "架构决策"
 od:
   mode: prototype
+  craft:
+    requires:
+      - typography
+      - typography-hierarchy
+      - color
+      - accessibility-baseline
   platform: desktop
   scenario: engineering
   preview:

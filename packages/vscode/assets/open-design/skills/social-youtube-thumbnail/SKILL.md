@@ -13,6 +13,11 @@ featured: 45
 tags: ["youtube", "thumbnail", "social", "video", "cover", "封面"]
 od:
   mode: prototype
+  craft:
+    requires:
+      - typography
+      - color
+      - anti-ai-slop
   surface: web
   platform: desktop
   scenario: marketing

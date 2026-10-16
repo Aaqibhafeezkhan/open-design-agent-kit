@@ -17,6 +17,12 @@ triggers:
   - "事故复盘"
 od:
   mode: prototype
+  craft:
+    requires:
+      - typography
+      - typography-hierarchy
+      - color
+      - accessibility-baseline
   platform: desktop
   scenario: engineering
   preview:

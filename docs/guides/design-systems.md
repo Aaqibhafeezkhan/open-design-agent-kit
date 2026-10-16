@@ -8,7 +8,7 @@ Open Design bundles 152 design systems, most inspired by real products (Apple, S
 
 - **Each workspace has at most one active design system.** New designs use it automatically; you don't repeat it on every request.
 - **Naming a design system makes it active.** Say "use Stripe" once, and it stays until you switch or clear it.
-- **Without one, designs use the recipe's own look** plus the universal craft rules.
+- **Without one, designs use the recipe's own look** plus the recipe's craft rules.
 
 Here's exactly how the design system for a new design is chosen, on every host:
 
@@ -36,10 +36,10 @@ Each bundled design system is a folder with:
   7. Motion & Interaction
   8. Voice & Brand
   9. Anti-patterns
-- **`manifest.json`**: the id, display name, category and summary, plus `craft.suggested`, the universal craft rules that pair with this system (e.g. `color`, `accessibility-baseline`).
+- **`manifest.json`**: the id, display name, category and summary, plus a `craft` block: `applies` (craft docs added to every brief made with this system), `exemptions` (docs removed) and `suggested` (informational only).
 - **`tokens.css`**: the system's tokens (`--bg`, `--fg`, `--accent`, `--font-display`, spacing, radius…) as one `:root { … }` block, following upstream Open Design's token contract. It's what the [preview](#preview-a-design-system) renders from. The agent still generates from `DESIGN.md`.
 
-When a design system is active, [`prepare_open_design_brief`](../reference/tools.md#prepare_open_design_brief) puts its `DESIGN.md` into the instructions under **Active design system**, marked as **authoritative** for color, typography, spacing and component rules, with the instruction not to invent tokens outside its palette. It also narrows the craft rules to the system's suggested ones; without a design system, every craft rule applies.
+When a design system is active, [`prepare_open_design_brief`](../reference/tools.md#prepare_open_design_brief) puts its `DESIGN.md` into the instructions under **Active design system**, marked as **authoritative** for color, typography, spacing and component rules, with the instruction not to invent tokens outside its palette. The craft rules come from the recipe's own `od.craft.requires`, plus the system's `craft.applies`, minus its `craft.exemptions`, as in upstream Open Design.
 
 ## Find a design system
 

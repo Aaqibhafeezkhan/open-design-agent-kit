@@ -16,6 +16,12 @@ example_desc: "把三家竞品的定位、价格、功能、评价转成产品�
 en_description: "Positioning map, feature matrix, pricing comparison and opportunity windows: turns competitor research into a product decision report."
 od:
   mode: prototype
+  craft:
+    requires:
+      - typography
+      - typography-hierarchy
+      - color
+      - anti-ai-slop
   platform: desktop
   scenario: product
   upstream: "https://github.com/nexu-io/html-anything/tree/553ed98c283f9c0f489902d035416a972d6a9699/next/src/lib/templates/skills/competitive-teardown"

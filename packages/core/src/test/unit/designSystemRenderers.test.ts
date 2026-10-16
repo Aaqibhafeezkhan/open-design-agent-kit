@@ -95,7 +95,7 @@ describe('renderDesignSystemPreviewTab', () => {
     category: 'Test',
     source: 'built-in' as const,
     hasTokens: true,
-    craftSuggested: [],
+    craftSuggested: [], craftApplies: [], craftExemptions: [],
     body: '# Acme\n\n## Color Palette\n\n- **Brand primary** (`#00ff00`): CTA.\n',
     tokensCss: ':root { --accent: #ff385c; --accent-on: #111111; --fg: var(--ink, #222222); --bg: #fafafa; }',
     tokensOverrideCss: ':root { --accent: #9333ea; }',
@@ -115,7 +115,7 @@ describe('renderDesignSystemPreviewTab', () => {
 });
 
 describe('designSystemDisplaySummary', () => {
-  const base = { id: 'user:acme', name: 'Acme', source: 'user' as const, hasTokens: false, craftSuggested: [] };
+  const base = { id: 'user:acme', name: 'Acme', source: 'user' as const, hasTokens: false, craftSuggested: [], craftApplies: [], craftExemptions: [] };
 
   it('drops the > Category: line ContentIndex folds into DESIGN.md-only summaries', () => {
     const detail = { ...base, summary: 'Category: Custom Bold engineering brand.', body: '# Acme\n\n> Category: Custom\n> Bold engineering brand.\n' };

@@ -58,7 +58,7 @@ The system SHALL NOT allow two distinct vendored entries (across the skill, desi
 - **THEN** only entries with a non-empty `exampleArtifactPath` SHALL be returned, regardless of their `source` value
 
 ### Requirement: Brief Preparation Without File Writes
-The system SHALL expose `prepare_open_design_brief`, which composes generation instructions from a chosen skill, an optional design system, universal craft rules, the caller's brief, an optional canvas `format`, and a best-effort signal of whether the workspace already contains a real application. It returns those instructions plus a suggested workspace-relative entry path. This tool SHALL NOT write any files.
+The system SHALL expose `prepare_open_design_brief`, which composes generation instructions from a chosen skill, an optional design system, the craft rules resolved for that skill and design system, the caller's brief, an optional canvas `format`, and a best-effort signal of whether the workspace already contains a real application. It returns those instructions plus a suggested workspace-relative entry path. This tool SHALL NOT write any files.
 
 #### Scenario: Valid skill, no design system
 - **WHEN** `prepare_open_design_brief` is invoked with a valid `skillId` and a `brief`, and no `designSystemId`
@@ -173,17 +173,6 @@ The system SHALL read each design system's canonical `manifest.json` (name, cate
 #### Scenario: Browsing without leaving the keyboard
 - **WHEN** the user runs the `OpenDesign: Browse Design Systems` command and selects a design system from the picker
 - **THEN** Copilot Chat SHALL open with an editable message naming that design system's id, without the command writing or sending anything on the user's behalf
-
-### Requirement: Craft Rules Follow the Active Design System's Own Suggestions
-When composing a generation brief, the system SHALL narrow the applied craft-rule set to the active design system's `craft.suggested` list (from its `manifest.json`) when that list is non-empty. When no design system is active, or the active one has no suggestion list, every vendored craft doc SHALL still be applied, matching prior behavior.
-
-#### Scenario: Design system with a suggested craft list
-- **WHEN** `prepare_open_design_brief` is invoked with a `designSystemId` whose `craft.suggested` names a non-empty subset of the craft catalog
-- **THEN** only that subset SHALL be included in the composed instructions
-
-#### Scenario: No design system, or one without a suggestion list
-- **WHEN** `prepare_open_design_brief` is invoked with no `designSystemId`, or one whose `craft.suggested` is empty or absent
-- **THEN** every vendored craft doc SHALL be included, as before this change
 
 ### Requirement: Persistent, Sticky Active Design System
 The system SHALL persist a single active design system id per workspace as the `openDesign.activeDesignSystemId` setting. `prepare_open_design_brief` SHALL treat `designSystemId` as optional, falling back to the active setting when omitted, and SHALL update the active setting to match whenever an explicit `designSystemId` is given. A stale active id that no longer resolves to a known design system SHALL be treated as no active design system, without producing an error. `list_open_design_design_systems` SHALL mark the currently active entry with `active: true`. `prepare_open_design_brief`'s response SHALL include the resolved `designSystemId` and `designSystemName` actually used, if any.
@@ -422,3 +411,25 @@ The system SHALL provide a tree view, in its own standalone activity-bar contain
 - **WHEN** a user selects an example from the `OpenDesign: Browse Gallery` QuickPick
 - **THEN** that example SHALL be remixed immediately, without an intermediate preview step
 
+### Requirement: Per-Skill Craft Rules
+When composing a generation brief (`prepare_open_design_brief`, exploration and direction briefs), the system SHALL resolve craft docs as upstream Open Design does: the skill's `od.craft.requires`, then the active design system's `craft.applies`, then `typography` when the skill's mode is `deck`, minus the design system's `craft.exemptions`. Slugs are lowercased, deduplicated in order, and skipped when no craft doc of that name exists. The design system's `craft.suggested` list SHALL NOT select craft docs. When the resolved list is empty, the brief SHALL contain no craft section; otherwise it SHALL contain a "Craft rules" section with the resolved docs in that order. Every skill under the extension's own content overlay SHALL declare `od.craft.requires`.
+
+#### Scenario: Skill declares its craft
+- **WHEN** a brief is prepared for `od:prototype:3d-object`, which declares `color` and `anti-ai-slop`, with a design system whose `craft.suggested` is `color` and `accessibility-baseline` and whose `applies` is empty
+- **THEN** the brief SHALL contain exactly the `color` and `anti-ai-slop` craft docs, in that order
+
+#### Scenario: Skill declares nothing
+- **WHEN** a brief is prepared for a skill without `od.craft.requires`, with no design system or one with empty `applies`
+- **THEN** the brief SHALL contain no craft section
+
+#### Scenario: Deck typography
+- **WHEN** a brief is prepared for a skill whose mode is `deck` and that declares no craft
+- **THEN** the brief SHALL contain the `typography` craft doc
+
+#### Scenario: Design system applies and exempts
+- **WHEN** the active design system's `craft.applies` lists `accessibility-baseline` and its `craft.exemptions` lists `anti-ai-slop`, and the skill declares `color` and `anti-ai-slop`
+- **THEN** the brief SHALL contain `color` and `accessibility-baseline`, and not `anti-ai-slop`
+
+#### Scenario: Forward-referenced craft
+- **WHEN** a skill declares `typographic-rhythm`, for which no craft doc exists
+- **THEN** that slug SHALL be skipped without an error

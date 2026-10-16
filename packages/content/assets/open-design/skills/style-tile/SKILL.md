@@ -20,6 +20,10 @@ triggers:
   - "字体搭配"
 od:
   mode: design-system
+  craft:
+    requires:
+      - color
+      - typography
   platform: desktop
   scenario: design
   preview:

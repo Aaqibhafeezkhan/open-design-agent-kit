@@ -86,6 +86,8 @@ export interface SkillDetail extends SkillSummary {
   body: string;
   /** Upstream's free-form canvas-size hint, e.g. "1600×900 (16:9)" — see parseAspectHint. */
   aspectHint?: string;
+  /** `od.craft.requires`: the craft docs this skill asks for (upstream semantics; see resolveCraftSections). */
+  craftRequires: string[];
 }
 
 export type DesignSystemSource = 'built-in' | 'user';
@@ -103,7 +105,12 @@ export interface DesignSystemSummary {
 
 export interface DesignSystemDetail extends DesignSystemSummary {
   body: string;
+  /** manifest.json `craft.suggested`: metadata only; upstream never injects it into a brief. */
   craftSuggested: string[];
+  /** manifest.json `craft.applies`: craft docs added to every brief made with this system. */
+  craftApplies: string[];
+  /** manifest.json `craft.exemptions`: craft docs removed from every brief made with this system. */
+  craftExemptions: string[];
   /** The design system's `tokens.css`, when it has one. */
   tokensCss?: string;
   /** Built-in only: the extension's additive local override (content overlay `tokens.override.css`), applied on top of `tokensCss`. */
@@ -241,6 +248,7 @@ async function loadSkillLikeDir(assetsRoot: string, subdir: string, source: Skil
       featured: isFeatured(data as Record<string, unknown>, od),
       body: content.trim(),
       aspectHint: typeof data.aspect_hint === 'string' ? data.aspect_hint : undefined,
+      craftRequires: craftRequiresOf(od),
       stub: (await isStubDir(path.join(dir, entry.name), content)) || undefined,
     });
   }
@@ -302,9 +310,16 @@ async function loadExamples(assetsRoot: string, source: SkillSource = 'example')
       exampleArtifactPath: path.posix.join('examples', entry.name, 'example.html'),
       body: content.trim(),
       aspectHint: typeof data.aspect_hint === 'string' ? data.aspect_hint : undefined,
+      craftRequires: craftRequiresOf(od),
     });
   }
   return result;
+}
+
+/** `od.craft.requires` from a skill's frontmatter. */
+function craftRequiresOf(od: Record<string, unknown> | undefined): string[] {
+  const craft = od?.craft as Record<string, unknown> | undefined;
+  return normalizeStringArray(craft?.requires);
 }
 
 // Fallback for the small number of legacy design-system folders that ship
@@ -333,7 +348,7 @@ interface DesignSystemManifest {
   name?: string;
   category?: string;
   description?: string;
-  craft?: { suggested?: unknown };
+  craft?: { suggested?: unknown; applies?: unknown; exemptions?: unknown };
 }
 
 async function loadDesignSystems(assetsRoot: string): Promise<Map<string, DesignSystemDetail>> {
@@ -368,6 +383,8 @@ async function loadDesignSystems(assetsRoot: string): Promise<Map<string, Design
         summary: normalizeDescription(manifest.description),
         category: manifest.category,
         craftSuggested: normalizeStringArray(manifest.craft?.suggested),
+        craftApplies: normalizeStringArray(manifest.craft?.applies),
+        craftExemptions: normalizeStringArray(manifest.craft?.exemptions),
         source: 'built-in',
         body: raw.trim(),
         ...tokens,
@@ -380,6 +397,8 @@ async function loadDesignSystems(assetsRoot: string): Promise<Map<string, Design
         summary: fallback.summary,
         category: undefined,
         craftSuggested: [],
+        craftApplies: [],
+        craftExemptions: [],
         source: 'built-in',
         body: raw.trim(),
         ...tokens,
@@ -422,6 +441,8 @@ async function loadUserDesignSystems(dir: string | undefined): Promise<Map<strin
       summary: fallback.summary,
       category: undefined,
       craftSuggested: [],
+      craftApplies: [],
+      craftExemptions: [],
       source: 'user',
       body: raw.trim(),
       hasTokens: tokensCss !== undefined,

@@ -7,7 +7,8 @@ import {
   hostOverrideFor,
   resolveBriefSources,
   resolveActiveDesignSystem,
-  selectCraftSections,
+  resolveCraftSections,
+  craftRequirementsFor,
   suggestCollectionScreenEntryPath,
 } from '@feimacode/open-design-agent-kit-core';
 import { getOutputDirectory, getWorkspaceRoot, slugify, suggestEntryPath } from '../workspace/artifactWriter';
@@ -72,7 +73,7 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
     const designSystem = resolution.designSystem;
 
     const allCraftSections = await this.contentIndex.craftSections();
-    const craftSections = selectCraftSections(allCraftSections, designSystem?.craftSuggested);
+    const craftSections = resolveCraftSections(allCraftSections, craftRequirementsFor(skill, designSystem));
     // Deliberately reads workspaceFolders directly rather than
     // getWorkspaceRoot() (which throws with no folder open) — this tool has
     // never required an open workspace to compose instructions, and

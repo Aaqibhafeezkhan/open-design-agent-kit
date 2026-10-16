@@ -5,19 +5,54 @@ import type { PlannedDirection } from './explorationPlan';
 import { composeCanvasSection, composeFluidCanvasSection, type CanvasFormat } from '../poster/formats';
 import { composeSourceMaterialSection, composeSourceWorkflowSection, type SourceContext } from './sourceInstructions';
 
+const CRAFT_SLUG = /^[a-z0-9][a-z0-9-]*$/;
+
+function normalizeCraftSlugs(values: readonly string[] | undefined): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const value of values ?? []) {
+    if (typeof value !== 'string') continue;
+    const slug = value.trim().toLowerCase();
+    if (!CRAFT_SLUG.test(slug) || seen.has(slug)) continue;
+    seen.add(slug);
+    out.push(slug);
+  }
+  return out;
+}
+
+export interface CraftRequirements {
+  /** The skill's `od.craft.requires`. */
+  skillRequires?: readonly string[];
+  /** The skill's mode: decks always get `typography`. */
+  skillMode?: SkillMode;
+  /** The active design system's manifest `craft.applies`. */
+  designSystemApplies?: readonly string[];
+  /** The active design system's manifest `craft.exemptions`. */
+  designSystemExemptions?: readonly string[];
+}
+
 /**
- * Each design system's manifest.json carries its own `craft.suggested` list
- * (e.g. Starbucks suggests only `color` + `accessibility-baseline` out of
- * the full ~11-doc craft catalog). When a design system is active and it
- * names a non-empty suggestion list, narrow to that; otherwise (no design
- * system, or one with an empty/legacy-parsed suggestion list) fall back to
- * applying every craft doc, which was the only behavior before this filter
- * existed.
+ * The craft docs for one brief, resolved as upstream Open Design does
+ * (`resolveCraftRequirements` + `loadCraftSections` in apps/daemon/src/craft.ts,
+ * open-design 7abd6fc2b1; openspec match-upstream-craft-selection): the
+ * skill's requires, the design system's applies and `typography` for decks,
+ * minus the design system's exemptions, deduplicated in that order. Slugs
+ * with no craft doc are skipped, so skills can name docs not written yet.
+ * A design system's `craft.suggested` list is metadata and isn't used.
  */
-export function selectCraftSections(all: CraftSection[], suggestedIds: string[] | undefined): CraftSection[] {
-  if (!suggestedIds || suggestedIds.length === 0) return all;
-  const suggested = new Set(suggestedIds);
-  return all.filter((section) => suggested.has(section.id));
+/** The craft requirements of a skill and the design system applied with it. */
+export function craftRequirementsFor(
+  skill: { craftRequires?: readonly string[]; mode?: SkillMode },
+  designSystem?: { craftApplies?: readonly string[]; craftExemptions?: readonly string[] },
+): CraftRequirements {
+  return { skillRequires: skill.craftRequires, skillMode: skill.mode, designSystemApplies: designSystem?.craftApplies, designSystemExemptions: designSystem?.craftExemptions };
+}
+
+export function resolveCraftSections(all: CraftSection[], req: CraftRequirements): CraftSection[] {
+  const requested = normalizeCraftSlugs([...(req.skillRequires ?? []), ...(req.designSystemApplies ?? []), ...(req.skillMode === 'deck' ? ['typography'] : [])]);
+  const excluded = new Set(normalizeCraftSlugs(req.designSystemExemptions));
+  const byId = new Map(all.map((section) => [section.id, section]));
+  return requested.filter((slug) => !excluded.has(slug)).flatMap((slug) => byId.get(slug) ?? []);
 }
 
 export interface CollectionSiblingScreen {
@@ -176,7 +211,7 @@ export function composeInstructions(input: ComposeInstructionsInput): string {
 
   if (input.craftSections && input.craftSections.length > 0) {
     parts.push(
-      `\n\n## Universal craft rules\n\nApply these general design-quality rules regardless of skill or design system.\n\n${input.craftSections
+      `\n\n## Craft rules\n\nThis skill applies these craft rules.\n\n${input.craftSections
         .map((s) => `### ${s.id}\n\n${s.body.trim()}`)
         .join('\n\n')}`,
     );

@@ -16,6 +16,12 @@ triggers:
   - "更新日志"
 od:
   mode: prototype
+  craft:
+    requires:
+      - typography
+      - typography-hierarchy
+      - color
+      - accessibility-baseline
   platform: desktop
   scenario: engineering
   preview:
