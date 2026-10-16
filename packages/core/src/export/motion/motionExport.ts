@@ -56,7 +56,7 @@ export interface MotionExportOptions {
   isCancelled?: () => boolean;
 }
 
-export type DurationSource = 'explicit' | 'data-duration' | 'animations' | 'default';
+export type DurationSource = 'explicit' | 'data-duration' | '3d-scene' | 'animations' | 'default';
 
 export type MotionExportResult =
   | {
@@ -91,11 +91,16 @@ export function validateMotionOptions(o: Pick<MotionExportOptions, 'fps' | 'dura
   return undefined;
 }
 
-/** Duration resolution order (openspec "Duration Resolution"): data-duration sum, else the longest finite animation, else the default. */
-export function resolveDurationMs(page: { dataDurations: number[]; finiteAnimationEnds: number[]; infiniteAnimations: number }): { ms: number; source: DurationSource; note?: string } {
+/**
+ * Duration resolution order (openspec "Duration Resolution"): data-duration sum, else a 3D scene's
+ * `window.odScene.duration` in seconds (a camera path; add-3d-scene), else the longest finite animation, else the default.
+ */
+export function resolveDurationMs(page: { dataDurations: number[]; finiteAnimationEnds: number[]; infiniteAnimations: number; sceneSeconds?: number }): { ms: number; source: DurationSource; note?: string } {
   const capMs = MAX_MOTION_SECONDS * 1000;
   const total = page.dataDurations.filter((d) => d > 0).reduce((a, b) => a + b, 0);
   if (total > 0) return { ms: Math.min(total, capMs), source: 'data-duration', note: total > capMs ? `data-duration adds up to ${total / 1000}s; capped at ${MAX_MOTION_SECONDS}s.` : undefined };
+  const scene = typeof page.sceneSeconds === 'number' && Number.isFinite(page.sceneSeconds) && page.sceneSeconds > 0 ? Math.round(page.sceneSeconds * 1000) : 0;
+  if (scene > 0) return { ms: Math.min(scene, capMs), source: '3d-scene', note: scene > capMs ? `The 3D scene's camera path runs ${scene / 1000}s; capped at ${MAX_MOTION_SECONDS}s.` : undefined };
   const longest = Math.max(0, ...page.finiteAnimationEnds);
   if (longest > 0) return { ms: Math.min(longest, capMs), source: 'animations', note: longest > capMs ? `The longest animation runs ${longest / 1000}s; capped at ${MAX_MOTION_SECONDS}s.` : undefined };
   return {
@@ -250,8 +255,9 @@ export async function exportMotion(options: MotionExportOptions): Promise<Motion
           if (end === Infinity) infiniteAnimations++;
           else if (end > 0) finiteAnimationEnds.push(end);
         }
-        return { dataDurations, finiteAnimationEnds, infiniteAnimations };
-      })()`)) as { dataDurations: number[]; finiteAnimationEnds: number[]; infiniteAnimations: number };
+        const sceneSeconds = window.odScene && typeof window.odScene.duration === 'number' ? window.odScene.duration : undefined;
+        return { dataDurations, finiteAnimationEnds, infiniteAnimations, sceneSeconds };
+      })()`)) as { dataDurations: number[]; finiteAnimationEnds: number[]; infiniteAnimations: number; sceneSeconds?: number };
       const resolved = resolveDurationMs(facts);
       durationMs = resolved.ms;
       durationSource = resolved.source;
@@ -312,6 +318,7 @@ export async function exportMotion(options: MotionExportOptions): Promise<Motion
 const SOURCE_TEXT: Record<DurationSource, string> = {
   explicit: 'the duration you passed',
   'data-duration': "the frames' data-duration values",
+  '3d-scene': "the 3D scene's camera path (odScene.duration)",
   animations: 'the longest CSS/Web animation',
   default: 'the default',
 };

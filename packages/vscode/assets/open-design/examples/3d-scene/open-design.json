@@ -1,0 +1,12 @@
+{
+  "name": "example-3d-scene",
+  "title": "Courtyard at dusk — 3D scene",
+  "description": "A small stone courtyard at dusk built from a scene spec: a Poly Haven sky, cobblestone and stone-wall textures, a brass lantern and two wooden planters (all CC0), with a 10-second camera flythrough.",
+  "od": {
+    "useCase": {
+      "query": {
+        "en": "A small stone courtyard at dusk: cobblestones, rough stone walls on three sides, a brass lantern on a post, two wooden planters, a warm sky. Then give me a still and a 10-second flythrough video."
+      }
+    }
+  }
+}

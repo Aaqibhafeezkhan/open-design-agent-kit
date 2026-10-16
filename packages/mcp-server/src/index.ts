@@ -629,6 +629,50 @@ const TOOL_DEFS: ToolDef[] = [
   },
   {
     tool: {
+      name: 'find_open_design_3d_assets',
+      description:
+        "Searches Poly Haven (polyhaven.com) for free CC0 3D assets and returns the direct CDN file URLs a three.js page needs: an HDRI (.hdr, for real environment light and reflections), a PBR texture set (diffuse, normal, roughness, AO/roughness/metal JPGs) or a model (.gltf plus its included files). Use it in 3D designs when procedural shapes and RoomEnvironment aren't enough: a stone floor, a wood table, a sky, a lantern, a chair. Each result has its id, name, categories, size in meters for models, a thumbnail, the file URLs at 1k (default) or 2k, the license (CC0: no attribution needed) and a 'Powered by Poly Haven' credit. Load the files straight from their URLs (the CDN allows it) or download them into the design's assets/ for offline use; for a model, map its includes with a LoadingManager URL modifier. Writes nothing. If Poly Haven can't be reached, it says so: fall back to procedural materials.",
+      inputSchema: {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "What to find, in a few words: a material (\"cobblestone\", \"oak floor\"), an object (\"lantern\", \"armchair\") or a sky (\"sunset field\", \"overcast\")."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "hdri",
+              "texture",
+              "model"
+            ],
+            "description": "hdri for environment light and sky, texture for a PBR surface, model for an object."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10,
+            "description": "How many results (default 5)."
+          },
+          "resolution": {
+            "type": "string",
+            "enum": [
+              "1k",
+              "2k"
+            ],
+            "description": "File resolution (default 1k; 2k only for the hero object)."
+          }
+        },
+        "required": [
+          "query",
+          "type"
+        ]
+      },
+    },
+    handler: (ctx, args) => tools.find3dAssets(ctx, args as unknown as Parameters<typeof tools.find3dAssets>[1]),
+  },
+  {
+    tool: {
       name: 'list_open_design_integrations',
       description:
         "Looks up trusted third-party MCP servers (Canva, Figma, Notion, Google Drive, Slack, posting services such as Buffer and Metricool, X's official server) that a workflow step can use instead of a manual handoff. Call it whenever a step would hand work to another service (import into Canva, read a Figma frame, save to Drive, share in Slack, post to a social network). With no arguments it returns the catalog of capabilities and integrations. With capability, integration and/or platform it returns the providers in priority order (official platform server, then official service, then posting services), the tool-name patterns that show each one is installed, the setup steps for this agent, and the consent rules. Check your own tools (including deferred ones) against those patterns: if one is installed, use it by its server-defined tool name. If none is, offer setup once and only proceed after the user says yes; never install silently, never ask for or write API keys. If the user declines, continue with the workflow's manual path. This tool only returns text: it installs nothing and contacts no service.",

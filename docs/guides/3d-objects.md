@@ -1,6 +1,6 @@
 # 3D objects and product shots
 
-Ask for a product, a logo or an object in 3D, and the agent builds a three.js scene: studio-lit, colored from your [design system](design-systems.md), resting on a soft shadow and turning slowly. Use it as a hero visual, or export a still, a transparent cut-out for slides, or a turntable video.
+Ask for a product, a logo or an object in 3D, and the agent builds a three.js scene: studio-lit, colored from your [design system](design-systems.md), resting on a soft shadow and turning slowly. Use it as a hero visual, or export a still, a transparent cut-out for slides, or a turntable video. For several objects in a setting (a room, a courtyard, a diorama), see [3D scenes](3d-scenes.md).
 
 ## Before you start
 
@@ -24,7 +24,7 @@ In VS Code, the gallery's **New design → 3D object** tile asks what the object
    - **From shapes:** turned profiles for bottles, speakers and cups; extruded and bevelled shapes; rounded boxes for devices.
    - **From a logo:** your SVG mark, extruded with a bevel. It needs filled paths (outlines alone don't extrude).
    - **From your model:** a `.glb` or `.gltf`, copied under `assets/` next to the design. Draco-compressed models work. Whatever the model's size, units or origin, it's set on the ground and framed automatically. Models over 50 MB load slowly; the agent suggests compressing them first (`npx @gltf-transform/cli optimize in.glb out.glb --compress draco`).
-2. **It builds the scene** as one HTML page: physically based materials in your design system's colors, studio lighting from a generated room (no image files), a ground shadow, orbit controls (drag to turn it, scroll to zoom), and a turntable that makes one full turn every 6–12 seconds. If you ask for a setting (a stone hall, a desk), it's built as a quieter environment behind the object.
+2. **It builds the scene** as one HTML page: physically based materials in your design system's colors, studio lighting from a generated room, or a real sky from [Poly Haven](3d-scenes.md#free-assets-from-poly-haven) when reflections matter (glass, chrome, glossy paint), a ground shadow, orbit controls (drag to turn it, scroll to zoom), and a turntable that makes one full turn every 6–12 seconds. If you ask for a setting (a stone hall, a desk), it's built as a quieter environment behind the object.
 3. **It checks the result** with [`check_open_design_artifact`](../reference/tools.md#check_open_design_artifact). Besides the screenshot, the check reports `webgl` when a scene couldn't render:
    - an **error** when the canvas has no WebGL context;
    - a **warning** when the canvas is one flat color, usually because the model didn't load (look for a `broken-asset` finding next to it).
@@ -40,9 +40,9 @@ Ask for what you need, for example "export a transparent PNG and a turntable GIF
 | --- | --- |
 | A still | `format: "png"`, at a preset or size. The turntable stops and the object returns to its best angle first. `selector: "#stage"` captures the scene without the caption. |
 | A transparent cut-out | The scene's background is switched off, then `format: "png"` with `transparent: true`. You get a PNG of the object and its shadow on nothing, ready to drop onto a slide or page. |
-| A turntable | `format: "mp4"`, `"webm"` or `"gif"`, with `duration` set to exactly one turn, so the loop is seamless. See [Export animations](export-animations.md). |
+| A turntable | `format: "mp4"`, `"webm"` or `"gif"`. The scene sets `odScene.duration` to one full turn, so the export is exactly one loop with no duration to pass. See [Export animations](export-animations.md). |
 
-> **From the CLI:** `npx @feimacode/open-design-agent-kit export .open-design/bottle/bottle.html --format png --transparent`, or `--format mp4 --duration 12` for a turntable. See the [CLI reference](../reference/cli.md).
+> **From the CLI:** `npx @feimacode/open-design-agent-kit export .open-design/bottle/bottle.html --format png --transparent`, or `--format mp4` for a turntable. See the [CLI reference](../reference/cli.md).
 
 ## How rendering works
 
@@ -59,4 +59,4 @@ The scene also exposes `odScene.scene`, `camera` and `renderer`. The check uses 
 
 ## Related
 
-[Export images](export-images.md) · [Export animations](export-animations.md) · [Design systems](design-systems.md) · [Troubleshooting](../troubleshooting.md#a-3d-scene-is-blank-webgl)
+[3D scenes](3d-scenes.md) · [Export images](export-images.md) · [Export animations](export-animations.md) · [Design systems](design-systems.md) · [Troubleshooting](../troubleshooting.md#a-3d-scene-is-blank-webgl)

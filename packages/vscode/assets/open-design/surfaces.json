@@ -270,6 +270,20 @@
         "What object, and do you have a .glb model or an SVG logo of it?",
         "Where will it go: a hero still, a transparent cut-out, or a turntable video?"
       ]
+    },
+    {
+      "id": "3d-scene",
+      "label": "3D scene",
+      "description": "A small 3D world: a diorama, room, courtyard or tabletop with a real sky and free CC0 textures and models, as stills or a flythrough video.",
+      "icon": "globe",
+      "status": "ready",
+      "entries": [
+        "3d-scene"
+      ],
+      "questions": [
+        "What's the setting, and what must be in it?",
+        "A still, a flythrough video, or both? Does it need to match a real place or photo?"
+      ]
     }
   ]
 }

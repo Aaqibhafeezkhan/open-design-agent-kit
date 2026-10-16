@@ -32,6 +32,7 @@ Two rules apply to every tool:
 | [`adapt_open_design_artifact`](#adapt_open_design_artifact) | `#od-adapt` | yes | Instructions to re-compose a design for other sizes |
 | [`create_open_design_qr_code`](#create_open_design_qr_code) | `#od-qr-code` | yes | Make a real QR code for a design |
 | [`publish_open_design_artifact`](#publish_open_design_artifact) | `#od-publish` | yes | Package for hosting and get instructions to publish a link |
+| [`find_open_design_3d_assets`](#find_open_design_3d_assets) | `#od-3d-assets` | yes | Find free CC0 HDRIs, textures and models on Poly Haven for a 3D design |
 | [`list_open_design_integrations`](#list_open_design_integrations) | `#od-integrations` | yes | Find trusted integrations (Canva, Figma, Notion, Drive, Slack, social posting) and setup steps for this agent |
 
 ## Catalog
@@ -558,6 +559,33 @@ Packages a registered artifact into a deploy-ready folder (`exports/site/`) and 
 
 ```json
 { "entryPath": ".open-design/launch/launch.html", "provider": "netlify-temporary" }
+```
+
+## Assets
+
+### find_open_design_3d_assets
+
+Searches [Poly Haven](https://polyhaven.com) for free CC0 3D assets and returns the direct file URLs a three.js page needs. **It writes nothing.** The [3D scene](../guides/3d-scenes.md) and [3D object](../guides/3d-objects.md) recipes use it for real sky light, PBR surfaces and models that shapes alone can't make convincingly.
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `query` | string | yes | A few words: a material (`cobblestone`, `oak floor`), an object (`lantern`, `armchair`) or a sky (`sunset field`, `overcast`). |
+| `type` | `hdri` · `texture` · `model` | yes | `hdri` for environment light and sky, `texture` for a PBR surface, `model` for an object. |
+| `limit` | integer 1–10 | no | How many results. Default 5. |
+| `resolution` | `1k` · `2k` | no | File resolution. Default `1k`; `2k` only for the hero object. |
+
+**Result (text):** for each match, ranked by how many words match and then by popularity:
+- the id, name and categories, plus size in meters and polycount for models (triangles can be up to twice the polygon count);
+- the Poly Haven page and a thumbnail;
+- the file URLs: the `.hdr` for an HDRI; diffuse, normal, roughness and ARM (AO, roughness, metalness) JPGs for a texture; the `.gltf` for a model;
+- for a model, an `includes` map from each relative path inside the `.gltf` to its CDN URL. The `.gltf`'s textures live in other folders on the CDN, so a page loads models through a `LoadingManager` URL modifier built from this map. Offline copies that keep the relative layout don't need it.
+
+Every result says the license (CC0: no attribution needed, free for any use) and carries the credit "Powered by Poly Haven (polyhaven.com)", which Poly Haven's API terms ask for. Requests identify the kit by User-Agent, and each type's asset list is fetched once per session. When Poly Haven can't be reached, the result says so and tells the agent to fall back to procedural materials.
+
+**Example (MCP arguments):**
+
+```json
+{ "query": "lantern", "type": "model", "limit": 3 }
 ```
 
 ## Integrations

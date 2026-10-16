@@ -4,6 +4,8 @@
 
 **What we build:** an upright arcade cabinet as a product shot, skinned with the active design system: the marquee shows the brand name, the screen shows a pixel-art title screen drawn live, and the side art uses the brand's colors.
 
+**Skill:** `3d-object`.
+
 **What it tests:** a product with live content on a screen (a canvas texture that updates), skinning from design tokens, emissive light from the screen, and a pixel-art look that stays crisp. It's the 3D counterpart of `mockup-device-3d`.
 
 ## Inputs

@@ -15,6 +15,7 @@ import { PublishCanvaTemplateTool } from './publishCanvaTemplateTool';
 import { PullFigmaFrameTool } from './pullFigmaFrameTool';
 import { CheckArtifactTool } from './checkArtifactTool';
 import { ListIntegrationsTool } from './listIntegrationsTool';
+import { Find3dAssetsTool } from './find3dAssetsTool';
 import { PushFigmaTool } from './pushFigmaTool';
 import { ExportArtifactTool } from './exportArtifactTool';
 import { AdaptArtifactTool } from './adaptArtifactTool';
@@ -53,6 +54,7 @@ export function registerTools(
     ['export_open_design_artifact', new ExportArtifactTool(contentIndex)],
     ['check_open_design_artifact', new CheckArtifactTool(contentIndex)],
     ['list_open_design_integrations', new ListIntegrationsTool(contentIndex)],
+    ['find_open_design_3d_assets', new Find3dAssetsTool()],
     ['adapt_open_design_artifact', new AdaptArtifactTool()],
     ['create_open_design_qr_code', new CreateQrCodeTool()],
     ['add_open_design_diagram_runtime', new AddDiagramRuntimeTool()],

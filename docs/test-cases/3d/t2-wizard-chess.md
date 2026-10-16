@@ -4,6 +4,8 @@
 
 **What we build:** the set as a product shot: board, all 32 pieces in their starting positions, and a dim stone hall behind it. No gameplay, AI or capture animations. Stretch goal: one piece shatters into stone shards when clicked.
 
+**Skill:** `3d-scene` (runs before 2026-10-16 used `3d-object`).
+
 **What it tests:** a family of turned pieces that each read as the right piece, two contrasting materials, warm point light from a fire, and an environment behind the object. The baseline skill places the object on an empty stage, so how it handles the hall shows whether we need `3d-scene`.
 
 ## Inputs

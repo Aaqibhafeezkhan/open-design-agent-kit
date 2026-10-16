@@ -6,7 +6,7 @@ import { PNG } from 'pngjs';
 import type { Browser } from 'puppeteer-core';
 import { findBrowser } from '../../export/browserDiscovery';
 import { checkArtifact, formatCheckResult } from '../../export/checkArtifact';
-import { budgetFindings, captureReviewViews, computePixelMetrics, computeReviewCameras, probeScene, REVIEW_VIEWS, WEBGL_BUDGET, type SceneProbe } from '../../export/sceneReview';
+import { budgetFindings, captureReviewViews, computePixelMetrics, computeReviewCameras, probeScene, REVIEW_VIEWS, sceneSpecFindings, WEBGL_BUDGET, type SceneProbe } from '../../export/sceneReview';
 import { writeArtifactManifest } from '../../vendored/artifactCreate';
 
 type Vec3 = [number, number, number];
@@ -98,6 +98,14 @@ describe('scene review: view math, metrics and budget', () => {
     assert.ok(busy.edgeDensity > 0.1 && busy.contrast > 60 && busy.dominantColorShare < 0.6);
   });
 
+  it('flags a 3d-scene page without its scene spec, and nothing else', () => {
+    const spec = '<script type="application/od-scene+json">{"units":"m"}</script>';
+    assert.strictEqual(sceneSpecFindings('<canvas data-od-webgl></canvas>', 'od:prototype:3d-scene')[0]?.check, 'scene-spec');
+    assert.deepStrictEqual(sceneSpecFindings(spec, 'od:prototype:3d-scene'), []);
+    assert.deepStrictEqual(sceneSpecFindings('<canvas></canvas>', 'od:prototype:3d-object'), []);
+    assert.deepStrictEqual(sceneSpecFindings('<canvas></canvas>', undefined), []);
+  });
+
   it('warns only above the software-rendering budget', () => {
     assert.deepStrictEqual(budgetFindings({ calls: WEBGL_BUDGET.calls, triangles: WEBGL_BUDGET.triangles, geometries: 10, textures: WEBGL_BUDGET.textures }), []);
     const over = budgetFindings({ calls: 450, triangles: 450_000, geometries: 10, textures: 3 });
@@ -117,7 +125,7 @@ describe('scene review: view math, metrics and budget', () => {
  * to (9, 9, 9) every frame. The renderer paints the canvas from the camera
  * position and records each render.
  */
-function mockScene(opts: { handles?: boolean; triangles?: number } = {}): string {
+function mockScene(opts: { handles?: boolean; triangles?: number; tier?: string } = {}): string {
   return `<!doctype html><html><head><style>html,body{margin:0;background:#fff}canvas{display:block;width:480px;height:320px}</style></head><body>
 <canvas id="stage" data-od-webgl width="480" height="320"></canvas>
 <script>
@@ -139,7 +147,11 @@ const subject = new Mesh(2, 2, subjectMat);
 const plane = new Mesh(40, 0.1, { wireframe: false, color: color() });
 const stage = new Obj(); stage.userData.odStage = true; stage.add(plane);
 const shadow = new Mesh(100, 0, { type: 'ShadowMaterial', isShadowMaterial: true, wireframe: false });
-scene.add(subject); scene.add(stage); scene.add(shadow);
+// A tall stage wall at z ≈ 2.4: it sits between some review cameras and the subject.
+const wallMat = { wireframe: false, color: color() };
+const wall = new Mesh(30, 3, wallMat); wall.geometry.computeBoundingBox = function () { this.boundingBox = new Box(new V3(-15, 0, 2.3), new V3(15, 3, 2.5)); };
+const wallStage = new Obj(); wallStage.userData.odStage = true; wallStage.add(wall);
+scene.add(subject); scene.add(stage); scene.add(shadow); scene.add(wallStage);
 const camera = new Obj(); camera.isCamera = true; camera.isPerspectiveCamera = true; camera.fov = 40; camera.aspect = 1.5;
 camera.lookAt = function (x, y, z) { this.target = [x, y, z]; };
 camera.position.set(0, 3, 10);
@@ -158,12 +170,12 @@ const renderer = {
     ctx.fillStyle = 'rgb(' + (40 + Math.abs(p.x * 20) % 200) + ',' + (60 + Math.abs(p.y * 20) % 180) + ',' + (80 + Math.abs(p.z * 20) % 170) + ')';
     ctx.fillRect(0, 0, 480, 320);
     ctx.fillStyle = subjectMat.wireframe ? '#fff' : '#222'; ctx.fillRect(200, 100, 80, 120);
-    window.__renders.push({ position: p.toArray(), wireframe: subjectMat.wireframe, planeVisible: plane.visible });
+    window.__renders.push({ position: p.toArray(), wireframe: subjectMat.wireframe, planeVisible: plane.visible, wallVisible: wall.visible });
   },
 };
 function loop() { camera.position.set(9, 9, 9); renderer.render(scene, camera); requestAnimationFrame(loop); }
 requestAnimationFrame(loop);
-window.odScene = { rotate: true, ready: Promise.resolve()${opts.handles === false ? '' : ', scene, camera, renderer'} };
+window.odScene = { rotate: true, ready: Promise.resolve()${opts.handles === false ? '' : ', scene, camera, renderer'}${opts.tier ? `, tier: '${opts.tier}'` : ''} };
 </script></body></html>`;
 }
 
@@ -203,13 +215,21 @@ describe('scene review in a real browser (skipped when none is installed)', func
       const review = await captureReviewViews(page, p, REVIEW_VIEWS);
       assert.deepStrictEqual(review.shots.map((s) => s.label), ['overview', 'closeup', 'low', 'wireframe']);
       const cams = computeReviewCameras(p)!;
-      const renders = (await page.evaluate('window.__renders')) as Array<{ position: Vec3; wireframe: boolean; planeVisible: boolean }>;
+      const renders = (await page.evaluate('window.__renders')) as Array<{ position: Vec3; wireframe: boolean; planeVisible: boolean; wallVisible: boolean }>;
+      let hidden = 0;
+      let shown = 0;
       for (const name of REVIEW_VIEWS) {
         // The overview and wireframe share a camera; they differ in the wireframe flag.
         const hit = renders.find((r) => r.wireframe === (name === 'wireframe') && r.position.every((v, i) => Math.abs(v - cams[name].position[i]) < 1e-9));
         assert.ok(hit, `rendered the ${name} view`);
         assert.strictEqual(hit!.planeVisible, name !== 'wireframe', 'stage hidden only in wireframe');
+        // The wall at z ≈ 2.4 stands between the farther review cameras and the subject at the origin, so it's hidden.
+        const crosses = cams[name].position[2] > 2.5;
+        if (name !== 'wireframe') assert.strictEqual(hit!.wallVisible, !crosses, `${name}: an occluding stage wall is hidden, others stay`);
+        hidden += crosses ? 1 : 0;
+        shown += crosses ? 0 : 1;
       }
+      assert.ok(hidden > 0 && shown > 0, `the fixture exercises both cases (hidden ${hidden}, shown ${shown})`);
       assert.ok(review.evidence.metrics && review.evidence.renderer);
       assert.strictEqual(review.evidence.renderer!.triangles, 1200);
       assert.deepStrictEqual(review.findings, []);
@@ -248,6 +268,18 @@ describe('scene review in a real browser (skipped when none is installed)', func
     assert.ok(none.ok && none.scene3d === undefined && none.images.every((i) => !i.label.startsWith('3d views')));
     const bad = await checkArtifact({ workspaceRoot: ws, entryPath: entry, views: ['top' as never] });
     assert.ok(!bad.ok && bad.code === 'invalid-args');
+  });
+
+  it('says a blockout is a blockout and asks for a layout-only critique', async () => {
+    const { ws, entry } = await workspaceWith(mockScene({ tier: 'blockout' }));
+    const result = await checkArtifact({ workspaceRoot: ws, entryPath: entry, browserPath, settleMs: 0, maxImages: 2 });
+    assert.ok(result.ok);
+    if (!result.ok) return;
+    assert.strictEqual(result.scene3d?.tier, 'blockout');
+    const text = formatCheckResult(result);
+    assert.match(text, /BLOCKOUT/);
+    assert.match(text, /NOT DONE YET \(3D blockout\)/);
+    assert.doesNotMatch(text, /NOT DONE YET \(3D\):/);
   });
 
   it('notes how to enable review views on a page without handles', async () => {

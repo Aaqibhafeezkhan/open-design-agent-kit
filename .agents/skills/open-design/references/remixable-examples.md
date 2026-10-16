@@ -1,6 +1,6 @@
 # Remixable Open Design examples
 
-192 vendored examples have an actual rendered starting artifact you can copy into the workspace and modify, via `remix_open_design_example` with the `id` shown below as `skillId`, instead of generating from scratch with `prepare_open_design_brief`.
+193 vendored examples have an actual rendered starting artifact you can copy into the workspace and modify, via `remix_open_design_example` with the `id` shown below as `skillId`, instead of generating from scratch with `prepare_open_design_brief`.
 
 ## prototype
 
@@ -12,6 +12,7 @@
 - **od:prototype:competitive-teardown-analyst-dossier** — Competitive Teardown — analyst dossier style: Positioning map, feature matrix, pricing comparison and opportunity windows: turns competitor research into a product decision report. The analyst dossier style variant.
 - **od:prototype:competitive-teardown-radar-map** — Competitive Teardown — radar map style: Positioning map, feature matrix, pricing comparison and opportunity windows: turns competitor research into a product decision report. The radar map style variant.
 - **od:prototype:competitive-teardown-war-room-grid** — Competitive Teardown — war room grid style: Positioning map, feature matrix, pricing comparison and opportunity windows: turns competitor research into a product decision report. The war room grid style variant.
+- **od:prototype:3d-scene:example** — Courtyard at dusk — 3D scene: A small stone courtyard at dusk built from a scene spec: a Poly Haven sky, cobblestone and stone-wall textures, a brass lantern and two wooden planters (all CC0), with a 10-second camera flythrough.
 - **od:prototype:critique:example** — critique: Run a 5-dimension expert design review on any HTML artifact in the project — Philosophy / Visual hierarchy / Detail / Functionality / Innovation, each scored 0–10. Outputs a single self-contained HTML report with a radar chart, evidence-backed scores, and three lists: Keep / Fix / Quick-wins. Use when the brief asks for a "design review", "design critique", "5 维度评审", "design audit", or "what's wrong with my design".
 - **od:prototype:dashboard:example** — dashboard: Admin / analytics dashboard in a single HTML file. Fixed left sidebar, top bar with user/search, main grid of KPI cards and one or two charts. Use when the brief asks for a "dashboard", "admin", "analytics", or "control panel" screen.
 - **od:prototype:data-report:example** — Data Visualization Report: Turns CSV, Excel, or JSON data into a polished visual report page.

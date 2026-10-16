@@ -1,0 +1,47 @@
+{
+ "cobblestone_floor_08": {
+  "name": "Cobblestone Floor 08",
+  "categories": [
+   "road",
+   "floor",
+   "man made",
+   "dirty",
+   "cobblestone"
+  ],
+  "tags": [
+   "cobblestone",
+   "smooth",
+   "old",
+   "moss",
+   "pavement"
+  ],
+  "dimensions": [
+   2000,
+   2000
+  ],
+  "thumbnail_url": "https://cdn.polyhaven.com/asset_img/thumbs/cobblestone_floor_08.png?width=256&height=256&format=webp&v=551eeca1",
+  "download_count": 51838
+ },
+ "aerial_asphalt_01": {
+  "name": "Aerial Asphalt 01",
+  "categories": [
+   "asphalt",
+   "outdoor",
+   "floor",
+   "road",
+   "man made",
+   "aerial"
+  ],
+  "tags": [
+   "road",
+   "flat",
+   "cracked"
+  ],
+  "dimensions": [
+   30000,
+   30000
+  ],
+  "thumbnail_url": "https://cdn.polyhaven.com/asset_img/thumbs/aerial_asphalt_01.png?width=256&height=256&format=webp&v=151f24f1",
+  "download_count": 147819
+ }
+}

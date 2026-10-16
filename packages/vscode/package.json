@@ -1052,6 +1052,51 @@
         }
       },
       {
+        "name": "find_open_design_3d_assets",
+        "displayName": "Find 3D Assets (Poly Haven)",
+        "modelDescription": "Searches Poly Haven (polyhaven.com) for free CC0 3D assets and returns the direct CDN file URLs a three.js page needs: an HDRI (.hdr, for real environment light and reflections), a PBR texture set (diffuse, normal, roughness, AO/roughness/metal JPGs) or a model (.gltf plus its included files). Use it in 3D designs when procedural shapes and RoomEnvironment aren't enough: a stone floor, a wood table, a sky, a lantern, a chair. Each result has its id, name, categories, size in meters for models, a thumbnail, the file URLs at 1k (default) or 2k, the license (CC0: no attribution needed) and a 'Powered by Poly Haven' credit. Load the files straight from their URLs (the CDN allows it) or download them into the design's assets/ for offline use; for a model, map its includes with a LoadingManager URL modifier. Writes nothing. If Poly Haven can't be reached, it says so: fall back to procedural materials.",
+        "userDescription": "Find free CC0 HDRIs, textures and models on Poly Haven for a 3D design",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "od-3d-assets",
+        "icon": "$(package)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "What to find, in a few words: a material (\"cobblestone\", \"oak floor\"), an object (\"lantern\", \"armchair\") or a sky (\"sunset field\", \"overcast\")."
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "hdri",
+                "texture",
+                "model"
+              ],
+              "description": "hdri for environment light and sky, texture for a PBR surface, model for an object."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10,
+              "description": "How many results (default 5)."
+            },
+            "resolution": {
+              "type": "string",
+              "enum": [
+                "1k",
+                "2k"
+              ],
+              "description": "File resolution (default 1k; 2k only for the hero object)."
+            }
+          },
+          "required": [
+            "query",
+            "type"
+          ]
+        }
+      },
+      {
         "name": "adapt_open_design_artifact",
         "displayName": "Adapt Open Design Artifact to Other Formats",
         "modelDescription": "Re-composes a finished, registered design for other canvas formats: the same message, copy hierarchy and design system, laid out again for each new size rather than scaled. Use when the user wants a poster or post \"in other sizes\", \"for Instagram and Stories too\", \"as an A3 print as well\", and so on. Returns, per format, instructions (with the master's HTML, that format's canvas rules and re-composition rules), a suggested entry path and the exact arguments to register it with. Writes no design file: write each adaptation yourself, register it with its registerArgs, then preflight and export it with its preset. The master and its adaptations are grouped as one collection (the master is added to a new one if it isn't in one). FLUID designs (data-od-fluid) already reflow to every shape, so for them it returns mode \"tune\" instead: per shape, instructions to check the master at that shape and fix it in place with @container rules; no new files and no collection.",

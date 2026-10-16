@@ -57,6 +57,7 @@ export * from './export/exportArtifact';
 export * from './export/checkArtifact';
 export * from './export/webgl';
 export * from './export/sceneReview';
+export * from './assets/polyHaven';
 export * from './export/inlineExport';
 export * from './export/motion/ffmpeg';
 export * from './export/motion/motionExport';

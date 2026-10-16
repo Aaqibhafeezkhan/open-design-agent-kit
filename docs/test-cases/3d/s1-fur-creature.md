@@ -4,6 +4,8 @@
 
 **What we build:** the creature as a still and a short turntable. No fur physics, AR camera or environment switching.
 
+**Skill:** `3d-object`.
+
 **What it tests:** where rendering stops working. Fur needs a heavy technique (shell texturing: dozens of stacked, alpha-tested copies of the mesh), which strains software WebGL in export and the check. A failure here is a useful result: it shows how export and the check report a scene that's too heavy.
 
 ## Inputs

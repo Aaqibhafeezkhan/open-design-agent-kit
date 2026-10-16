@@ -22,6 +22,8 @@ export interface SceneProbe {
   camera?: { position: Vec3; fov: number; aspect: number };
   focus?: Vec3 | null;
   views?: Record<string, { position: Vec3; target: Vec3 }>;
+  /** `odScene.tier` (add-3d-scene): a blockout is judged on layout only. */
+  tier?: 'blockout' | 'finished';
 }
 
 export interface ReviewCamera {
@@ -52,6 +54,8 @@ export interface SceneEvidence {
   renderer?: RendererStats;
   /** Why no review views were rendered, when they weren't. */
   note?: string;
+  /** `odScene.tier`, when the page sets it. */
+  tier?: 'blockout' | 'finished';
 }
 
 const deg = Math.PI / 180;
@@ -162,6 +166,32 @@ export const REVIEW_PAGE_SCRIPT = `(() => {
     return box;
   };
   const vec = (v) => (Array.isArray(v) && v.length === 3 && v.every((n) => typeof n === 'number' && isFinite(n)) ? v : null);
+  // A stage mesh (a wall, a backdrop) between the review camera and its target would hide the subject:
+  // hide it for that view. Segment-vs-box slab test on the mesh's world bounds.
+  const blocks = (box, from, to) => {
+    let t0 = 0, t1 = 1;
+    for (const axis of ['x', 'y', 'z']) {
+      const d = to[axis] - from[axis];
+      if (Math.abs(d) < 1e-9) { if (from[axis] < box.min[axis] || from[axis] > box.max[axis]) return false; continue; }
+      let a = (box.min[axis] - from[axis]) / d, b = (box.max[axis] - from[axis]) / d;
+      if (a > b) { const t = a; a = b; b = t; }
+      t0 = Math.max(t0, a); t1 = Math.min(t1, b);
+      if (t0 > t1) return false;
+    }
+    return true;
+  };
+  const hideOccludingStage = (s, view) => {
+    const from = { x: view.position[0], y: view.position[1], z: view.position[2] };
+    const to = { x: view.target[0], y: view.target[1], z: view.target[2] };
+    s.scene.updateMatrixWorld(true);
+    s.scene.traverse((o) => {
+      if (!o.isMesh || !o.visible || !isStage(o) || !o.geometry) return;
+      if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+      const box = o.geometry.boundingBox && o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
+      // The ground under everything is never the occluder that matters here.
+      if (box && box.max.y - box.min.y > 1e-3 && blocks(box, from, to)) o.visible = false;
+    });
+  };
   let saved = null;
   window.__odReview = {
     probe() {
@@ -187,6 +217,7 @@ export const REVIEW_PAGE_SCRIPT = `(() => {
         camera: { position: cam.position.toArray(), fov: cam.fov || 50, aspect: cam.aspect || 1 },
         focus,
         views,
+        tier: s.tier === 'blockout' || s.tier === 'finished' ? s.tier : undefined,
       };
     },
     freeze() {
@@ -231,6 +262,7 @@ export const REVIEW_PAGE_SCRIPT = `(() => {
           else o.visible = false;
         });
       }
+      if (!view.wireframe) hideOccludingStage(s, view);
       const cam = s.camera;
       cam.up.set(0, 1, 0);
       cam.position.set(view.position[0], view.position[1], view.position[2]);
@@ -391,7 +423,7 @@ export async function captureReviewViews(
   names: readonly ReviewView[],
 ): Promise<{ shots: Array<{ label: ReviewView; png: Buffer }>; evidence: SceneEvidence; findings: Finding[] }> {
   const cameras = computeReviewCameras(probe, names);
-  if (!cameras) return { shots: [], evidence: { views: [], note: reviewUnavailableNote(probe) }, findings: [] };
+  if (!cameras) return { shots: [], evidence: { views: [], note: reviewUnavailableNote(probe), tier: probe.tier }, findings: [] };
   const shots: Array<{ label: ReviewView; png: Buffer }> = [];
   let stats: RendererStats | undefined;
   let metrics: PixelMetrics | undefined;
@@ -416,7 +448,7 @@ export async function captureReviewViews(
   }
   return {
     shots,
-    evidence: { views: shots.map((s) => s.label), metrics, renderer: stats },
+    evidence: { views: shots.map((s) => s.label), metrics, renderer: stats, tier: probe.tier },
     findings: stats ? budgetFindings(stats) : [],
   };
 }
@@ -436,7 +468,8 @@ export function formatSceneEvidence(evidence: SceneEvidence): string[] {
     lines.push(`Renderer: ${r.calls} draw calls, ${r.triangles.toLocaleString('en-US')} triangles, ${r.geometries} geometries, ${r.textures} textures.`);
   }
   if (evidence.note) lines.push(evidence.note);
-  if (evidence.views.length > 0) lines.push(CRITIQUE_REMINDER);
+  if (evidence.tier === 'blockout') lines.push(BLOCKOUT_NOTE);
+  if (evidence.views.length > 0) lines.push(evidence.tier === 'blockout' ? BLOCKOUT_CRITIQUE : CRITIQUE_REMINDER);
   return lines;
 }
 
@@ -445,4 +478,26 @@ export function formatSceneEvidence(evidence: SceneEvidence): string[] {
  * (add-3d-critic-loop): a clean check only means the scene renders.
  */
 export const CRITIQUE_REMINDER =
-  "NOT DONE YET (3D): a clean check only means the scene renders, not that it looks right. Before telling the user it's done, get a critique of this review sheet and the desktop/mobile screenshots against the user's brief: from a subagent if your host has one (the Agent tool in Claude Code, runSubagent in VS Code), otherwise in a separate critic pass that judges only these images and the brief. Use the 3d-object skill's scorecard: form, materials, light, composition (judged on the desktop/mobile shots), stage, fidelity, technical, each 0–3, plus its automatic failures, and at least three flaws, each with the view, where, and a fix. Fix them, check again and get a new critique until every category is at least 2 with no automatic failure, for at most three critique rounds; then tell the user the scores and anything left. (If you are the critic, just score and list the flaws.)";
+  "NOT DONE YET (3D): a clean check only means the scene renders, not that it looks right. Before telling the user it's done, get a critique of this review sheet and the desktop/mobile screenshots against the user's brief: from a subagent if your host has one (the Agent tool in Claude Code, runSubagent in VS Code), otherwise in a separate critic pass that judges only these images and the brief. Use the scorecard from the skill you're following (3d-object or 3d-scene): form, materials, light, composition (judged on the desktop/mobile shots), stage, fidelity, technical, each 0–3, plus its automatic failures, and at least three flaws, each with the view, where, and a fix. Fix them, check again and get a new critique until every category is at least 2 with no automatic failure, for at most three critique rounds; then tell the user the scores and anything left. (If you are the critic, just score and list the flaws.)";
+
+/** A blockout (odScene.tier = "blockout"; add-3d-scene): boxes and simple forms with the final layout, camera and light. */
+export const BLOCKOUT_NOTE = 'This scene is a BLOCKOUT (odScene.tier = "blockout"): judge layout, scale and framing only. A blockout is never the final design.';
+
+/** The critique request for a blockout: one round on layout and composition, then build the finished scene. */
+export const BLOCKOUT_CRITIQUE =
+  "NOT DONE YET (3D blockout): get one critique of this review sheet and the desktop/mobile screenshots on layout, scale and composition only, from a subagent if your host has one (the Agent tool in Claude Code, runSubagent in VS Code), otherwise in a separate critic pass. Fix the layout, then build the finished scene (set odScene.tier to \"finished\"), check it again and run the full critique from the 3d-object or 3d-scene skill. Never present a blockout to the user as the final design. (If you are the critic, just score and list the flaws.)";
+
+/** The scene spec block a 3d-scene page carries (add-3d-scene). */
+export const SCENE_SPEC_SELECTOR_RE = /<script[^>]*type\s*=\s*["']application\/od-scene\+json["']/i;
+
+/** A `scene-spec` warning for a page made from the 3d-scene skill without its scene spec block. */
+export function sceneSpecFindings(entryContent: string, sourceSkillId: string | undefined): Finding[] {
+  if (!sourceSkillId || !/(^|:)3d-scene(:|$)/.test(sourceSkillId) || SCENE_SPEC_SELECTOR_RE.test(entryContent)) return [];
+  return [
+    {
+      check: 'scene-spec',
+      severity: 'warning',
+      message: 'This 3d-scene page has no scene spec (<script type="application/od-scene+json">). Add it with explicit, inferred, units, layout, views (including hero), path and duration if it moves, assets and seed, and place objects and the camera from it.',
+    },
+  ];
+}

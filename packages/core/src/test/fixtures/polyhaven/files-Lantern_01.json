@@ -1,0 +1,62 @@
+{
+ "gltf": {
+  "1k": {
+   "gltf": {
+    "include": {
+     "textures/Lantern_01_brass_arm_1k.jpg": {
+      "size": 229054,
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/Lantern_01/Lantern_01_brass_arm_1k.jpg",
+      "md5": "cad411a300663678f546ed8b1c9b97f1"
+     },
+     "Lantern_01.bin": {
+      "size": 864852,
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/4k/Lantern_01/Lantern_01.bin",
+      "md5": "857a868798e7e5f40d78c2d09e6f8ea0"
+     },
+     "textures/Lantern_01_brass_nor_gl_1k.jpg": {
+      "size": 180646,
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/Lantern_01/Lantern_01_brass_nor_gl_1k.jpg",
+      "md5": "6d6805ac7932d9927f7ec817db77b5d5"
+     },
+     "textures/Lantern_01_brass_diff_1k.jpg": {
+      "size": 140998,
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/Lantern_01/Lantern_01_brass_diff_1k.jpg",
+      "md5": "e8abf88b7ac60649c54c8d0a639f0713"
+     }
+    },
+    "size": 4866,
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/Lantern_01/Lantern_01_1k.gltf",
+    "md5": "61fbf9f6e215ab4ff1123d6cbfd337a6"
+   }
+  },
+  "2k": {
+   "gltf": {
+    "include": {
+     "textures/Lantern_01_brass_diff_2k.jpg": {
+      "size": 519828,
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/Lantern_01/Lantern_01_brass_diff_2k.jpg",
+      "md5": "e28d5e3c524040c2910bd9d19ce45a35"
+     },
+     "textures/Lantern_01_brass_nor_gl_2k.jpg": {
+      "size": 805944,
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/Lantern_01/Lantern_01_brass_nor_gl_2k.jpg",
+      "md5": "ddf52226353a7329997c143d5c26a79b"
+     },
+     "textures/Lantern_01_brass_arm_2k.jpg": {
+      "size": 847840,
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/Lantern_01/Lantern_01_brass_arm_2k.jpg",
+      "md5": "10a5d10c22dca0ededd3b65e65f70107"
+     },
+     "Lantern_01.bin": {
+      "size": 864852,
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/4k/Lantern_01/Lantern_01.bin",
+      "md5": "857a868798e7e5f40d78c2d09e6f8ea0"
+     }
+    },
+    "size": 4866,
+    "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/2k/Lantern_01/Lantern_01_2k.gltf",
+    "md5": "547ce8bced853073ef9d9367f0ee1930"
+   }
+  }
+ }
+}

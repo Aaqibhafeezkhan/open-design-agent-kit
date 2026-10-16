@@ -8,7 +8,7 @@ Run every case once on the current `3d-object` skill to set a baseline, then aga
 |---|---|
 | Critic loop + multi-angle check | All |
 | Reference-image matching (camera, horizon, grid overlay) | T3, T4 |
-| `3d-scene` surface (several objects, environments, camera paths) | T2, T3, T4 |
+| `3d-scene` skill, Poly Haven assets, camera paths (`add-3d-scene`) | T2, T3, T4 |
 | Optional headless Blender bridge | T2, T3 |
 
 ## Cases
@@ -62,3 +62,5 @@ Keep the screenshots out of git. Add one row per run here:
 | 2026-10-15 | T2 | `d0fb134` baseline | Claude Code + Opus 5.5 | 0/0 | 2/2 | 5 | 5 | 5 | 6 | 3 | 1 | check 34 s, turntable 5 min | No chessboard squares, slab knights, floating plinth. [Details](baseline-2026-10-15.md) |
 | 2026-10-15 | T1 | `add-3d-critic-loop` | Claude Code + Opus 5.5, critic subagent | 0/0 | 3/3 | 7 | 6 | 6 | 4 | 7 | 3 critic rounds (fail) | turntable 1 min 44 s | Glass, lake, houses and lighthouse fixed; glass highlight and ground still weak. [Details](rerun-2026-10-15-critic-loop.md) |
 | 2026-10-15 | T2 | `add-3d-critic-loop` | Claude Code + Opus 5.5, critic subagent | 0/0 | 2/2 | 6 | 6 | 6 | 7 | 7 | 3 critic rounds (fail) | turntable 5 min 36 s | Board, runes, plinth and framing fixed; white knights and materials still weak. [Details](rerun-2026-10-15-critic-loop.md) |
+| 2026-10-16 | T2 | `add-3d-scene` (3d-scene skill) | Claude Code + Opus 5.5, critic subagent | 0/0 | 2/2 | 7 | 6 | 6 | 6 | 8 | 3 critic rounds (fail) | turntable 5 min | Poly Haven chess-set knights fixed form and fidelity; materials, light and the mobile frame still weak. [Details](run-2026-10-16-3d-scene.md) |
+| 2026-10-16 | T4 | `add-3d-scene` (3d-scene skill), generic desk | Claude Code + Opus 5.5, critic subagent | 0/0 | 1/1 | 6 | 5 | 5 | 5 | 6 | 3 critic rounds (fail, no automatic failure) | — | Five Poly Haven assets, a 1:87 loop; wood, lamp light and framing still weak. No desk photos yet. [Details](run-2026-10-16-3d-scene.md) |

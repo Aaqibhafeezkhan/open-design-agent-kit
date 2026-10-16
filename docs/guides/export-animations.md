@@ -22,6 +22,7 @@ Any animated design works: the motion templates in the gallery's **Animation** t
 3. **The length comes from the page.** In order:
    - the `duration` you ask for;
    - the sum of the frames' `data-duration` values (storyboards);
+   - a 3D scene's `window.odScene.duration`: a [camera flythrough](3d-scenes.md)'s length, or one full turn of a [3D object](3d-objects.md)'s turntable;
    - the longest CSS or Web animation;
    - 6 seconds, for designs that only loop.
 

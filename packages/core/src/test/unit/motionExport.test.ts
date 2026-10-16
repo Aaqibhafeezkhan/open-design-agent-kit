@@ -17,6 +17,11 @@ describe('motion export: pure parts', () => {
   it('resolves duration from data-duration, then animations, then the default, with a 60s cap', () => {
     assert.deepStrictEqual(resolveDurationMs({ dataDurations: [3000, 3000, 4000], finiteAnimationEnds: [9000], infiniteAnimations: 0 }).ms, 10000);
     assert.strictEqual(resolveDurationMs({ dataDurations: [3000], finiteAnimationEnds: [], infiniteAnimations: 0 }).source, 'data-duration');
+    // A 3D camera path (odScene.duration, seconds) comes after data-duration and before animations.
+    assert.deepStrictEqual(resolveDurationMs({ dataDurations: [], finiteAnimationEnds: [9000], infiniteAnimations: 0, sceneSeconds: 12 }), { ms: 12000, source: '3d-scene', note: undefined });
+    assert.strictEqual(resolveDurationMs({ dataDurations: [4000], finiteAnimationEnds: [], infiniteAnimations: 0, sceneSeconds: 12 }).source, 'data-duration');
+    assert.strictEqual(resolveDurationMs({ dataDurations: [], finiteAnimationEnds: [], infiniteAnimations: 0, sceneSeconds: 0 }).source, 'default');
+    assert.strictEqual(resolveDurationMs({ dataDurations: [], finiteAnimationEnds: [], infiniteAnimations: 0, sceneSeconds: 90 }).ms, 60000);
     assert.deepStrictEqual(resolveDurationMs({ dataDurations: [], finiteAnimationEnds: [1200, 3700], infiniteAnimations: 2 }), { ms: 3700, source: 'animations', note: undefined });
     const looping = resolveDurationMs({ dataDurations: [], finiteAnimationEnds: [], infiniteAnimations: 1 });
     assert.deepStrictEqual([looping.ms, looping.source], [6000, 'default']);

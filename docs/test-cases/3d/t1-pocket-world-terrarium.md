@@ -4,6 +4,8 @@
 
 **What we build:** the orb on its stand as a product shot, turning slowly. No world-builder controls.
 
+**Skill:** `3d-object`.
+
 **What it tests:** glass that reads as glass, a turned wooden stand, many small props on a curved surface, and keeping a busy object readable. The current `3d-object` skill should handle this, so it's the baseline case.
 
 ## Inputs

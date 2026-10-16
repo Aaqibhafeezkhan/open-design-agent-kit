@@ -4,6 +4,8 @@
 
 **What we build:** an aerial view of the great house as it stands today (ruined walls), with the cliff behind. No LiDAR terrain and no season or sun controls.
 
+**Skill:** `3d-scene`.
+
 **What it tests:** workflow 6 in Google's guide: a 2D plan with dimensions first, then a 3D scene extruded from it, so proportions don't drift. Hundreds of rooms make it the most demanding scene for geometry count.
 
 ## Inputs

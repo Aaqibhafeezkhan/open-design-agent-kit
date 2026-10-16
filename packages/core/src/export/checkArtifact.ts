@@ -22,7 +22,7 @@ import { indexCheckSlides, markCheckSlide } from './deck/pageScripts';
 import { PRESENTER_CLONE_SELECTOR, SLIDE_SELECTOR } from './deck/selectors';
 import { fitFindings, loadPage, type ExportErrorCode } from './exportArtifact';
 import { usesWebgl, webglFindings } from './webgl';
-import { captureReviewViews, composeReviewSheet, formatSceneEvidence, probeScene, REVIEW_VIEWS, reviewUnavailableNote, type ReviewView, type SceneEvidence } from './sceneReview';
+import { captureReviewViews, composeReviewSheet, formatSceneEvidence, probeScene, REVIEW_VIEWS, reviewUnavailableNote, sceneSpecFindings, type ReviewView, type SceneEvidence } from './sceneReview';
 import { ELEMENT_LAYOUT_VIEWPORT, isValidDimension, resolveExportSize } from './exportSize';
 import { getFormat, isFluidHtml } from '../poster/formats';
 import { applyShape, collectHorizontalScroll, fitBoundText, type ShapeCss } from '../poster/pageScripts';
@@ -274,7 +274,7 @@ export async function checkArtifact(options: CheckArtifactOptions): Promise<Chec
       viewports: mode === 'page' ? viewports : undefined,
       ok: true,
       mode,
-      findings: [...tileFindings, ...webgl, ...out.findings, ...brokenAssetFindings(warnings), ...staleFindings],
+      findings: [...tileFindings, ...webgl, ...sceneSpecFindings(artifact.entryContent, sourceSkillId), ...out.findings, ...brokenAssetFindings(warnings), ...staleFindings],
       images,
       omitted: [...out.omitted, ...dropped],
       slideCount: mode === 'deck' ? slideCount : undefined,
@@ -313,7 +313,7 @@ export async function checkArtifact(options: CheckArtifactOptions): Promise<Chec
         result.images.splice(Math.min(1, result.images.length), 0, await toCheckImage(instance, label, await composeReviewSheet(instance, review.shots)));
       }
     } else if (probe) {
-      result.scene3d = { views: [], note: reviewUnavailableNote(probe) };
+      result.scene3d = { views: [], note: reviewUnavailableNote(probe), tier: probe.tier };
     }
     if (/\bdata-od-email\b/.test(artifact.entryContent)) {
       // Email artifacts (a [data-od-email] column root): the email rules too, measured at a wide client width (local images are a note here; export enforces baseUrl).

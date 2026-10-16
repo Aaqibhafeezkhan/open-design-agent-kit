@@ -29,6 +29,9 @@ import {
   type PasteTarget,
   type CheckViewport,
   type ReviewView,
+  find3dAssets as find3dAssetsCore,
+  formatFound3dAssets,
+  type Find3dAssetsInput,
   publishArtifact as publishArtifactCore,
   exportsForKind,
   formatExportResult,
@@ -606,4 +609,9 @@ export async function chooseDirection(ctx: ToolContext, input: ChooseDirectionIn
 
 export async function readSource(ctx: ToolContext, input: { path: string }): Promise<string> {
   return readSourceTool(ctx, input);
+}
+
+/** find_open_design_3d_assets: searches Poly Haven for CC0 HDRIs, textures and models; writes nothing. */
+export async function find3dAssets(_ctx: ToolContext, input: Find3dAssetsInput): Promise<string> {
+  return formatFound3dAssets(await find3dAssetsCore(input));
 }

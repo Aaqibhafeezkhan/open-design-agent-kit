@@ -4,6 +4,8 @@
 
 **What we build:** a still diorama of our own desk with a miniature track on it, framed like the photo. No driving or physics.
 
+**Skill:** `3d-scene`.
+
 **What it tests:** matching a real photo: camera angle, horizon and scale (workflow 6 in the guide), plus a scale change late in the run (the guide's 1:87 → 1:150 step).
 
 ## Inputs

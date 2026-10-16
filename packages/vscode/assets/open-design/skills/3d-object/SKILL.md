@@ -69,7 +69,8 @@ Don't write three.js script tags from memory: `build/three.min.js` no longer exi
 - **Canvas:** one full-bleed `<canvas id="stage" data-od-webgl>` passed to `WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true })`. Size it from the canvas's CSS box on load and on `resize`, and keep the whole object in frame on tall, narrow canvases (move the camera back when the aspect is below 1).
 - **Color:** `outputColorSpace = SRGBColorSpace`, `toneMapping = ACESFilmicToneMapping`.
 - **Materials:** physically based (`MeshStandardMaterial` / `MeshPhysicalMaterial`), with colors read from the design system's tokens (`getComputedStyle(document.documentElement).getPropertyValue('--accent')`) so the object matches the page: the body from `--surface` or `--fg`, one detail from `--accent`. Choose roughness and metalness for the real material (matte plastic 0.6–0.9 rough, brushed metal metalness 1 at 0.25–0.4 rough, glossy paint with `clearcoat`). Keep a user model's own materials unless asked to recolor it.
-- **Light:** studio light from a generated room: `scene.environment = new PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture`, plus one shadow-casting key `DirectionalLight` (soft shadows: `PCFSoftShadowMap`, `shadow.radius` about 6). No HDR files.
+- **Light:** studio light from a generated room: `scene.environment = new PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture`, plus one shadow-casting key `DirectionalLight` (soft shadows: `PCFSoftShadowMap`, `shadow.radius` about 6). When real reflections matter (glass, chrome, glossy paint) or the brief names a setting's light (a sunset, a studio, a forest), find an HDRI with `find_open_design_3d_assets` (`type: "hdri"`, free CC0 files from Poly Haven) and light from it: `new RGBELoader().loadAsync(url)` from `three/addons/loaders/RGBELoader.js`, then `scene.environment = pmrem.fromEquirectangular(tex).texture`. Load it inside `ready`. The same tool finds PBR textures (wood, metal, fabric) and models when shapes alone won't do.
+- **Glass:** don't use `transmission`: it renders unreliably in software WebGL, where checks and exports run, and costs an extra render per frame. Use a thin clear shell instead (`MeshPhysicalMaterial` with `transparent: true`, `opacity` 0.1–0.2, `roughness` about 0.03, `clearcoat: 1`, `envMapIntensity` about 1.6, `depthWrite: false`), and light it from an HDRI so it shows real highlights.
 - **Stage:** a large ground plane with `ShadowMaterial` (opacity 0.12–0.2) under the object. When the brief asks for a setting (a hall, a desk, a shelf), build it as an environment: put it in its own group with `userData.odStage = true`, and keep it darker, softer and less detailed than the object so it never competes with it. Review views frame the object and leave the stage out. `scene.background` is the `--bg` color, or `null` for a transparent cut-out.
 - **Controls:** `OrbitControls` with damping, no pan for single objects, `maxPolarAngle` just under 90° so the camera never goes below the floor, and min/max distance around the framed distance.
 - **Budget:** at most about 200k triangles and 2048 px textures, so it stays smooth in software rendering. Lathe and torus segments of 64–160 are plenty.
@@ -82,7 +83,7 @@ Exports, the visual check and motion export rely on it:
 
 ```js
 const start = performance.now();
-window.odScene = { rotate: true, rotationSeconds: ROTATION_SECONDS, ready: undefined, scene, camera, renderer, controls };
+window.odScene = { rotate: true, rotationSeconds: ROTATION_SECONDS, duration: ROTATION_SECONDS, ready: undefined, scene, camera, renderer, controls };
 function pose(now) {
   const turn = window.odScene.rotate ? (((now - start) / 1000) / ROTATION_SECONDS) * Math.PI * 2 : 0;
   product.rotation.y = AUTHORED_ANGLE + turn;
@@ -147,5 +148,5 @@ Judge **composition** on the desktop and mobile screenshots, which show your own
 
 - **Still:** `export_open_design_artifact` with `format: "png"` (or a preset). Add `selector: "#stage"` to capture only the scene.
 - **Transparent cut-out:** set `TRANSPARENT = true` in the file (or make a copy that does), then export with `format: "png"`, `transparent: true`. A warning that no pixel is transparent means the page or scene still paints a background.
-- **Turntable:** `format: "mp4"` (or `"gif"` for a small loop, `"webm"`) with `duration` set to exactly `ROTATION_SECONDS`, so the last frame meets the first and the loop is seamless. Keep `ROTATION_SECONDS` between 6 and 12; a GIF loops best at 6–8 seconds and 480–720 px wide.
+- **Turntable:** `format: "mp4"` (or `"gif"` for a small loop, `"webm"`). With `odScene.duration` set to `ROTATION_SECONDS`, the export is exactly one turn and the loop is seamless, with no `duration` to pass. Keep `ROTATION_SECONDS` between 6 and 12; a GIF loops best at 6–8 seconds and 480–720 px wide.
 - The scene loads three.js from the CDN, so viewers need a connection, including for `standalone` exports.

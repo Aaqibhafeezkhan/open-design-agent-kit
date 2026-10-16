@@ -1,0 +1,42 @@
+{
+ "studio_small_09": {
+  "name": "Studio Small 09",
+  "categories": [
+   "medium contrast",
+   "indoor",
+   "urban",
+   "artificial light",
+   "studio"
+  ],
+  "tags": [
+   "umbrella",
+   "softbox",
+   "infinity",
+   "lamp",
+   "studio",
+   "photo"
+  ],
+  "thumbnail_url": "https://cdn.polyhaven.com/asset_img/thumbs/studio_small_09.png?width=256&height=256&format=webp&v=54291356",
+  "download_count": 709137
+ },
+ "aerodynamics_workshop": {
+  "name": "Aerodynamics Workshop",
+  "categories": [
+   "indoor",
+   "urban",
+   "morning-afternoon",
+   "medium contrast",
+   "natural light",
+   "artificial light"
+  ],
+  "tags": [
+   "machine",
+   "industrial",
+   "workshop",
+   "wind tunnel",
+   "window"
+  ],
+  "thumbnail_url": "https://cdn.polyhaven.com/asset_img/thumbs/aerodynamics_workshop.png?width=256&height=256&format=webp&v=a692478a",
+  "download_count": 77724
+ }
+}

@@ -26,6 +26,7 @@ Task-by-task, for every host ([how the guides are laid out](guides/README.md)):
 - [Turn a document into a deck](guides/deck-from-a-document.md): reports, spreadsheets, PDFs or repo files to slides, storyline first, numbers checked
 - [Diagrams of your code](guides/diagrams.md): architecture and dependency diagrams drawn from the repo, laid out automatically
 - [3D objects and product shots](guides/3d-objects.md): a lit three.js scene, exported as a still, a transparent cut-out or a turntable video
+- [3D scenes](guides/3d-scenes.md): a small world (a room, a courtyard, a diorama) planned first, lit by a real sky, with free CC0 textures and models, as stills or a flythrough video
 - [Engineering documents](guides/engineering-docs.md): RFCs, ADRs, postmortems, PR explainers and changelog pages grounded in git, and a folder of Markdown docs as designed pages
 - [Design systems](guides/design-systems.md): the active design system, and how to specify, switch, invent or import one
 - [Remix and the gallery](guides/remix-and-gallery.md): start from a real example instead of a blank page

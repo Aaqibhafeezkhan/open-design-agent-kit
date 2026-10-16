@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Courtyard at dusk — 3D scene</title>
+<style>
+:root {
+  --bg: #2a2230;
+  --fg: #f4ece2;
+  --muted: #c9b9a8;
+  --accent: #f0a84a;
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
+  --text-sm: 14px;
+  --text-3xl: 40px;
+  --leading-tight: 1.05;
+}
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font-family: var(--font-body); overflow: hidden; }
+#stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; outline: none; }
+.caption { position: fixed; left: 48px; bottom: 44px; pointer-events: none; text-shadow: 0 1px 12px rgba(0, 0, 0, 0.45); }
+.caption h1 { margin: 0; font: 600 var(--text-3xl)/var(--leading-tight) var(--font-display); letter-spacing: -0.01em; }
+.caption p { margin: 6px 0 0; color: var(--muted); font-size: var(--text-sm); }
+@media (max-width: 600px) { .caption { left: 24px; bottom: 28px; } }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<!-- The scene spec: the page builds everything from it (3d-scene skill, section 1). -->
+<script type="application/od-scene+json" id="scene-spec">
+{
+  "explicit": ["small stone courtyard", "dusk", "cobblestones", "rough stone walls on three sides", "brass lantern on a post", "two wooden planters", "flythrough"],
+  "inferred": ["8 × 6 m floor", "packed earth around the courtyard", "a 0.46 m lantern, larger than the model's 0.29 m so it reads as the focal point", "walls 2.4 m high and 0.4 m thick, with a 1.4 m opening in the back wall", "lantern on a 1.7 m iron post, left of center", "a stone bench on the right", "warm lantern light against a cool sky"],
+  "units": "m",
+  "seed": 7,
+  "layout": [
+    { "name": "floor", "position": [0, 0, 0], "size": [8, 0.1, 6] },
+    { "name": "wall-back-left", "position": [-2.35, 1.2, -3], "size": [3.3, 2.4, 0.4] },
+    { "name": "wall-back-right", "position": [2.35, 1.2, -3], "size": [3.3, 2.4, 0.4] },
+    { "name": "lintel", "position": [0, 2.15, -3], "size": [1.4, 0.5, 0.4] },
+    { "name": "wall-left", "position": [-4, 1.2, 0], "size": [0.4, 2.4, 6.4] },
+    { "name": "wall-right", "position": [4, 1.2, 0], "size": [0.4, 2.4, 6.4] },
+    { "name": "bench", "position": [2.6, 0.22, 0.4], "size": [0.5, 0.45, 1.8] },
+    { "name": "post", "position": [-1.3, 0, 0.3], "size": [0.06, 1.7, 0.06] },
+    { "name": "lantern", "position": [-1.3, 1.7, 0.3], "size": [0.19, 0.46, 0.15] },
+    { "name": "plant-left", "position": [-3.2, 0, -2.3], "size": [0.91, 0.86, 0.66] },
+    { "name": "plant-right", "position": [3.2, 0, -2.3], "size": [0.91, 0.86, 0.66] }
+  ],
+  "views": { "hero": { "position": [2.2, 2.2, 8.4], "target": [-0.4, 1.1, -0.6], "fov": 42 } },
+  "path": [
+    { "t": 0, "position": [3.2, 2.7, 9.6], "target": [0, 1.1, -0.8] },
+    { "t": 10, "position": [0.4, 1.65, 3.4], "target": [-1.3, 1.6, 0.2] }
+  ],
+  "duration": 10,
+  "assets": [
+    { "source": "polyhaven", "id": "qwantani_dusk_2_puresky", "url": "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/qwantani_dusk_2_puresky_1k.hdr", "license": "CC0" },
+    { "source": "polyhaven", "id": "cobblestone_floor_04", "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/cobblestone_floor_04/", "license": "CC0" },
+    { "source": "polyhaven", "id": "rustic_stone_wall_02", "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rustic_stone_wall_02/", "license": "CC0" },
+    { "source": "polyhaven", "id": "Lantern_01", "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/Lantern_01/Lantern_01_1k.gltf", "license": "CC0" },
+    { "source": "polyhaven", "id": "planter_box_03", "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/planter_box_03/planter_box_03_1k.gltf", "license": "CC0" }
+  ]
+}
+</script>
+</head>
+<body>
+<canvas id="stage" data-od-webgl aria-label="A small stone courtyard at dusk, lit by a brass lantern"></canvas>
+<div class="caption">
+  <h1>The courtyard</h1>
+  <p>Stone, a lantern, the last of the light.</p>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+
+const spec = JSON.parse(document.getElementById('scene-spec').textContent);
+const item = (name) => spec.layout.find((o) => o.name === name);
+
+// Poly Haven files (CC0), from find_open_design_3d_assets. A .gltf refers to its
+// .bin and textures by relative paths that live elsewhere on the CDN: map them.
+const PH = 'https://dl.polyhaven.org/file/ph-assets';
+const HDRI = `${PH}/HDRIs/hdr/1k/qwantani_dusk_2_puresky_1k.hdr`;
+const texSet = (id) => ({
+  diffuse: `${PH}/Textures/jpg/1k/${id}/${id}_diff_1k.jpg`,
+  normal: `${PH}/Textures/jpg/1k/${id}/${id}_nor_gl_1k.jpg`,
+  arm: `${PH}/Textures/jpg/1k/${id}/${id}_arm_1k.jpg`,
+});
+const LANTERN = {
+  url: `${PH}/Models/gltf/1k/Lantern_01/Lantern_01_1k.gltf`,
+  includes: {
+    'Lantern_01.bin': `${PH}/Models/gltf/4k/Lantern_01/Lantern_01.bin`,
+    'textures/Lantern_01_brass_diff_1k.jpg': `${PH}/Models/jpg/1k/Lantern_01/Lantern_01_brass_diff_1k.jpg`,
+    'textures/Lantern_01_brass_nor_gl_1k.jpg': `${PH}/Models/jpg/1k/Lantern_01/Lantern_01_brass_nor_gl_1k.jpg`,
+    'textures/Lantern_01_brass_arm_1k.jpg': `${PH}/Models/jpg/1k/Lantern_01/Lantern_01_brass_arm_1k.jpg`,
+  },
+};
+const PLANTER = {
+  url: `${PH}/Models/gltf/1k/planter_box_03/planter_box_03_1k.gltf`,
+  includes: {
+    'planter_box_03.bin': `${PH}/Models/gltf/8k/planter_box_03/planter_box_03.bin`,
+    'textures/planter_box_03_diff_1k.jpg': `${PH}/Models/jpg/1k/planter_box_03/planter_box_03_diff_1k.jpg`,
+    'textures/planter_box_03_nor_gl_1k.jpg': `${PH}/Models/jpg/1k/planter_box_03/planter_box_03_nor_gl_1k.jpg`,
+    'textures/planter_box_03_arm_1k.jpg': `${PH}/Models/jpg/1k/planter_box_03/planter_box_03_arm_1k.jpg`,
+  },
+};
+
+const canvas = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.62;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(spec.views.hero.fov, 1, 0.05, 200);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.maxPolarAngle = Math.PI / 2 - 0.06;
+let userMoved = false;
+controls.addEventListener('start', () => { userMoved = true; });
+
+// Low sun from the back left, warm; the sky (HDRI) fills the rest.
+const sun = new THREE.DirectionalLight(0xffb27a, 2.2);
+sun.position.set(-7, 3.2, -6);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.radius = 4;
+sun.shadow.bias = -0.0004;
+Object.assign(sun.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6, near: 1, far: 30 });
+scene.add(sun);
+
+const texLoader = new THREE.TextureLoader();
+async function stoneMaterial(id, repeatX, repeatY) {
+  const set = texSet(id);
+  const [map, normalMap, arm] = await Promise.all([set.diffuse, set.normal, set.arm].map((u) => texLoader.loadAsync(u)));
+  map.colorSpace = THREE.SRGBColorSpace;
+  for (const t of [map, normalMap, arm]) {
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(repeatX, repeatY);
+    t.anisotropy = 8;
+  }
+  // ARM: AO in red, roughness in green, metalness in blue.
+  return new THREE.MeshStandardMaterial({ map, normalMap, aoMap: arm, roughnessMap: arm, metalnessMap: arm, roughness: 1, metalness: 1, envMapIntensity: 0.55 });
+}
+
+// A soft radial shadow for small props that skip the shadow map (cookbook: contact shadow).
+const blobTexture = (() => {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grad = g.createRadialGradient(64, 64, 4, 64, 64, 62);
+  grad.addColorStop(0, 'rgba(0,0,0,0.55)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 128, 128);
+  return new THREE.CanvasTexture(c);
+})();
+
+function polyHavenLoader(includes) {
+  const manager = new THREE.LoadingManager();
+  manager.setURLModifier((url) => {
+    for (const [rel, abs] of Object.entries(includes)) if (url === rel || url.endsWith('/' + rel)) return abs;
+    return url;
+  });
+  return new GLTFLoader(manager);
+}
+
+/** Scales a loaded model to its layout height and rests it on y = base. */
+function fit(object, height, base) {
+  const box = new THREE.Box3().setFromObject(object);
+  const size = box.getSize(new THREE.Vector3());
+  object.scale.multiplyScalar(height / size.y);
+  const fitted = new THREE.Box3().setFromObject(object);
+  object.position.y += base - fitted.min.y;
+  object.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
+  return object;
+}
+
+function block(name, material) {
+  const o = item(name);
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(...o.size), material);
+  mesh.position.set(...o.position);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.name = name;
+  scene.add(mesh);
+  return mesh;
+}
+
+async function build() {
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const [sky, floorMat, wallMat, wallMatShort, benchMat, lantern, plant] = await Promise.all([
+    new RGBELoader().loadAsync(HDRI),
+    stoneMaterial('cobblestone_floor_04', 4, 3),
+    stoneMaterial('rustic_stone_wall_02', 3.2, 1.2),
+    stoneMaterial('rustic_stone_wall_02', 1.6, 1.2),
+    stoneMaterial('rustic_stone_wall_02', 0.9, 0.3),
+    polyHavenLoader(LANTERN.includes).loadAsync(LANTERN.url),
+    polyHavenLoader(PLANTER.includes).loadAsync(PLANTER.url),
+  ]);
+  sky.mapping = THREE.EquirectangularReflectionMapping;
+  scene.environment = pmrem.fromEquirectangular(sky).texture;
+  scene.background = sky;
+  scene.backgroundIntensity = 0.8;
+
+  // Packed earth around the courtyard, so it doesn't float (stage: left out of review framing).
+  const earth = new THREE.Mesh(new THREE.CircleGeometry(40, 48), new THREE.MeshStandardMaterial({ color: 0x3b3029, roughness: 1, envMapIntensity: 0.4 }));
+  earth.rotation.x = -Math.PI / 2;
+  earth.position.y = -0.11;
+  earth.receiveShadow = true;
+  earth.userData.odStage = true;
+  scene.add(earth);
+
+  block('floor', floorMat).position.y = -0.05;
+  block('wall-back-left', wallMatShort);
+  block('wall-back-right', wallMatShort);
+  block('lintel', wallMatShort);
+  block('wall-left', wallMat);
+  block('wall-right', wallMat);
+  block('bench', benchMat);
+
+  // Iron post with a bracket; the lantern hangs at its top.
+  const iron = new THREE.MeshStandardMaterial({ color: 0x1d1b1a, metalness: 0.85, roughness: 0.45 });
+  const p = item('post');
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, p.size[1], 12), iron);
+  post.position.set(p.position[0], p.size[1] / 2, p.position[2]);
+  post.castShadow = true;
+  const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 0.08, 16), iron);
+  foot.position.set(p.position[0], 0.04, p.position[2]);
+  scene.add(post, foot);
+
+  const l = item('lantern');
+  fit(lantern.scene, l.size[1], l.position[1]);
+  lantern.scene.position.x = l.position[0];
+  lantern.scene.position.z = l.position[2];
+  scene.add(lantern.scene);
+  // The flame: a small warm bulb and a point light, the scene's focal point.
+  const flame = new THREE.Mesh(new THREE.SphereGeometry(0.045, 16, 12), new THREE.MeshStandardMaterial({ color: 0xffe0a0, emissive: 0xffb24a, emissiveIntensity: 6 }));
+  flame.position.set(l.position[0], l.position[1] + l.size[1] * 0.42, l.position[2]);
+  const glow = new THREE.PointLight(0xffa64a, 14, 9, 2);
+  glow.position.copy(flame.position);
+  scene.add(flame, glow);
+
+  for (const name of ['plant-left', 'plant-right']) {
+    const o = item(name);
+    const copy = name === 'plant-left' ? plant.scene : plant.scene.clone();
+    fit(copy, o.size[1], 0);
+    copy.position.x = o.position[0];
+    copy.position.z = o.position[2];
+    if (name === 'plant-right') copy.rotation.y = 1.9;
+    // Small props: ground them with a soft contact blob as well as the shadow map.
+    const blob = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 1.1), new THREE.MeshBasicMaterial({ map: blobTexture, transparent: true, depthWrite: false }));
+    blob.rotation.x = -Math.PI / 2;
+    blob.position.set(o.position[0], 0.005, o.position[2]);
+    scene.add(copy, blob);
+  }
+}
+
+function frame() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  // Portrait screens: widen the view so the walls stay in frame.
+  camera.fov = camera.aspect < 1 ? Math.min(70, spec.views.hero.fov / Math.pow(camera.aspect, 0.6)) : spec.views.hero.fov;
+  camera.updateProjectionMatrix();
+}
+frame();
+window.addEventListener('resize', frame);
+
+const V = (a) => new THREE.Vector3(...a);
+function setView(view) {
+  camera.position.copy(V(view.position));
+  controls.target.copy(V(view.target));
+  camera.lookAt(controls.target);
+}
+const ease = (x) => x * x * (3 - 2 * x);
+function poseCamera(seconds) {
+  const p = spec.path;
+  if (!window.odScene.rotate || !p?.length) return setView(spec.views.hero);
+  const t = Math.min(seconds % spec.duration, p[p.length - 1].t);
+  let i = 0;
+  while (i < p.length - 2 && t > p[i + 1].t) i++;
+  const a = p[i], b = p[i + 1] ?? a, k = b.t > a.t ? ease((t - a.t) / (b.t - a.t)) : 0;
+  camera.position.lerpVectors(V(a.position), V(b.position), k);
+  controls.target.lerpVectors(V(a.target), V(b.target), k);
+  camera.lookAt(controls.target);
+}
+
+// The ready contract (3d-scene skill, section 5).
+const start = performance.now();
+window.odScene = { rotate: true, tier: 'finished', duration: spec.duration, ready: undefined, scene, camera, renderer, controls };
+window.odScene.ready = (async () => {
+  await build();
+  poseCamera(0);
+  renderer.render(scene, camera);
+})();
+renderer.setAnimationLoop((now) => {
+  if (userMoved) controls.update();
+  else poseCamera((now - start) / 1000);
+  renderer.render(scene, camera);
+});
+</script>
+</body>
+</html>

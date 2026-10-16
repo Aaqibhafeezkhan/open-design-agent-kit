@@ -1,0 +1,136 @@
+{
+ "Lantern_01": {
+  "name": "Lantern 01",
+  "categories": [
+   "props",
+   "lighting"
+  ],
+  "tags": [
+   "prop",
+   "metal",
+   "glass",
+   "lantern",
+   "antique",
+   "vintage",
+   "hurricane",
+   "lamp",
+   "bronze",
+   "oldfashioned",
+   "brass",
+   "copper"
+  ],
+  "dimensions": [
+   122.08568677306175,
+   97.18310832977295,
+   294.2466139793396
+  ],
+  "thumbnail_url": "https://cdn.polyhaven.com/asset_img/thumbs/Lantern_01.png?width=256&height=256&format=webp&v=0b1827f5",
+  "download_count": 65857,
+  "polycount": 33902
+ },
+ "brass_diya_lantern": {
+  "name": "Brass Diya Lantern",
+  "categories": [
+   "decorative",
+   "lighting"
+  ],
+  "tags": [
+   "lighting",
+   "brass",
+   "metal",
+   "lamp",
+   "candle",
+   "light",
+   "cultural",
+   "hanging"
+  ],
+  "dimensions": [
+   123.00453707575798,
+   123.00454080104828,
+   380.8239474892616
+  ],
+  "thumbnail_url": "https://cdn.polyhaven.com/asset_img/thumbs/brass_diya_lantern.png?width=256&height=256&format=webp&v=48c72cf4",
+  "download_count": 13839,
+  "polycount": 12742
+ },
+ "desk_lamp_arm_01": {
+  "name": "Desk Lamp Arm 01",
+  "categories": [
+   "lighting",
+   "rigged",
+   "collection: the_shed"
+  ],
+  "tags": [
+   "industrial",
+   "lamp",
+   "mounted",
+   "fixed",
+   "desk",
+   "table",
+   "light",
+   "arm"
+  ],
+  "dimensions": [
+   617.3093914985657,
+   408.02252292633057,
+   879.0190517902374
+  ],
+  "thumbnail_url": "https://cdn.polyhaven.com/asset_img/thumbs/desk_lamp_arm_01.png?width=256&height=256&format=webp&v=59bbc8e7",
+  "download_count": 21459,
+  "polycount": 25710
+ },
+ "ArmChair_01": {
+  "name": "Arm Chair 01",
+  "categories": [
+   "furniture",
+   "seating"
+  ],
+  "tags": [
+   "gothic",
+   "vintage",
+   "chair",
+   "furniture",
+   "victorian",
+   "couch",
+   "wood",
+   "varnished",
+   "classic"
+  ],
+  "dimensions": [
+   848.4309017658234,
+   765.7602727413177,
+   1065.087635157397
+  ],
+  "thumbnail_url": "https://cdn.polyhaven.com/asset_img/thumbs/ArmChair_01.png?width=256&height=256&format=webp&v=abbc4732",
+  "download_count": 32370,
+  "polycount": 5626
+ },
+ "Barrel_01": {
+  "name": "Barrel_01",
+  "categories": [
+   "industrial",
+   "containers"
+  ],
+  "tags": [
+   "barrel",
+   "oil",
+   "explosive",
+   "radioactive",
+   "metal",
+   "red barrel",
+   "oil barrel",
+   "drums",
+   "fuel barrel",
+   "explosive barrel",
+   "industrial"
+  ],
+  "dimensions": [
+   563.0351305007935,
+   563.0352199077606,
+   880.0000050105155
+  ],
+  "thumbnail_url": "https://cdn.polyhaven.com/asset_img/thumbs/Barrel_01.png?width=256&height=256&format=webp&v=29e315a9",
+  "download_count": 60071,
+  "polycount": 2682
+ }
+}
