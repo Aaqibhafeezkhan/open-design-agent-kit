@@ -56,6 +56,8 @@ export interface SceneEvidence {
   note?: string;
   /** `odScene.tier`, when the page sets it. */
   tier?: 'blockout' | 'finished';
+  /** Hero-still measurements, one line per viewport (improve-3d-light-and-framing). */
+  hero?: string[];
 }
 
 const deg = Math.PI / 180;
@@ -276,6 +278,61 @@ export const REVIEW_PAGE_SCRIPT = `(() => {
         rect: { x: r.left, y: r.top, width: r.width, height: r.height },
       };
     },
+    // The hero still as the page frames it (improve-3d-light-and-framing): the focal subject's world-box
+    // corners through the live camera, and for an Object3D focal subject its local extents and axes.
+    hero() {
+      const s = handles();
+      if (!s) return null;
+      const cam = s.camera;
+      cam.updateMatrixWorld();
+      if (cam.updateProjectionMatrix && cam.isPerspectiveCamera) cam.updateProjectionMatrix();
+      let focal = null, name = '';
+      if (s.focus && s.focus.isObject3D) { focal = s.focus; name = s.focus.name || 'odScene.focus'; }
+      else if (s.subject && s.subject.isObject3D) { focal = s.subject; name = s.subject.name || 'odScene.subject'; }
+      const box = boundsOf(focal || s.scene, !focal);
+      const r = s.renderer.domElement.getBoundingClientRect();
+      const rect = { x: r.left, y: r.top, width: r.width, height: r.height };
+      if (!box) return { name, fallback: !focal, corners: [], rect };
+      const v = cam.position.clone();
+      const corners = [];
+      for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
+        v.set(x, y, z);
+        const behind = v.clone().applyMatrix4(cam.matrixWorldInverse).z >= 0;
+        v.project(cam);
+        corners.push([v.x, v.y, behind]);
+      }
+      let local;
+      if (focal) {
+        focal.updateMatrixWorld(true);
+        const inv = focal.matrixWorld.clone().invert();
+        let lb = null;
+        focal.traverseVisible((o) => {
+          if (!o.isMesh || !o.geometry || mats(o).some(isShadow)) return;
+          if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+          if (!o.geometry.boundingBox || o.geometry.boundingBox.isEmpty()) return;
+          const b = o.geometry.boundingBox.clone().applyMatrix4(inv.clone().multiply(o.matrixWorld));
+          lb = lb ? lb.union(b) : b;
+        });
+        if (lb) {
+          const axes = [[1, 0, 0], [0, 1, 0], [0, 0, 1]].map((a) => v.set(a[0], a[1], a[2]).transformDirection(focal.matrixWorld).toArray());
+          const center = box.getCenter(v.clone());
+          const viewDir = center.sub(cam.position).normalize().toArray();
+          local = { extents: [lb.max.x - lb.min.x, lb.max.y - lb.min.y, lb.max.z - lb.min.z], axes, viewDir };
+        }
+      }
+      return { name, fallback: !focal, corners, local, rect };
+    },
+    // While frozen at the page's hero pose: render with the background off over a given clear color
+    // (clear = null renders as the page does). Pixels that change between two clear colors are background.
+    heroRender(clear) {
+      const s = handles();
+      if (!s || !saved) return false;
+      s.scene.background = clear === null ? saved.background : null;
+      if (clear === null) { if (saved.clear) s.renderer.setClearColor(saved.clear, saved.clearAlpha); }
+      else s.renderer.setClearColor(clear, 1);
+      s.renderer.render(s.scene, s.camera);
+      return true;
+    },
     restore() {
       const s = handles();
       if (!saved) return false;
@@ -453,10 +510,201 @@ export async function captureReviewViews(
   };
 }
 
+// ── Hero framing (improve-3d-light-and-framing) ─────────────────────────────
+
+/** What the page reports about its hero still at one viewport (`__odReview.hero()`). */
+export interface HeroProbe {
+  /** The focal subject's name ('' for the fallback). */
+  name: string;
+  /** True when neither `odScene.focus` nor `odScene.subject` is an Object3D. */
+  fallback: boolean;
+  /** The focal world box's eight corners in NDC, with whether each is behind the camera. */
+  corners: Array<[number, number, boolean]>;
+  /** For an Object3D focal subject: its local extents, its local axes in world space, and the camera-to-subject direction. */
+  local?: { extents: Vec3; axes: [Vec3, Vec3, Vec3]; viewDir: Vec3 };
+  /** The canvas rectangle in CSS pixels. */
+  rect: { x: number; y: number; width: number; height: number };
+}
+
+export interface HeroFraming {
+  /** Share of the frame covered by the focal box, clamped to the frame (0–1). */
+  coverage: number;
+  /** Share of the frame's width and height the clamped focal box spans (0–1). */
+  span: { width: number; height: number };
+  /** Share of the projected focal box outside the frame (0–1); corners behind the camera count as outside. */
+  outside: number;
+  /** Frame edges the focal box crosses. */
+  edges: Array<'left' | 'right' | 'top' | 'bottom'>;
+  /** For a flat focal object: the angle in degrees between its face normal and the view direction. */
+  faceAngle?: number;
+  /** The clamped focal box in canvas pixels. */
+  box: { x0: number; y0: number; x1: number; y1: number };
+}
+
+export interface FocalLuma {
+  inside: number;
+  outside?: number;
+}
+
+/** Thresholds from the design (D3, D4). */
+export const HERO_LIMITS = { minSpan: 0.2, maxOutside: 0.1, flatness: 0.3, edgeOnDeg: 75, lumaRatio: 0.85, lumaFloor: 0.08 } as const;
+
+/** Coverage, clipping and the edge-on angle of the focal subject in the hero still. */
+export function heroFraming(probe: HeroProbe): HeroFraming | undefined {
+  const front = probe.corners.filter((c) => !c[2]);
+  if (front.length === 0) return probe.corners.length ? { coverage: 0, span: { width: 0, height: 0 }, outside: 1, edges: [], box: { x0: 0, y0: 0, x1: 0, y1: 0 } } : undefined;
+  const xs = front.map((c) => c[0]);
+  const ys = front.map((c) => c[1]);
+  const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+  const area = (x1 - x0) * (y1 - y0);
+  const [cx0, cx1, cy0, cy1] = [Math.max(-1, x0), Math.min(1, x1), Math.max(-1, y0), Math.min(1, y1)];
+  const clamped = Math.max(0, cx1 - cx0) * Math.max(0, cy1 - cy0);
+  const behindShare = (probe.corners.length - front.length) / probe.corners.length;
+  const outside = Math.max(area > 0 ? 1 - clamped / area : 1, behindShare);
+  const edges: HeroFraming['edges'] = [];
+  if (x0 < -1) edges.push('left');
+  if (x1 > 1) edges.push('right');
+  if (y1 > 1) edges.push('top');
+  if (y0 < -1) edges.push('bottom');
+  const { width: w, height: h } = probe.rect;
+  const box = { x0: ((cx0 + 1) / 2) * w, x1: ((cx1 + 1) / 2) * w, y0: ((1 - cy1) / 2) * h, y1: ((1 - cy0) / 2) * h };
+  const span = { width: Math.max(0, cx1 - cx0) / 2, height: Math.max(0, cy1 - cy0) / 2 };
+  const out: HeroFraming = { coverage: clamped / 4, span, outside, edges, box };
+  if (probe.local) {
+    const e = probe.local.extents;
+    const order = [0, 1, 2].sort((a, b) => e[a] - e[b]);
+    if (e[order[0]] < HERO_LIMITS.flatness * e[order[1]]) {
+      const n = probe.local.axes[order[0]];
+      const d = probe.local.viewDir;
+      const cos = Math.min(1, Math.abs(n[0] * d[0] + n[1] * d[1] + n[2] * d[2]) / (Math.hypot(...n) * Math.hypot(...d) || 1));
+      out.faceAngle = (Math.acos(cos) * 180) / Math.PI;
+    }
+  }
+  return out;
+}
+
+/** Below this share of the frame, the lit geometry around the focal subject is too little to compare against. */
+const MIN_SURROUND = 0.05;
+
+/**
+ * Mean Rec. 709 luma inside and outside the focal box, from a screenshot of the canvas. With the
+ * same frame rendered over black and over white with the background off, pixels that differ are
+ * background or sky and are left out of the surroundings: a bright backdrop isn't light leading
+ * away from the subject. With too little lit geometry around the subject, `outside` is undefined.
+ */
+export function focalLuma(png: Buffer, box: HeroFraming['box'], overBlack?: Buffer, overWhite?: Buffer): FocalLuma {
+  const img = PNG.sync.read(png);
+  const k = overBlack && overWhite ? [PNG.sync.read(overBlack), PNG.sync.read(overWhite)] : undefined;
+  const mask = k && k[0].width === img.width && k[1].width === img.width && k[0].height === img.height && k[1].height === img.height ? k : undefined;
+  let inSum = 0, inN = 0, outSum = 0, outN = 0, all = 0;
+  for (let y = 0; y < img.height; y += 2) {
+    for (let x = 0; x < img.width; x += 2) {
+      const i = (y * img.width + x) * 4;
+      all++;
+      const l = (0.2126 * img.data[i] + 0.7152 * img.data[i + 1] + 0.0722 * img.data[i + 2]) / 255;
+      if (x >= box.x0 && x < box.x1 && y >= box.y0 && y < box.y1) { inSum += l; inN++; continue; }
+      if (mask) {
+        const d = Math.abs(mask[0].data[i] - mask[1].data[i]) + Math.abs(mask[0].data[i + 1] - mask[1].data[i + 1]) + Math.abs(mask[0].data[i + 2] - mask[1].data[i + 2]);
+        if (d > 24) continue; // background or sky
+      }
+      outSum += l; outN++;
+    }
+  }
+  const outside = outN > 0 && outN >= MIN_SURROUND * all ? round(outSum / outN, 3) : undefined;
+  return { inside: round(inN ? inSum / inN : 0, 3), outside };
+}
+
+const pct = (n: number) => (n > 0 && n < 0.01 ? `${(n * 100).toFixed(1)}%` : `${Math.round(n * 100)}%`);
+const focalLabel = (p: HeroProbe) => (p.fallback ? 'the scene (no odScene.focus)' : `focal "${p.name}"`);
+
+/** `framing` and `light` warnings for one viewport (design D3–D5). */
+export function heroFindings(viewport: string, probe: HeroProbe, f: HeroFraming, luma?: FocalLuma): Finding[] {
+  const out: Finding[] = [];
+  const who = focalLabel(probe);
+  const warn = (check: string, message: string) => out.push({ check, severity: 'warning', message, viewport });
+  if (f.outside >= 1) warn('framing', `The hero still doesn't show ${who}: it is outside the frame or behind the camera. Aim views.hero${viewport === 'mobile' ? ' (or views.heroPortrait)' : ''} at it.`);
+  else {
+    if (Math.max(f.span.width, f.span.height) < HERO_LIMITS.minSpan) warn('framing', `${cap(who)} spans only ${pct(f.span.width)} of the hero still's width and ${pct(f.span.height)} of its height. Move the camera closer or narrow the FOV until it spans roughly a third to two-thirds of the frame${viewport === 'mobile' ? '; frame portrait separately with views.heroPortrait or the fit snippet' : ''}.`);
+    // A whole scene (no focal subject) runs off the frame by nature: clipping is evidence only then.
+    if (!probe.fallback && f.outside > HERO_LIMITS.maxOutside) warn('framing', `${pct(f.outside)} of ${who} is cut off at the ${listEdges(f.edges)} of the hero still. Pull back or re-aim${viewport === 'mobile' ? ' for portrait (views.heroPortrait)' : ''}.`);
+  }
+  if (f.faceAngle !== undefined && f.faceAngle > HERO_LIMITS.edgeOnDeg) warn('framing', `${cap(who)} is flat and seen edge-on (${Math.round(f.faceAngle)}° from its face) in the hero still. Show its face at a three-quarter angle, 30–55° off.`);
+  if (luma && luma.outside !== undefined && luma.outside > HERO_LIMITS.lumaFloor && luma.inside < HERO_LIMITS.lumaRatio * luma.outside) {
+    warn('light', `${cap(who)} is darker than its surroundings in the hero still (mean brightness ${luma.inside} vs ${luma.outside}). Aim the key light at it, or darken the surroundings, so the light leads to it.`);
+  }
+  return out;
+}
+
+function listEdges(edges: string[]): string {
+  if (edges.length === 0) return 'frame edge';
+  const words = edges.length === 1 ? edges[0] : `${edges.slice(0, -1).join(', ')} and ${edges[edges.length - 1]}`;
+  return `${words} edge${edges.length > 1 ? 's' : ''}`;
+}
+
+function cap(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/** One evidence line per viewport. */
+export function formatHeroLine(viewport: { name: string; width: number; height: number }, probe: HeroProbe, f: HeroFraming | undefined, luma?: FocalLuma): string {
+  const head = `Hero still (${viewport.name} ${viewport.width}×${viewport.height}): `;
+  if (!f) return `${head}nothing to measure (${focalLabel(probe)} has no visible meshes).`;
+  const parts = [`${focalLabel(probe)} spans ${pct(f.span.width)} of the width and ${pct(f.span.height)} of the height (bounding box)`];
+  parts.push(f.outside > 0.01 ? `${pct(f.outside)} cut off${f.edges.length ? ` at the ${f.edges.join('/')}` : ''}` : 'fully in frame');
+  if (f.faceAngle !== undefined) parts.push(`flat, ${Math.round(f.faceAngle)}° from its face`);
+  if (luma) parts.push(luma.outside !== undefined ? `brightness ${luma.inside} vs ${luma.outside} in the lit scene around it (${round(luma.inside / Math.max(luma.outside, 1e-3), 2)}×)` : `brightness ${luma.inside} (little lit scene around it to compare)`);
+  let line = head + parts.join('; ') + '.';
+  if (probe.fallback) line += ' Set odScene.focus to the object the scene is about for a sharper measurement.';
+  return line;
+}
+
+/**
+ * Measures the page's own hero still at each viewport (design D1): `rotate` off, the page's loop
+ * left to pose and resize, then the focal projection and a canvas screenshot. Restores `rotate`
+ * and the first viewport.
+ */
+export async function measureHero(page: Page, viewports: ReadonlyArray<{ name: string; width: number; height: number }>): Promise<{ findings: Finding[]; lines: string[] }> {
+  const findings: Finding[] = [];
+  const lines: string[] = [];
+  await page.evaluate('window.__odHeroRotate = window.odScene && window.odScene.rotate; if (window.odScene && "rotate" in window.odScene) window.odScene.rotate = false;');
+  try {
+    for (const v of viewports) {
+      await page.setViewport({ width: v.width, height: v.height, deviceScaleFactor: 1 });
+      await page.evaluate('window.scrollTo(0, 0)');
+      await page.evaluate('new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 100)))))');
+      const probe = (await page.evaluate('window.__odReview && window.__odReview.hero()').catch(() => null)) as HeroProbe | null;
+      if (!probe || probe.rect.width < 1 || probe.rect.height < 1) continue;
+      const framing = heroFraming(probe);
+      let luma: FocalLuma | undefined;
+      if (framing && framing.outside < 1 && (await page.evaluate('window.__odReview.freeze()'))) {
+        // Frozen at the hero pose (overlays hidden): the frame over black and over white with the background off, then as the page draws it.
+        try {
+          const shot = async (clear: string) => {
+            await page.evaluate(`window.__odReview.heroRender(${clear})`);
+            return Buffer.from(await page.screenshot({ type: 'png', clip: probe.rect }));
+          };
+          const overBlack = await shot('0x000000');
+          const overWhite = await shot('0xffffff');
+          luma = focalLuma(await shot('null'), framing.box, overBlack, overWhite);
+        } finally {
+          await page.evaluate('window.__odReview.restore()').catch(() => undefined);
+        }
+      }
+      if (framing) findings.push(...heroFindings(v.name, probe, framing, luma));
+      lines.push(formatHeroLine(v, probe, framing, luma));
+    }
+  } finally {
+    await page.evaluate('if (window.odScene && "rotate" in window.odScene && window.__odHeroRotate !== undefined) window.odScene.rotate = window.__odHeroRotate;').catch(() => undefined);
+    if (viewports[0]) await page.setViewport({ width: viewports[0].width, height: viewports[0].height, deviceScaleFactor: 1 });
+  }
+  return { findings, lines };
+}
+
 /** The 3D evidence as text lines for the check result. */
 export function formatSceneEvidence(evidence: SceneEvidence): string[] {
   const lines: string[] = [];
   if (evidence.views.length > 0) lines.push(`3D review sheet: ${evidence.views.join(', ')} (one image). Use it to judge form, materials, light, framing and contact from every side.`);
+  if (evidence.hero) lines.push(...evidence.hero);
   if (evidence.metrics) {
     const m = evidence.metrics;
     lines.push(
@@ -478,7 +726,7 @@ export function formatSceneEvidence(evidence: SceneEvidence): string[] {
  * (add-3d-critic-loop): a clean check only means the scene renders.
  */
 export const CRITIQUE_REMINDER =
-  "NOT DONE YET (3D): a clean check only means the scene renders, not that it looks right. Before telling the user it's done, get a critique of this review sheet and the desktop/mobile screenshots against the user's brief: from a subagent if your host has one (the Agent tool in Claude Code, runSubagent in VS Code), otherwise in a separate critic pass that judges only these images and the brief. Use the scorecard from the skill you're following (3d-object or 3d-scene): form, materials, light, composition (judged on the desktop/mobile shots), stage, fidelity, technical, each 0–3, plus its automatic failures, and at least three flaws, each with the view, where, and a fix. Fix them, check again and get a new critique until every category is at least 2 with no automatic failure, for at most three critique rounds; then tell the user the scores and anything left. (If you are the critic, just score and list the flaws.)";
+  "NOT DONE YET (3D): a clean check only means the scene renders, not that it looks right. Before telling the user it's done, get a critique of this review sheet and the desktop/mobile screenshots against the user's brief: from a subagent if your host has one (the Agent tool in Claude Code, runSubagent in VS Code), otherwise in a separate critic pass that judges only these images and the brief. Use the scorecard from the skill you're following (3d-object or 3d-scene): form, materials, light, composition (judged on the desktop/mobile shots), stage, fidelity, technical, each 0–3, plus its automatic failures, and at least three flaws, each with the view, where, and a fix; treat any framing and light warnings above as composition and light flaws. Fix them, check again and get a new critique until every category is at least 2 with no automatic failure, for at most three critique rounds; then tell the user the scores and anything left. (If you are the critic, just score and list the flaws.)";
 
 /** A blockout (odScene.tier = "blockout"; add-3d-scene): boxes and simple forms with the final layout, camera and light. */
 export const BLOCKOUT_NOTE = 'This scene is a BLOCKOUT (odScene.tier = "blockout"): judge layout, scale and framing only. A blockout is never the final design.';

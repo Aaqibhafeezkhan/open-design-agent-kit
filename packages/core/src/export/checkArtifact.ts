@@ -22,7 +22,7 @@ import { indexCheckSlides, markCheckSlide } from './deck/pageScripts';
 import { PRESENTER_CLONE_SELECTOR, SLIDE_SELECTOR } from './deck/selectors';
 import { fitFindings, loadPage, type ExportErrorCode } from './exportArtifact';
 import { usesWebgl, webglFindings } from './webgl';
-import { captureReviewViews, composeReviewSheet, formatSceneEvidence, probeScene, REVIEW_VIEWS, reviewUnavailableNote, sceneSpecFindings, type ReviewView, type SceneEvidence } from './sceneReview';
+import { captureReviewViews, composeReviewSheet, formatSceneEvidence, measureHero, probeScene, REVIEW_VIEWS, reviewUnavailableNote, sceneSpecFindings, type ReviewView, type SceneEvidence } from './sceneReview';
 import { ELEMENT_LAYOUT_VIEWPORT, isValidDimension, resolveExportSize } from './exportSize';
 import { getFormat, isFluidHtml } from '../poster/formats';
 import { applyShape, collectHorizontalScroll, fitBoundText, type ShapeCss } from '../poster/pageScripts';
@@ -308,6 +308,10 @@ export async function checkArtifact(options: CheckArtifactOptions): Promise<Chec
       const review = await captureReviewViews(page, probe, options.views || REVIEW_VIEWS);
       result.findings.push(...review.findings);
       result.scene3d = review.evidence;
+      // The hero still as the page frames it, per viewport (improve-3d-light-and-framing).
+      const hero = await measureHero(page, viewports);
+      result.findings.push(...hero.findings);
+      if (hero.lines.length > 0) result.scene3d = { ...result.scene3d, hero: hero.lines };
       if (review.shots.length > 0 && sheetSlot > 0) {
         const label = `3d views: ${review.shots.map((s) => s.label).join(', ')}`;
         result.images.splice(Math.min(1, result.images.length), 0, await toCheckImage(instance, label, await composeReviewSheet(instance, review.shots)));

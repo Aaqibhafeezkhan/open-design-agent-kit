@@ -6,7 +6,7 @@ import { PNG } from 'pngjs';
 import type { Browser } from 'puppeteer-core';
 import { findBrowser } from '../../export/browserDiscovery';
 import { checkArtifact, formatCheckResult } from '../../export/checkArtifact';
-import { budgetFindings, captureReviewViews, computePixelMetrics, computeReviewCameras, probeScene, REVIEW_VIEWS, sceneSpecFindings, WEBGL_BUDGET, type SceneProbe } from '../../export/sceneReview';
+import { budgetFindings, captureReviewViews, computePixelMetrics, computeReviewCameras, focalLuma, formatHeroLine, heroFindings, heroFraming, probeScene, REVIEW_VIEWS, sceneSpecFindings, WEBGL_BUDGET, type HeroProbe, type SceneProbe } from '../../export/sceneReview';
 import { writeArtifactManifest } from '../../vendored/artifactCreate';
 
 type Vec3 = [number, number, number];
@@ -115,6 +115,140 @@ describe('scene review: view math, metrics and budget', () => {
     assert.match(over[0].message, /450,000 triangles \(budget 300,000\)/);
     assert.match(over[0].message, /450 draw calls \(budget 400\)/);
     assert.match(over[0].message, /software/);
+  });
+});
+
+/** A pinhole camera at `position` looking at `target`: a world point in NDC, and whether it is behind the camera. */
+function projectPoint(position: Vec3, target: Vec3, fov: number, aspect: number, p: Vec3): [number, number, boolean] {
+  const f = sub(target, position);
+  const fl = len(f);
+  const fw: Vec3 = [f[0] / fl, f[1] / fl, f[2] / fl];
+  const r0: Vec3 = [fw[2], 0, -fw[0]]; // forward × up (0,1,0), right-handed: right = (−fz, 0, fx) flipped for −z forward
+  const rl = len(r0) || 1;
+  const right: Vec3 = [-r0[0] / rl, 0, -r0[2] / rl];
+  const up: Vec3 = [right[1] * fw[2] - right[2] * fw[1], right[2] * fw[0] - right[0] * fw[2], right[0] * fw[1] - right[1] * fw[0]];
+  const d = sub(p, position);
+  const z = d[0] * fw[0] + d[1] * fw[1] + d[2] * fw[2];
+  const t = Math.tan((fov * Math.PI) / 360);
+  const x = (d[0] * right[0] + d[1] * right[1] + d[2] * right[2]) / (z * t * aspect);
+  const y = (d[0] * up[0] + d[1] * up[1] + d[2] * up[2]) / (z * t);
+  return [x, y, z <= 0];
+}
+
+/** A HeroProbe for an axis-aligned box seen from a camera (the local frame is the world frame). */
+function heroProbeFor(min: Vec3, max: Vec3, cam: { position: Vec3; target: Vec3; fov?: number; aspect?: number }, over: Partial<HeroProbe> = {}): HeroProbe {
+  const corners: HeroProbe['corners'] = [];
+  for (const x of [min[0], max[0]]) for (const y of [min[1], max[1]]) for (const z of [min[2], max[2]]) corners.push(projectPoint(cam.position, cam.target, cam.fov ?? 40, cam.aspect ?? 1.5, [x, y, z]));
+  const center: Vec3 = [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2];
+  const v = sub(center, cam.position);
+  const l = len(v);
+  return {
+    name: 'gantry',
+    fallback: false,
+    corners,
+    local: { extents: [max[0] - min[0], max[1] - min[1], max[2] - min[2]], axes: [[1, 0, 0], [0, 1, 0], [0, 0, 1]], viewDir: [v[0] / l, v[1] / l, v[2] / l] },
+    rect: { x: 0, y: 0, width: 1500, height: 1000 },
+    ...over,
+  };
+}
+
+describe('scene review: hero framing', () => {
+  // A gantry 7 wide (x), 4.7 tall (y), 0.9 deep (z): its face normal is z.
+  const gMin: Vec3 = [-3.5, 0, -0.45];
+  const gMax: Vec3 = [3.5, 4.7, 0.45];
+
+  it('sees a flat object face-on, at three-quarters, and edge-on', () => {
+    const face = heroFraming(heroProbeFor(gMin, gMax, { position: [0, 2.3, 14], target: [0, 2.3, 0] }))!;
+    assert.ok(face.faceAngle! < 5, `face-on: ${face.faceAngle}`);
+    const threeQuarter = heroFraming(heroProbeFor(gMin, gMax, { position: [9, 3, 10.7], target: [0, 2.3, 0] }))!;
+    assert.ok(threeQuarter.faceAngle! > 30 && threeQuarter.faceAngle! < 55, `three-quarter: ${threeQuarter.faceAngle}`);
+    const edge = heroProbeFor(gMin, gMax, { position: [14, 2.6, 0.4], target: [0, 2.3, 0] });
+    const edgeF = heroFraming(edge)!;
+    assert.ok(edgeF.faceAngle! > 75, `edge-on: ${edgeF.faceAngle}`);
+    assert.ok(heroFindings('desktop', edge, edgeF).some((f) => f.check === 'framing' && /edge-on/.test(f.message) && f.viewport === 'desktop'));
+    assert.deepStrictEqual(heroFindings('desktop', heroProbeFor(gMin, gMax, { position: [9, 3, 10.7], target: [0, 2.3, 0] }), threeQuarter), []);
+  });
+
+  it('does not call a board seen from above at three-quarters edge-on, nor a cube flat', () => {
+    const board = heroFraming(heroProbeFor([-5, 0, -5], [5, 0.5, 5], { position: [7, 10, 12], target: [0, 0.5, 0] }))!;
+    assert.ok(board.faceAngle! < 75, `board: ${board.faceAngle}`);
+    const cube = heroFraming(heroProbeFor([-1, 0, -1], [1, 2, 1], { position: [0, 1, 1e3], target: [0, 1, 0] }))!;
+    assert.strictEqual(cube.faceAngle, undefined);
+  });
+
+  it('measures coverage and flags a tiny subject', () => {
+    const near = heroProbeFor([-1, 0, -1], [1, 2, 1], { position: [0, 1, 6], target: [0, 1, 0] });
+    const far = heroProbeFor([-1, 0, -1], [1, 2, 1], { position: [0, 1, 60], target: [0, 1, 0] });
+    const n = heroFraming(near)!;
+    const f = heroFraming(far)!;
+    assert.ok(n.span.height > 0.4 && n.outside === 0, JSON.stringify(n));
+    assert.ok(f.span.height < 0.1 && f.coverage < 0.01);
+    assert.deepStrictEqual(heroFindings('mobile', near, n), []);
+    const small = heroFindings('mobile', far, f);
+    assert.ok(small.some((x) => x.check === 'framing' && /spans only/.test(x.message) && /heroPortrait/.test(x.message)));
+  });
+
+  it('measures clipping by edge and counts corners behind the camera as outside', () => {
+    const cut = heroProbeFor([-1, 0, -1], [1, 2, 1], { position: [1.6, 1, 4], target: [1.6, 1, 0] });
+    const c = heroFraming(cut)!;
+    assert.ok(c.outside > 0.1 && c.edges.includes('left'), JSON.stringify(c));
+    assert.ok(heroFindings('desktop', cut, c).some((x) => /cut off at the left edge/.test(x.message)));
+    assert.deepStrictEqual(heroFindings('desktop', { ...cut, fallback: true }, c).filter((x) => /cut off/.test(x.message)), [], 'a whole scene may run off the frame');
+    const behind = heroFraming(heroProbeFor([-1, 0, -1], [1, 2, 1], { position: [0, 1, 0.5], target: [0, 1, -5] }))!;
+    assert.ok(behind.outside >= 0.5, JSON.stringify(behind));
+    const gone = heroProbeFor([-1, 0, -1], [1, 2, 1], { position: [0, 1, 5], target: [0, 1, 10] });
+    const g = heroFraming(gone)!;
+    assert.strictEqual(g.outside, 1);
+    assert.ok(heroFindings('desktop', gone, g).some((x) => /doesn't show/.test(x.message)));
+  });
+
+  it('splits luma inside and outside the focal box, with a floor for dark scenes', () => {
+    const png = new PNG({ width: 100, height: 100 });
+    for (let y = 0; y < 100; y++) for (let x = 0; x < 100; x++) {
+      const i = (y * 100 + x) * 4;
+      const v = x >= 25 && x < 75 && y >= 25 && y < 75 ? 60 : 120;
+      png.data[i] = png.data[i + 1] = png.data[i + 2] = v;
+      png.data[i + 3] = 255;
+    }
+    const luma = focalLuma(PNG.sync.write(png), { x0: 25, y0: 25, x1: 75, y1: 75 });
+    assert.ok(Math.abs(luma.inside - 60 / 255) < 0.01 && Math.abs(luma.outside! - 120 / 255) < 0.01, JSON.stringify(luma));
+    const probe = heroProbeFor([-1, 0, -1], [1, 2, 1], { position: [0, 1, 6], target: [0, 1, 0] });
+    const f = heroFraming(probe)!;
+    assert.ok(heroFindings('desktop', probe, f, luma).some((x) => x.check === 'light' && /0\.235 vs 0\.471/.test(x.message)));
+    assert.deepStrictEqual(heroFindings('desktop', probe, f, { inside: 0.03, outside: 0.06 }), [], 'dark scenes are below the floor');
+    assert.deepStrictEqual(heroFindings('desktop', probe, f, { inside: 0.4, outside: 0.42 }), [], 'within 0.85×');
+  });
+
+  it('leaves background and sky out of the surroundings', () => {
+    // Over black and over white: the left half is geometry (same in both), the right half is background (differs).
+    const solid = (fill: (x: number, y: number) => number) => {
+      const png = new PNG({ width: 100, height: 100 });
+      for (let y = 0; y < 100; y++) for (let x = 0; x < 100; x++) {
+        const i = (y * 100 + x) * 4;
+        png.data[i] = png.data[i + 1] = png.data[i + 2] = fill(x, y);
+        png.data[i + 3] = 255;
+      }
+      return PNG.sync.write(png);
+    };
+    const box = { x0: 20, y0: 20, x1: 40, y1: 80 };
+    const page = solid((x) => (x >= 20 && x < 40 ? 100 : x < 50 ? 60 : 240)); // a bright backdrop on the right
+    const luma = focalLuma(page, box, solid((x) => (x < 50 ? 60 : 0)), solid((x) => (x < 50 ? 60 : 255)));
+    // Geometry around the box is 60 or 100; the 240 backdrop would pull the mean far above 100.
+    assert.ok(luma.outside! > 60 / 255 - 0.01 && luma.outside! < 100 / 255, `only the geometry around it counts: ${JSON.stringify(luma)}`);
+    assert.ok(focalLuma(page, box).outside! > 0.6, 'without the two background renders, the backdrop counts');
+    const inBox = (x: number, y: number) => x >= 20 && x < 40 && y >= 20 && y < 80;
+    const allBackdrop = focalLuma(page, box, solid((x, y) => (inBox(x, y) ? 100 : 0)), solid((x, y) => (inBox(x, y) ? 100 : 255)));
+    assert.strictEqual(allBackdrop.outside, undefined, 'a subject on a plain backdrop has nothing to compare against');
+    const probe = heroProbeFor([-1, 0, -1], [1, 2, 1], { position: [0, 1, 6], target: [0, 1, 0] });
+    assert.deepStrictEqual(heroFindings('desktop', probe, heroFraming(probe)!, allBackdrop), []);
+  });
+
+  it('writes one evidence line per viewport and suggests focus for the fallback', () => {
+    const probe = heroProbeFor(gMin, gMax, { position: [14, 2.6, 0.4], target: [0, 2.3, 0] });
+    const line = formatHeroLine({ name: 'mobile', width: 390, height: 844 }, probe, heroFraming(probe), { inside: 0.3, outside: 0.36 });
+    assert.match(line, /^Hero still \(mobile 390×844\): focal "gantry" spans \d+% of the width and \d+% of the height \(bounding box\);.*flat, \d+° from its face; brightness 0\.3 vs 0\.36 in the lit scene around it \(0\.83×\)\.$/);
+    const fb = formatHeroLine({ name: 'desktop', width: 1440, height: 900 }, { ...probe, fallback: true, name: '', local: undefined }, heroFraming({ ...probe, local: undefined }));
+    assert.match(fb, /the scene \(no odScene\.focus\).*Set odScene\.focus/);
   });
 });
 

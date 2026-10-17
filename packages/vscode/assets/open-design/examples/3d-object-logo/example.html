@@ -97,6 +97,7 @@ const mark = new THREE.Mesh(
 );
 mark.scale.setScalar(fit);
 const product = new THREE.Group();
+product.name = 'product';
 product.add(mark);
 product.position.y = 0.25;
 scene.add(product);
@@ -120,7 +121,7 @@ resize();
 
 const start = performance.now();
 // The handles let checks render review views (overview, close-up, low angle, wireframe) and read renderer stats.
-window.odScene = { rotate: true, rotationSeconds: ROTATION_SECONDS, duration: ROTATION_SECONDS, ready: undefined, scene, camera, renderer, controls };
+window.odScene = { rotate: true, rotationSeconds: ROTATION_SECONDS, duration: ROTATION_SECONDS, ready: undefined, scene, camera, renderer, controls, focus: product };
 function pose(now) {
   const turn = window.odScene.rotate ? (((now - start) / 1000) / ROTATION_SECONDS) * Math.PI * 2 : 0;
   product.rotation.y = AUTHORED_ANGLE + turn;
