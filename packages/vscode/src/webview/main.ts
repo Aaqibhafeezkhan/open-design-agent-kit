@@ -1,6 +1,6 @@
-import { PREVIEW_ONLY_ATTR, type ManualEditPatch, type CuratedStyles } from './dom/sourcePatches';
-import type { ArtifactComment } from './dom/commentOverlay';
-import { BRIDGE_TAG, isBridgeMessage, type BridgeRect, type ElementSnapshot, type FromBridge, type StyleSnapshot, type ToBridge, type Untagged } from './bridge/protocol';
+import { PREVIEW_ONLY_ATTR, type ManualEditPatch, type CuratedStyles } from '@feimacode/open-design-agent-kit-core/src/preview/dom/sourcePatches';
+import type { ArtifactComment } from '@feimacode/open-design-agent-kit-core/src/workspace/artifactCommentTypes';
+import { BRIDGE_TAG, isBridgeMessage, type BridgeRect, type ElementSnapshot, type FromBridge, type StyleSnapshot, type ToBridge, type Untagged } from '@feimacode/open-design-agent-kit-core/src/preview/protocol';
 import { icon } from './dom/icons';
 import { attachMenu } from './dom/menuButton';
 import { createTweaksPanel } from './tweaksPanel';
@@ -242,7 +242,7 @@ function newRequestId(): string {
 }
 
 function sendCommentsToBridge(): void {
-  toBridge({ type: 'set-comments', comments: comments.map((c) => ({ id: c.id, elementId: c.elementId, selector: c.selector, status: c.status })) });
+  toBridge({ type: 'set-comments', comments: comments.map((c) => ({ id: c.id, elementId: c.elementId, selector: c.selector, status: c.status, text: c.text, htmlHint: c.htmlHint })) });
 }
 
 function onBridgeMessage(message: FromBridge): void {

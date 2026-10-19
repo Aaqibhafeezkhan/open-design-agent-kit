@@ -1,11 +1,12 @@
-// Messages between the artifact preview (src/webview/main.ts) and the
-// preview bridge running inside the previewed page (src/webview/bridge/main.ts;
-// openspec add-preview-bridge). The page may be served from its own origin, so
+/// <reference lib="dom" />
+// Messages between a preview shell (the VS Code webview's main.ts, or the
+// browser preview's shell/main.ts) and the preview bridge running inside the
+// previewed page (bridge.ts; openspec add-preview-bridge, add-browser-preview). The page may be served from its own origin, so
 // the preview never touches its DOM: everything Comment, Edit and Figma
 // capture need goes through these messages. Every message carries
 // `od: 'bridge'`.
-import type { ArtifactComment } from '../dom/commentOverlay';
-import type { ManualEditPatch } from '../dom/sourcePatches';
+import type { ArtifactComment } from '../workspace/artifactCommentTypes';
+import type { ManualEditPatch } from './dom/sourcePatches';
 
 export const BRIDGE_TAG = 'bridge';
 
@@ -62,7 +63,7 @@ export type ToBridge =
   | { od: typeof BRIDGE_TAG; type: 'hello' }
   | { od: typeof BRIDGE_TAG; type: 'set-mode'; mode: BridgeMode }
   | { od: typeof BRIDGE_TAG; type: 'clear-selection' }
-  | { od: typeof BRIDGE_TAG; type: 'set-comments'; comments: Pick<ArtifactComment, 'id' | 'elementId' | 'selector' | 'status'>[] }
+  | { od: typeof BRIDGE_TAG; type: 'set-comments'; comments: Pick<ArtifactComment, 'id' | 'elementId' | 'selector' | 'status' | 'text' | 'htmlHint'>[] }
   | { od: typeof BRIDGE_TAG; type: 'apply-patches'; requestId: string; patches: ManualEditPatch[] }
   | { od: typeof BRIDGE_TAG; type: 'capture-figma'; requestId: string };
 

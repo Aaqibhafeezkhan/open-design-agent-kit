@@ -1,3 +1,4 @@
+/// <reference lib="dom" />
 // Adapted (simplified — see openspec design notes) from open-design's
 // apps/web/src/edit-mode/source-patches.ts. Curated patch set — extended
 // closer to upstream's real ManualEditPatch union (set-link, set-image,
@@ -79,9 +80,9 @@ export function applyPatch(doc: Document, patch: ManualEditPatch): boolean {
 
 /** Marks preview-only nodes (pick-mode overrides, the Shape switcher's style) that must never reach the saved source. */
 export const PREVIEW_ONLY_ATTR = 'data-od-preview-only';
-/** Mirrors core's PREVIEW_SRCDOC_ATTR (the webview bundle doesn't import core). */
+/** Same as content/exampleHtml.ts's PREVIEW_SRCDOC_ATTR (that module imports node:fs, so it can't be imported here). */
 export const PREVIEW_SRCDOC_ATTR = 'data-od-preview-srcdoc';
-/** Mirrors core's PREVIEW_SRC_ATTR: an image's original src, swapped for a data: URI in the preview. */
+/** Same as content/exampleHtml.ts's PREVIEW_SRC_ATTR: an image's original src, swapped for a data: URI in the preview. */
 export const PREVIEW_SRC_ATTR = 'data-od-preview-src';
 
 export function serializeDocument(doc: Document): string {

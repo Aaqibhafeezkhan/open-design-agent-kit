@@ -1,3 +1,4 @@
+/// <reference lib="dom" />
 // The preview bridge (openspec add-preview-bridge): runs inside the previewed
 // page, injected first in <head> as a preview-only script, and does for the
 // artifact preview everything Comment, Edit and Figma capture need from the
@@ -5,10 +6,10 @@
 // page has its own origin. Adapted from the same idea as open-design's
 // apps/web/src/runtime/srcdoc.ts selection bridge; the DOM helpers are the
 // ones the preview used directly before (dom/*.ts), unchanged.
-import { captureFigmaIr } from '@feimacode/open-design-agent-kit-core/src/figma/captureIr';
-import { resolveCommentAnchor } from '../dom/commentOverlay';
-import { cssSelectorFor, ensureDataOdId, htmlHintFor } from '../dom/elementTargeting';
-import { applyPatch, PREVIEW_ONLY_ATTR, PREVIEW_SRC_ATTR, serializeDocument } from '../dom/sourcePatches';
+import { captureFigmaIr } from '../figma/captureIr';
+import { resolveCommentAnchor } from './dom/commentAnchors';
+import { cssSelectorFor, ensureDataOdId, htmlHintFor } from './dom/elementTargeting';
+import { applyPatch, PREVIEW_ONLY_ATTR, PREVIEW_SRC_ATTR, serializeDocument } from './dom/sourcePatches';
 import { BRIDGE_TAG, isBridgeMessage, type BridgeMode, type BridgeRect, type ElementSnapshot, type FromBridge, type ToBridge, type Untagged } from './protocol';
 
 declare global {
@@ -58,7 +59,7 @@ function install(): void {
           ? comments
               .filter((c) => c.status !== 'resolved')
               .map((c) => {
-                const el = resolveCommentAnchor(document, c as Parameters<typeof resolveCommentAnchor>[1]);
+                const el = resolveCommentAnchor(document, c);
                 return { commentId: c.id, rect: el ? rectOf(el) : null };
               })
           : [],

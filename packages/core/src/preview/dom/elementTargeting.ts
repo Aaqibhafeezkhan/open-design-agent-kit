@@ -1,3 +1,4 @@
+/// <reference lib="dom" />
 // Adapted (not ported verbatim — see openspec design notes) from
 // open-design's apps/web/src/edit-mode/bridge.ts. Upstream needs a
 // postMessage bridge because its preview iframe is genuinely cross-origin

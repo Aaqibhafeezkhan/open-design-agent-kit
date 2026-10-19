@@ -1,0 +1,61 @@
+// The comment record stored in `<entry>.comments.json`. Kept free of node:
+// imports so the browser-target preview modules (src/preview) can share it
+// with the fs side (artifactComments.ts).
+
+export type ArtifactCommentStatus = 'open' | 'sent' | 'resolved';
+
+export interface ArtifactCommentRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface ArtifactComment {
+  id: string;
+  /** The element's `data-od-id`, only when that attribute exists in the source. */
+  elementId?: string;
+  selector: string;
+  htmlHint: string;
+  note: string;
+  status: ArtifactCommentStatus;
+  createdAt: string;
+  updatedAt: string;
+  /** The element's whitespace-collapsed text, at most 120 characters. */
+  text?: string;
+  /** The element's box in document coordinates (scroll included), CSS px. */
+  rect?: ArtifactCommentRect;
+  /** The preview viewport when the comment was made. */
+  viewport?: { width: number; height: number };
+  /** The crop's path relative to the entry's folder, e.g. "index.html.comments/c-ab12.png". */
+  screenshot?: string;
+  /** True when the crop was re-rendered headless rather than taken from the window the user saw. */
+  screenshotRerendered?: boolean;
+  host?: 'vscode' | 'browser';
+}
+
+/** Unaddressed comments: not yet resolved by the agent. */
+export function isUnaddressed(comment: Pick<ArtifactComment, 'status'>): boolean {
+  return comment.status === 'open' || comment.status === 'sent';
+}
+
+/**
+ * `incoming` merged into `current` by id: a comment present in both keeps
+ * whichever has the later `updatedAt`. Comments listed in `deletedIds` are
+ * dropped. Order: current's order, then new comments in incoming's order.
+ */
+export function mergeComments(current: ArtifactComment[], incoming: ArtifactComment[], deletedIds: readonly string[] = []): ArtifactComment[] {
+  const deleted = new Set(deletedIds);
+  const byId = new Map(current.map((c) => [c.id, c]));
+  for (const c of incoming) {
+    const existing = byId.get(c.id);
+    if (!existing || c.updatedAt >= existing.updatedAt) byId.set(c.id, c);
+  }
+  return [...byId.values()].filter((c) => !deleted.has(c.id));
+}
+
+/** The text excerpt stored on a comment: whitespace collapsed, at most 120 characters. */
+export function commentTextExcerpt(text: string | null | undefined): string {
+  const collapsed = (text ?? '').replace(/\s+/g, ' ').trim();
+  return collapsed.length > 120 ? `${collapsed.slice(0, 119)}…` : collapsed;
+}
