@@ -145,3 +145,30 @@ export async function deleteCommentCrop(workspaceRoot: string, entryPath: string
     // An invalid id has no crop.
   }
 }
+
+/** At most this many comment crops go back to the agent as images; the rest are listed by path. */
+export const MAX_COMMENT_CROPS_RETURNED = 4;
+
+/**
+ * The comments an agent should address (status open or sent), each with its
+ * crop path made workspace-relative, plus up to `maxCrops` crops as PNGs,
+ * newest comment first. What get_open_design_artifact returns.
+ */
+export async function readUnaddressedComments(
+  workspaceRoot: string,
+  entryPath: string,
+  maxCrops = MAX_COMMENT_CROPS_RETURNED,
+): Promise<{ comments: ArtifactComment[]; crops: Array<{ commentId: string; png: Buffer }> }> {
+  const entryDir = path.posix.dirname(entryPath.replace(/\\/g, '/'));
+  const comments = (await readArtifactComments(workspaceRoot, entryPath))
+    .filter((c) => c.status === 'open' || c.status === 'sent')
+    .map((c) => (c.screenshot ? { ...c, screenshot: path.posix.join(entryDir, c.screenshot) } : c));
+  const crops: Array<{ commentId: string; png: Buffer }> = [];
+  const newestFirst = [...comments].filter((c) => c.screenshot).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  for (const c of newestFirst) {
+    if (crops.length >= maxCrops) break;
+    const png = await readCommentCrop(workspaceRoot, entryPath, c.id);
+    if (png) crops.push({ commentId: c.id, png });
+  }
+  return { comments, crops };
+}

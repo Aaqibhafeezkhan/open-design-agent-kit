@@ -1,7 +1,7 @@
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { getOutputDirectory, getWorkspaceRoot, registerArtifact } from '../workspace/artifactWriter';
-import { exportsForKind, getFormat, posterRegistrationMetadata, unknownFormatError, formatSourceRegistration, prepareSourceRegistration, refreshExplorationCompare } from '@feimacode/open-design-agent-kit-core';
+import { exportsForKind, getFormat, posterRegistrationMetadata, unknownFormatError, formatSourceRegistration, prepareSourceRegistration, refreshExplorationCompare, resolveArtifactComments } from '@feimacode/open-design-agent-kit-core';
 import { COMPARE_PAGE_NOTE } from './explorationTools';
 
 interface RegisterArtifactInput {
@@ -19,6 +19,7 @@ interface RegisterArtifactInput {
   directionId?: string;
   sources?: string[];
   format?: string;
+  resolvedCommentIds?: string[];
 }
 
 const KIND_TO_RENDERER: Record<string, string> = {
@@ -45,7 +46,7 @@ export class RegisterArtifactTool implements vscode.LanguageModelTool<RegisterAr
   async invoke(
     options: vscode.LanguageModelToolInvocationOptions<RegisterArtifactInput>,
   ): Promise<vscode.LanguageModelToolResult> {
-    const { entryPath, kind, title, supportingFiles, sourceSkillId, designSystemId, collectionId, collectionName, screenIndex, screenRole, explorationId, directionId, sources, format } =
+    const { entryPath, kind, title, supportingFiles, sourceSkillId, designSystemId, collectionId, collectionName, screenIndex, screenRole, explorationId, directionId, sources, format, resolvedCommentIds } =
       options.input;
 
     if (format !== undefined && !getFormat(format)) {
@@ -104,6 +105,12 @@ export class RegisterArtifactTool implements vscode.LanguageModelTool<RegisterAr
         ? '\n\nIts preview has already been opened automatically in the Open Design Artifact Preview editor. Do not also open the file yourself (e.g. in Simple Browser or any other browser view, or via a file:// URL) — that is not how previews are shown in this extension and will be blocked.'
         : '';
 
+      let commentsNote = '';
+      if (resolvedCommentIds?.length) {
+        const { resolved, unknown } = await resolveArtifactComments(getWorkspaceRoot(), entryPath, resolvedCommentIds);
+        commentsNote = `\n\nMarked ${resolved.length} comment(s) resolved.${unknown.length ? ` No comment with id ${unknown.join(', ')}.` : ''}`;
+      }
+
       let explorationNote = '';
       if (explorationId) {
         const compare = await refreshExplorationCompare(getWorkspaceRoot(), getOutputDirectory(), explorationId);
@@ -114,7 +121,7 @@ export class RegisterArtifactTool implements vscode.LanguageModelTool<RegisterAr
 
       return new vscode.LanguageModelToolResult([
         new vscode.LanguageModelTextPart(
-          `Artifact registered at ${entryPath}.artifact.json\n\n${JSON.stringify(manifest, null, 2)}${openNote}${explorationNote}${sourceNote}`,
+          `Artifact registered at ${entryPath}.artifact.json\n\n${JSON.stringify(manifest, null, 2)}${openNote}${commentsNote}${explorationNote}${sourceNote}`,
         ),
       ]);
     } catch (err) {

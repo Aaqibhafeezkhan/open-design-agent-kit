@@ -38,16 +38,16 @@
 
 ## 5. Check history
 
-- [ ] 5.1 Save each run's images and findings summary to `<outputDir>/.checks/<entry-slug>/<timestamp>/`, prune to 5, and add saved paths plus the previous-run delta to `formatCheckResult`
-- [ ] 5.2 Notify a running preview server in the same process when a run is saved
-- [ ] 5.3 Tests: pruning, delta text, no writes under the artifact folder
+- [x] 5.1 Save each run's images and findings summary to `<outputDir>/.checks/<entry-slug>/<timestamp>/`, prune to 5, and add saved paths plus the previous-run delta to `formatCheckResult`
+- [x] 5.2 Notify a running preview server in the same process when a run is saved
+- [x] 5.3 Tests: pruning, delta text, no writes under the artifact folder
 
 ## 6. MCP server
 
-- [ ] 6.1 `open_open_design_preview` tool (schema, handler, one server per process, closed on exit); `OPEN_DESIGN_PREVIEW` (`manual` default, `auto`, `off`)
-- [ ] 6.2 `get_open_design_artifact`: return `ToolOutput` with up to 4 crops, include `sent` comments with status, update the tool description
-- [ ] 6.3 `register_open_design_artifact`: `resolvedCommentIds`; replace the "no live preview editor" text with the preview hint; auto-open when `OPEN_DESIGN_PREVIEW=auto`
-- [ ] 6.4 Bundle `preview-shell.js` and `bridge.js` into `out/`; extend the npm publish smoke test to start the preview server with `--no-open`
+- [x] 6.1 `open_open_design_preview` tool (schema, handler, one server per process, closed on exit); `OPEN_DESIGN_PREVIEW` (`manual` default, `auto`, `off`)
+- [x] 6.2 `get_open_design_artifact`: return `ToolOutput` with up to 4 crops, include `sent` comments with status, update the tool description
+- [x] 6.3 `register_open_design_artifact`: `resolvedCommentIds`; replace the "no live preview editor" text with the preview hint; auto-open when `OPEN_DESIGN_PREVIEW=auto`
+- [x] 6.4 Bundle `preview-shell.js` and `bridge.js` into `out/`; extend the npm publish smoke test to start the preview server with `--no-open`
 
 ## 7. CLI
 

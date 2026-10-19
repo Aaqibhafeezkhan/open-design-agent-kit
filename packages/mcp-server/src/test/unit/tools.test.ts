@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { composePublishCanvaTemplateInstructions, ContentIndex, findBrowser, formatIntegrations, writeArtifactManifest } from '@feimacode/open-design-agent-kit-core';
+import { composePublishCanvaTemplateInstructions, ContentIndex, findBrowser, formatIntegrations, writeArtifactComments, writeArtifactManifest, writeCommentCrop } from '@feimacode/open-design-agent-kit-core';
 import * as tools from '../../tools';
 import type { ToolContext } from '../../tools';
 import { createFileActiveDesignSystemStore } from '../../store';
@@ -127,7 +127,8 @@ describe('mcp-server tools', () => {
 
     const raw = await tools.registerArtifact(ctx, { entryPath: '.open-design/x/x.html', kind: 'html', title: 'X' });
     assert.match(raw, /Artifact registered/);
-    assert.match(raw, /no live preview editor/);
+    assert.match(raw, /open_open_design_preview/);
+    assert.doesNotMatch(raw, /no live preview editor/);
 
     const manifestRaw = await fs.readFile(`${entryAbs}.artifact.json`, 'utf8');
     assert.strictEqual(JSON.parse(manifestRaw).title, 'X');
@@ -193,9 +194,9 @@ describe('mcp-server tools', () => {
     assert.match(registered, /- 99\.9% — /);
     assert.match(registered, /"sha256": "[0-9a-f]{64}"/);
 
-    assert.deepStrictEqual(JSON.parse(await tools.getArtifact(ctx, { entryPath: prepared.suggestedEntryPath })).staleSources, []);
+    assert.deepStrictEqual(JSON.parse((await tools.getArtifact(ctx, { entryPath: prepared.suggestedEntryPath })).text).staleSources, []);
     await fs.writeFile(path.join(ctx.workspaceRoot, 'CHANGELOG.md'), '# v2.1\n');
-    assert.deepStrictEqual(JSON.parse(await tools.getArtifact(ctx, { entryPath: prepared.suggestedEntryPath })).staleSources, [
+    assert.deepStrictEqual(JSON.parse((await tools.getArtifact(ctx, { entryPath: prepared.suggestedEntryPath })).text).staleSources, [
       { path: 'CHANGELOG.md', reason: 'changed' },
     ]);
   });
@@ -203,7 +204,69 @@ describe('mcp-server tools', () => {
   it('getArtifact returns not-found for a missing entry', async () => {
     const ctx = await makeContext();
     const raw = await tools.getArtifact(ctx, { entryPath: 'nope.html' });
-    assert.match(raw, /No artifact found/);
+    assert.match(raw.text, /No artifact found/);
+  });
+
+  it('getArtifact returns open and sent comments, and attaches up to 4 crops', async () => {
+    const ctx = await makeContext();
+    const entry = '.open-design/c/index.html';
+    await fs.mkdir(path.join(ctx.workspaceRoot, '.open-design/c'), { recursive: true });
+    await fs.writeFile(path.join(ctx.workspaceRoot, entry), '<h1>C</h1>');
+    await tools.registerArtifact(ctx, { entryPath: entry, kind: 'html', title: 'C' });
+    const comments = [];
+    for (let i = 0; i < 6; i++) {
+      const id = `c-${i}`;
+      await writeCommentCrop(ctx.workspaceRoot, entry, id, Buffer.from(`png${i}`));
+      comments.push({ id, selector: 'h1', htmlHint: '<h1>', note: `n${i}`, status: i === 5 ? 'resolved' : i === 4 ? 'sent' : 'open', createdAt: `2026-10-19T00:00:0${i}.000Z`, updatedAt: `2026-10-19T00:00:0${i}.000Z`, screenshot: `index.html.comments/${id}.png` } as const);
+    }
+    await writeArtifactComments(ctx.workspaceRoot, entry, [...comments]);
+    const out = await tools.getArtifact(ctx, { entryPath: entry });
+    const payload = JSON.parse(out.text);
+    assert.deepStrictEqual(payload.openComments.map((c: { id: string }) => c.id), ['c-0', 'c-1', 'c-2', 'c-3', 'c-4']);
+    assert.strictEqual(payload.openComments[4].status, 'sent');
+    assert.strictEqual(payload.openComments[0].screenshot, '.open-design/c/index.html.comments/c-0.png');
+    assert.deepStrictEqual(payload.commentScreenshotsAttached, ['c-4', 'c-3', 'c-2', 'c-1']);
+    assert.deepStrictEqual(out.images?.map((i) => [String(i.data), i.mime]), [['png4', 'image/png'], ['png3', 'image/png'], ['png2', 'image/png'], ['png1', 'image/png']]);
+    const content = tools.toCallToolContent(out);
+    assert.strictEqual(content[0].type, 'text');
+    assert.strictEqual(content.length, 5);
+  });
+
+  it('registerArtifact marks resolvedCommentIds resolved and reports unknown ids', async () => {
+    const ctx = await makeContext();
+    const entry = '.open-design/r/index.html';
+    await fs.mkdir(path.join(ctx.workspaceRoot, '.open-design/r'), { recursive: true });
+    await fs.writeFile(path.join(ctx.workspaceRoot, entry), '<h1>R</h1>');
+    await writeArtifactComments(ctx.workspaceRoot, entry, [{ id: 'c-a', selector: 'h1', htmlHint: '<h1>', note: 'x', status: 'sent', createdAt: '2026-10-19T00:00:00.000Z', updatedAt: '2026-10-19T00:00:00.000Z' }]);
+    const raw = await tools.registerArtifact(ctx, { entryPath: entry, kind: 'html', title: 'R', resolvedCommentIds: ['c-a', 'c-zz'] });
+    assert.match(raw, /Marked 1 comment\(s\) resolved\. No comment with id c-zz\./);
+    assert.deepStrictEqual(JSON.parse((await tools.getArtifact(ctx, { entryPath: entry })).text).openComments, []);
+  });
+
+  it('openPreview refuses unregistered entries and honours OPEN_DESIGN_PREVIEW=off', async () => {
+    const ctx = await makeContext();
+    await fs.writeFile(path.join(ctx.workspaceRoot, 'loose.html'), '<p>x</p>');
+    assert.match(await tools.openPreview(ctx, { entryPath: 'loose.html' }), /isn't registered yet/);
+    const before = process.env.OPEN_DESIGN_PREVIEW;
+    process.env.OPEN_DESIGN_PREVIEW = 'off';
+    try {
+      assert.match(await tools.openPreview(ctx, {}), /turned off/);
+    } finally {
+      if (before === undefined) delete process.env.OPEN_DESIGN_PREVIEW;
+      else process.env.OPEN_DESIGN_PREVIEW = before;
+    }
+  });
+
+  it('openPreview with open: false starts the server and returns the URL', async () => {
+    const ctx = await makeContext();
+    try {
+      const text = await tools.openPreview(ctx, { open: false });
+      assert.match(text, /wasn't opened\. Open this URL in a browser on this machine: http:\/\/127\.0\.0\.1:\d+\/[0-9a-f]{32}\//);
+      const url = /http:\/\/127\.0\.0\.1:\S+/.exec(text)![0];
+      assert.strictEqual((await fetch(url)).status, 200);
+    } finally {
+      await tools.closePreviews();
+    }
   });
 
   it('setActiveDesignSystemTool sets, clears, and rejects an unknown id', async () => {

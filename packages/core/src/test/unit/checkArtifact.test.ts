@@ -23,13 +23,15 @@ async function workspace(html: string, manifest: Record<string, unknown> = {}): 
   return root;
 }
 
-/** Every file under root, with its mtime, to prove a check writes nothing. */
+/** Every file under root except the saved check runs, with its mtime, to prove a check writes nothing else. */
 async function snapshot(root: string): Promise<string[]> {
   const out: string[] = [];
   const walk = async (dir: string): Promise<void> => {
     for (const e of await fs.readdir(dir, { withFileTypes: true })) {
       const p = path.join(dir, e.name);
-      if (e.isDirectory()) await walk(p);
+      if (e.isDirectory()) {
+        if (e.name !== '.checks') await walk(p);
+      }
       else out.push(`${path.relative(root, p)}@${(await fs.stat(p)).mtimeMs}`);
     }
   };
@@ -60,11 +62,17 @@ describe('visual check (real browser; skipped when none is installed)', function
   const check = (root: string, extra: Partial<Parameters<typeof checkArtifact>[0]> = {}) =>
     checkArtifact({ workspaceRoot: root, entryPath: ENTRY, browserPath, settleMs: 0, ...extra });
 
-  it('checks a page at desktop and mobile, flags a fixed-width table on the phone, and writes nothing', async () => {
+  it('checks a page at desktop and mobile, flags a fixed-width table on the phone, and writes only its saved run', async () => {
     const root = await workspace(page('<table style="width:900px"><tr><td>Plan</td><td>Price</td></tr></table>'));
     const before = await snapshot(root);
     const result = ok(await check(root));
     assert.deepStrictEqual(await snapshot(root), before);
+    assert.ok(result.savedRun);
+    assert.deepStrictEqual(result.savedRun!.run.images.map((i) => i.label), ['desktop', 'mobile']);
+    assert.match(formatCheckResult(result), /Screenshots saved for the user: \.open-design\/\.checks\//);
+    const second = ok(await check(root));
+    assert.strictEqual(second.savedRun!.previous?.run.id, result.savedRun!.run.id);
+    assert.match(formatCheckResult(second), /Previous check: .*errors 1 → 1/);
     assert.strictEqual(result.mode, 'page');
     assert.deepStrictEqual(result.images.map((i) => i.label), ['desktop', 'mobile']);
     for (const img of result.images) {

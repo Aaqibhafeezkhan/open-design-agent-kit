@@ -41,7 +41,12 @@ import {
   findCollectionArtifacts,
   hostOverrideFor,
   readArtifact,
-  readArtifactComments,
+  readUnaddressedComments,
+  resolveArtifactComments,
+  PreviewSession,
+  formatPreviewOutcome,
+  previewModeFromEnv,
+  type PreviewMode,
   resolveActiveDesignSystem,
   resolveCraftSections,
   craftRequirementsFor,
@@ -276,6 +281,7 @@ export async function registerArtifact(
     directionId?: string;
     sources?: string[];
     format?: string;
+    resolvedCommentIds?: string[];
   },
 ): Promise<string> {
   if (input.format !== undefined && !getFormat(input.format)) return unknownFormatError(input.format);
@@ -320,29 +326,94 @@ export async function registerArtifact(
         : `\n\nWarning: ${compare.warning}`;
     }
 
-    return `Artifact registered at ${input.entryPath}.artifact.json\n\n${JSON.stringify(manifest, null, 2)}\n\nWritten to ${path.join(ctx.workspaceRoot, input.entryPath)}. This host has no live preview editor — there is nothing further to open.${explorationNote}${sourceNote}`;
+    let commentsNote = '';
+    if (input.resolvedCommentIds?.length) {
+      const { resolved, unknown } = await resolveArtifactComments(ctx.workspaceRoot, input.entryPath, input.resolvedCommentIds);
+      commentsNote = `\n\nMarked ${resolved.length} comment(s) resolved.${unknown.length ? ` No comment with id ${unknown.join(', ')}.` : ''}`;
+    }
+
+    return `Artifact registered at ${input.entryPath}.artifact.json\n\n${JSON.stringify(manifest, null, 2)}\n\nWritten to ${path.join(ctx.workspaceRoot, input.entryPath)}.${await previewNoteAfterRegister(ctx, input.entryPath)}${commentsNote}${explorationNote}${sourceNote}`;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return `Failed to register artifact: ${message}`;
   }
 }
 
-export async function getArtifact(ctx: ToolContext, input: { entryPath: string }): Promise<string> {
+/** get_open_design_artifact: the manifest, entry, supporting files and unaddressed comments, with up to 4 comment crops attached as images. */
+export async function getArtifact(ctx: ToolContext, input: { entryPath: string }): Promise<ToolOutput> {
   const result = await readArtifact({ workspaceRoot: ctx.workspaceRoot, entryPath: input.entryPath });
   if (!result) {
-    return `No artifact found at ${input.entryPath}. It may not have been written yet.`;
+    return { text: `No artifact found at ${input.entryPath}. It may not have been written yet.` };
   }
-  const comments = await readArtifactComments(ctx.workspaceRoot, input.entryPath);
-  const openComments = comments.filter((c) => c.status === 'open');
+  const { comments: openComments, crops } = await readUnaddressedComments(ctx.workspaceRoot, input.entryPath);
   const recorded = recordedSources(result.manifest);
   const payload = {
     manifest: result.manifest,
     supportingFiles: result.supportingFiles,
     entryContent: result.entryContent,
     openComments,
+    commentScreenshotsAttached: crops.length > 0 ? crops.map((c) => c.commentId) : undefined,
     staleSources: recorded.length > 0 ? await findStaleSources(ctx.workspaceRoot, ctx.outputDir, recorded) : undefined,
   };
-  return JSON.stringify(payload, null, 2);
+  return { text: JSON.stringify(payload, null, 2), images: crops.map((c) => ({ data: c.png, mime: 'image/png' })) };
+}
+
+// ── Browser preview (openspec add-browser-preview) ─────────────────────────
+// One preview per workspace root for the life of this MCP process; the
+// window and the server close when the process exits.
+const previewSessions = new Map<string, PreviewSession>();
+const previewOpenedFor = new Set<string>();
+
+function previewSession(ctx: ToolContext): PreviewSession {
+  let session = previewSessions.get(ctx.workspaceRoot);
+  if (!session) {
+    session = new PreviewSession({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, log: (m) => console.error(m) });
+    previewSessions.set(ctx.workspaceRoot, session);
+  }
+  return session;
+}
+
+export function previewMode(): PreviewMode {
+  return previewModeFromEnv();
+}
+
+/** Closes every preview this process started (tests, shutdown). */
+export async function closePreviews(): Promise<void> {
+  const sessions = [...previewSessions.values()];
+  previewSessions.clear();
+  previewOpenedFor.clear();
+  await Promise.all(sessions.map((s) => s.close()));
+}
+
+/** open_open_design_preview: shows a registered artifact (or the picker) in a live browser preview. */
+export async function openPreview(ctx: ToolContext, input: { entryPath?: string; open?: boolean }): Promise<string> {
+  if (previewMode() === 'off') return 'The browser preview is turned off (OPEN_DESIGN_PREVIEW=off).';
+  if (input.entryPath) {
+    const artifact = await readArtifact({ workspaceRoot: ctx.workspaceRoot, entryPath: input.entryPath });
+    if (!artifact) return `No artifact found at ${input.entryPath}. Write it and call register_open_design_artifact first.`;
+    if (!artifact.manifest) return `${input.entryPath} isn't registered yet. Call register_open_design_artifact first.`;
+  }
+  const outcome = await previewSession(ctx).open(input.entryPath, input.open !== false);
+  if (outcome.how !== 'not-opened') previewOpenedFor.add(ctx.workspaceRoot);
+  return formatPreviewOutcome(outcome, input.entryPath);
+}
+
+async function previewNoteAfterRegister(ctx: ToolContext, entryPath: string): Promise<string> {
+  const mode = previewMode();
+  if (mode === 'off') return '';
+  const session = previewSessions.get(ctx.workspaceRoot);
+  if (session?.isRunning() && previewOpenedFor.has(ctx.workspaceRoot)) {
+    // An open preview of this entry reloads by itself; another entry needs a navigate.
+    return ' The open browser preview reloads by itself; call open_open_design_preview to switch it to this artifact.';
+  }
+  if (mode === 'auto') {
+    try {
+      return `\n\n${await openPreview(ctx, { entryPath })}`;
+    } catch (err) {
+      return `\n\nThe browser preview couldn't open: ${err instanceof Error ? err.message : String(err)}`;
+    }
+  }
+  return ' Call open_open_design_preview to show it to the user in a live browser preview, where they can also leave comments.';
 }
 
 export async function setActiveDesignSystemTool(ctx: ToolContext, input: { designSystemId?: string }): Promise<string> {

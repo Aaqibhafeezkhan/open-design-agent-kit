@@ -271,7 +271,15 @@ async function testMcpServerResolution(scratchDir) {
     const callText = call?.result?.content?.[0]?.text;
     const parsedCall = callText ? JSON.parse(callText) : undefined;
     assert(Array.isArray(parsedCall) && parsedCall.length > 0, 'list_open_design_skills returned no entries');
-    log(`mcp-server resolution + handshake OK (${list.result.tools.length} tools, ${parsedCall.length} entries for query "landing")`);
+    // The browser preview's bundled shell and bridge ship in the package (openspec add-browser-preview).
+    send({ jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'open_open_design_preview', arguments: { open: false } } });
+    const preview = await waitForResponse(4);
+    const previewUrl = /http:\/\/127\.0\.0\.1:\S+/.exec(preview?.result?.content?.[0]?.text ?? '')?.[0];
+    assert(previewUrl, `open_open_design_preview returned no URL: ${JSON.stringify(preview)}`);
+    const shellPage = await fetch(previewUrl);
+    const shellJs = await fetch(new URL('shell.js', previewUrl));
+    assert(shellPage.status === 200 && shellJs.status === 200 && (await shellJs.text()).length > 1000, 'the browser preview shell is missing from the published package');
+    log(`mcp-server resolution + handshake OK (${list.result.tools.length} tools, ${parsedCall.length} entries for query "landing", preview served)`);
   } finally {
     killProcessGroup(child);
   }

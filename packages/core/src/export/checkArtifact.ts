@@ -13,6 +13,7 @@ import { openArtifactPage, type ArtifactPageSession } from './artifactPage';
 import { VIRTUAL_CLOCK_SCRIPT } from './motion/virtualClock';
 import { extractRootTokens, isStyleTileSkill, missingTileTokens } from '../generation/styleTiles';
 import { findBrowser } from './browserDiscovery';
+import { formatSavedCheckRun, saveCheckRun, type SavedCheckRun } from './checkHistory';
 import { captureDeckSlides, countSlides, validateSlideNumbers } from './deck/captureDeck';
 import { collectDiagramFindings, waitForDiagrams } from './diagramPageScripts';
 import { EMAIL_MAX_WIDTH } from './inlineExport';
@@ -64,6 +65,8 @@ export interface CheckArtifactOptions {
   at?: number[];
   /** 3D pages exposing odScene handles: the review views on the sheet (default all four), or false for none. */
   views?: ReviewView[] | false;
+  /** Save the run's images and findings under <outputDir>/.checks/ for the user (default true; openspec add-browser-preview). */
+  saveRun?: boolean;
 }
 
 export interface CheckImage {
@@ -95,6 +98,8 @@ export type CheckArtifactResult =
       scene3d?: SceneEvidence;
       warnings: string[];
       browserPath: string;
+      /** Where the run's images and findings were saved, and the run before it. */
+      savedRun?: SavedCheckRun;
     }
   | { ok: false; code: ExportErrorCode; error: string };
 
@@ -198,6 +203,18 @@ function brokenAssetFindings(warnings: string[]): Finding[] {
 }
 
 export async function checkArtifact(options: CheckArtifactOptions): Promise<CheckArtifactResult> {
+  const result = await runCheck(options);
+  if (!result.ok || options.saveRun === false) return result;
+  try {
+    const entryPath = path.relative(options.workspaceRoot, path.resolve(options.workspaceRoot, options.entryPath)).split(path.sep).join('/');
+    result.savedRun = await saveCheckRun(options.workspaceRoot, options.outputDir ?? '.open-design', entryPath, result);
+  } catch (err) {
+    result.warnings.push(`The check's screenshots couldn't be saved for the user: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  return result;
+}
+
+async function runCheck(options: CheckArtifactOptions): Promise<CheckArtifactResult> {
   const invalid = validateOptions(options);
   if (invalid) return fail('invalid-args', invalid);
 
@@ -532,13 +549,14 @@ export function formatCheckResult(result: CheckArtifactResult): string {
       : result.mode === 'cards'
         ? 'the design at its card size'
         : `the page at ${(result.viewports ?? []).map((v) => `${v.name} ${v.width}×${v.height}`).join(' and ')}`;
-  const lines = [`Checked ${what}. No files were written.`];
+  const lines = [`Checked ${what}.${result.savedRun ? '' : ' No files were written.'}`];
   lines.push(...formatPreflight(result.findings, 're-check'));
   if (result.images.length > 0) {
     lines.push(`Screenshots (${result.images.length}, attached in this order): ${result.images.map((i) => `${i.label} ${i.width}×${i.height}`).join('; ')}.`);
     lines.push('Look at them for what the checks can\'t measure: balance, hierarchy, crowded or empty areas, text over busy imagery. Each is one moment: animations are captured mid-way.');
   }
   if (result.omitted.length > 0) lines.push(`Not attached: ${result.omitted.join('; ')}.`);
+  if (result.savedRun) lines.push(...formatSavedCheckRun(result.savedRun));
   if (result.scene3d) lines.push(...formatSceneEvidence(result.scene3d));
   const warnings = result.warnings.filter((w) => !w.startsWith('Failed to load: '));
   if (warnings.length > 0) lines.push('Warnings:', ...warnings.map((w) => `- ${w}`));

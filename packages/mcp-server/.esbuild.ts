@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs';
 import * as esbuild from 'esbuild';
 import { cheerioLoadParsePlugin } from '../core/build/cheerioLoadParsePlugin';
+import { buildPreviewBundles } from '../core/build/previewBundles';
 
 // Bundles @feimacode/open-design-agent-kit-core (raw TS source, no compiled
 // output of its own — same resolution strategy packages/vscode's esbuild
@@ -31,6 +32,8 @@ async function main() {
     // JS (a second `#!` line past line 1 is a syntax error, not a comment).
     logLevel: 'info',
   });
+  // The browser preview's shell and in-page bridge, read at runtime from out/preview/.
+  await buildPreviewBundles('out');
 }
 
 main().catch((err) => {
