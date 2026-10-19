@@ -13,11 +13,11 @@
 
 ## 2. Comment model and controller
 
-- [ ] 2.1 Implement `selectorFor()` (id → stable attribute → classes under an anchored ancestor → nth-of-type, verified unique) with unit tests on fixture DOMs, including Tailwind-style classes
-- [ ] 2.2 Add `text`, `rect` (document coords), `viewport`, `screenshot`, `host` to `ArtifactComment` and the bridge `select` snapshot; stop storing `auto-` ids in comments; strip `auto-` ids in `serializeDocument`
-- [ ] 2.3 Add the text-excerpt step to `resolveCommentAnchor`
-- [ ] 2.4 Replace `writeArtifactComments` with `updateArtifactComments(mutator)`: merge by id (later `updatedAt` wins), temp file + rename; tests for concurrent writers
-- [ ] 2.5 Extract `commentController.ts` (list, pins, input, statuses, send) over a `HostTransport` from `webview/main.ts`; switch the VS Code webview to it and send changed comments only
+- [x] 2.1 Implement `selectorFor()` (id → stable attribute → classes under an anchored ancestor → nth-of-type, verified unique) with unit tests on fixture DOMs, including Tailwind-style classes
+- [x] 2.2 Add `text`, `rect` (document coords), `viewport`, `screenshot`, `host` to `ArtifactComment` and the bridge `select` snapshot; stop storing `auto-` ids in comments; strip `auto-` ids in `serializeDocument`
+- [x] 2.3 Add the text-excerpt step to `resolveCommentAnchor`
+- [x] 2.4 Replace `writeArtifactComments` with `updateArtifactComments(mutator)`: merge by id (later `updatedAt` wins), temp file + rename; tests for concurrent writers
+- [x] 2.5 Extract `commentController.ts` (list, pins, input, statuses, send) over a `HostTransport` from `webview/main.ts`; switch the VS Code webview to it and send changed comments only
 - [ ] 2.6 VS Code regression pass: Comment, Send to chat, Edit and Tweaks on served and srcdoc previews
 
 ## 3. Preview server and launcher (core)

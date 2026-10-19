@@ -8,7 +8,8 @@
 // ones the preview used directly before (dom/*.ts), unchanged.
 import { captureFigmaIr } from '../figma/captureIr';
 import { resolveCommentAnchor } from './dom/commentAnchors';
-import { cssSelectorFor, ensureDataOdId, htmlHintFor } from './dom/elementTargeting';
+import { commentTextExcerpt } from '../workspace/artifactCommentTypes';
+import { ensureDataOdId, htmlHintFor, selectorFor, sourceDataOdId } from './dom/elementTargeting';
 import { applyPatch, PREVIEW_ONLY_ATTR, PREVIEW_SRC_ATTR, serializeDocument } from './dom/sourcePatches';
 import { BRIDGE_TAG, isBridgeMessage, type BridgeMode, type BridgeRect, type ElementSnapshot, type FromBridge, type ToBridge, type Untagged } from './protocol';
 
@@ -87,18 +88,26 @@ function install(): void {
   };
 
   const snapshot = (el: HTMLElement): ElementSnapshot => {
+    // Read before ensureDataOdId, which may add an id only the live page has.
+    const sourceElementId = sourceDataOdId(el);
+    const selector = selectorFor(el);
     const elementId = ensureDataOdId(el);
     const cs = getComputedStyle(el);
+    const rect = rectOf(el);
     return {
       elementId,
-      selector: cssSelectorFor(el),
+      sourceElementId,
+      selector,
+      textExcerpt: commentTextExcerpt(el.textContent),
+      docRect: { left: rect.left + window.scrollX, top: rect.top + window.scrollY, width: rect.width, height: rect.height },
+      viewport: { width: window.innerWidth, height: window.innerHeight },
       htmlHint: htmlHintFor(el),
       tag: el.tagName,
       childCount: el.children.length,
       text: el.textContent ?? '',
       outerHTML: el.outerHTML,
       attrs: { src: el.getAttribute(PREVIEW_SRC_ATTR) ?? el.getAttribute('src'), alt: el.getAttribute('alt'), href: el.getAttribute('href') },
-      rect: rectOf(el),
+      rect,
       styles: {
         color: cs.color,
         backgroundColor: cs.backgroundColor,
@@ -179,6 +188,15 @@ function install(): void {
     scheduleRects();
   });
   window.addEventListener('scroll', scheduleRects, true);
+  // The page's own scroll position, so a shell can restore it after reloading the page.
+  let scrollTimer = 0;
+  window.addEventListener('scroll', () => {
+    if (scrollTimer) return;
+    scrollTimer = window.setTimeout(() => {
+      scrollTimer = 0;
+      post({ type: 'scroll', x: window.scrollX, y: window.scrollY });
+    }, 100);
+  });
   window.addEventListener('resize', scheduleRects);
   const watchLayout = (): void => {
     new MutationObserver(scheduleRects).observe(document.documentElement, { subtree: true, childList: true, attributes: true, characterData: true });
@@ -224,6 +242,9 @@ function install(): void {
         scheduleRects();
         break;
       }
+      case 'scroll-to':
+        if (Number.isFinite(message.x) && Number.isFinite(message.y)) window.scrollTo(message.x, message.y);
+        break;
       case 'capture-figma': {
         const { capture, truncated } = captureFigmaIr(document, { title: document.title || 'Artifact' });
         post({ type: 'figma-capture', requestId: message.requestId, capture, truncated });

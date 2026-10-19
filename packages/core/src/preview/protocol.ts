@@ -46,8 +46,18 @@ export interface StyleSnapshot {
 
 /** Everything the preview needs about a clicked element, as plain data. */
 export interface ElementSnapshot {
+  /** The element's `data-od-id` in the live page (may be one the bridge invented, for Edit patches). */
   elementId: string;
+  /** The `data-od-id` that came from the source, if any: what a comment stores. */
+  sourceElementId?: string;
+  /** The robust selector (dom/elementTargeting.ts selectorFor). */
   selector: string;
+  /** Whitespace-collapsed text, at most 120 characters. */
+  textExcerpt: string;
+  /** The element's box in document coordinates (scroll included). */
+  docRect: BridgeRect;
+  /** The page's viewport size. */
+  viewport: { width: number; height: number };
   htmlHint: string;
   tag: string;
   childCount: number;
@@ -65,7 +75,8 @@ export type ToBridge =
   | { od: typeof BRIDGE_TAG; type: 'clear-selection' }
   | { od: typeof BRIDGE_TAG; type: 'set-comments'; comments: Pick<ArtifactComment, 'id' | 'elementId' | 'selector' | 'status' | 'text' | 'htmlHint'>[] }
   | { od: typeof BRIDGE_TAG; type: 'apply-patches'; requestId: string; patches: ManualEditPatch[] }
-  | { od: typeof BRIDGE_TAG; type: 'capture-figma'; requestId: string };
+  | { od: typeof BRIDGE_TAG; type: 'capture-figma'; requestId: string }
+  | { od: typeof BRIDGE_TAG; type: 'scroll-to'; x: number; y: number };
 
 /** Page → preview. */
 export type FromBridge =
@@ -74,7 +85,8 @@ export type FromBridge =
   | { od: typeof BRIDGE_TAG; type: 'rects'; hover: BridgeRect | null; selection: BridgeRect | null; pins: { commentId: string; rect: BridgeRect | null }[] }
   | { od: typeof BRIDGE_TAG; type: 'patched'; requestId: string; ok: boolean; newSource?: string }
   | { od: typeof BRIDGE_TAG; type: 'figma-capture'; requestId: string; capture: unknown; truncated: boolean }
-  | { od: typeof BRIDGE_TAG; type: 'open-local-link'; href: string };
+  | { od: typeof BRIDGE_TAG; type: 'open-local-link'; href: string }
+  | { od: typeof BRIDGE_TAG; type: 'scroll'; x: number; y: number };
 
 /** A message without its `od` tag, distributed over the union. */
 export type Untagged<T> = T extends unknown ? Omit<T, 'od'> : never;

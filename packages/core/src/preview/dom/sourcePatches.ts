@@ -8,6 +8,7 @@
 // history-entry/undo-redo machinery — VS Code's own document undo already
 // covers every applied patch here, since each one is written back through
 // a real WorkspaceEdit.
+import { AUTO_OD_ID_PREFIX } from './elementTargeting';
 
 export interface CuratedStyles {
   color?: string;
@@ -89,6 +90,8 @@ export function serializeDocument(doc: Document): string {
   const doctype = doc.doctype ? `<!DOCTYPE ${doc.doctype.name}>\n` : '<!doctype html>\n';
   const clone = doc.documentElement.cloneNode(true) as HTMLElement;
   clone.querySelectorAll(`[${PREVIEW_ONLY_ATTR}]`).forEach((el) => el.remove());
+  // Ids the bridge invented so Edit patches could find their targets (ensureDataOdId).
+  clone.querySelectorAll(`[data-od-id^="${AUTO_OD_ID_PREFIX}"]`).forEach((el) => el.removeAttribute('data-od-id'));
   // Frames the preview filled from their local src (see inlineLocalFrames).
   clone.querySelectorAll(`[${PREVIEW_SRCDOC_ATTR}]`).forEach((el) => {
     el.removeAttribute('srcdoc');
