@@ -91,6 +91,7 @@ function install(): void {
     // Read before ensureDataOdId, which may add an id only the live page has.
     const sourceElementId = sourceDataOdId(el);
     const selector = selectorFor(el);
+    const htmlHint = htmlHintFor(el);
     const elementId = ensureDataOdId(el);
     const cs = getComputedStyle(el);
     const rect = rectOf(el);
@@ -101,7 +102,7 @@ function install(): void {
       textExcerpt: commentTextExcerpt(el.textContent),
       docRect: { left: rect.left + window.scrollX, top: rect.top + window.scrollY, width: rect.width, height: rect.height },
       viewport: { width: window.innerWidth, height: window.innerHeight },
-      htmlHint: htmlHintFor(el),
+      htmlHint,
       tag: el.tagName,
       childCount: el.children.length,
       text: el.textContent ?? '',

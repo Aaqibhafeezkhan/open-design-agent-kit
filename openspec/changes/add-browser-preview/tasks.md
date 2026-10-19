@@ -1,7 +1,7 @@
 ## 0. Spikes
 
 - [ ] 0.1 Codex: check that an MCP server can bind a loopback port and launch a headed browser under each sandbox mode; record the result in design.md Open Questions
-- [ ] 0.2 WSL (the user's setup): headed puppeteer with Linux Chrome under WSLg, and the `wslview`/`cmd.exe /c start` fallback reaching `127.0.0.1` from Windows
+- [x] 0.2 WSL (the user's setup): headed puppeteer with Linux Chrome under WSLg works (one app window, ~0.9 s); the `cmd.exe /c start` fallback is still to be checked by hand
 - [ ] 0.3 Confirm how Claude Code, Codex CLI and Cursor display MCP `image` items from tool results, and note it in docs
 
 ## 1. Move shared preview code to core (no behaviour change)
@@ -22,19 +22,19 @@
 
 ## 3. Preview server and launcher (core)
 
-- [ ] 3.1 `previewServer.ts`: shell origin (shell assets, comments API, SSE) and design origin (`startStaticServer` + bridge injection) on two loopback ports, each with its own 128-bit token; Origin check, body caps, write allow-list
-- [ ] 3.2 Security tests: missing token → 404, design-origin request to the API rejected, `../` → 403, write outside `<entry>.comments*` refused
-- [ ] 3.3 File watching with a debounce, a non-recursive fallback for Node 18 on Linux, and the sidecar watch; SSE `source-updated` / `comments-updated` / `checks-updated`
-- [ ] 3.4 `openPreviewWindow.ts`: headed puppeteer-core (`--app`, persistent profile in the OS cache dir, 5 s appear timeout) → default browser (incl. WSL) → not opened; `OPEN_DESIGN_PREVIEW_BROWSER=default`; window reuse and navigation; tests with injected launchers
-- [ ] 3.5 `captureCrop.ts`: CDP clip of the shell page (iframe offset + rect + 24 px, ≤800 px) and a headless re-render fallback through `openArtifactPage`; save to `<entry>.comments/<id>.png`; delete the crop with its comment
+- [x] 3.1 `previewServer.ts`: shell origin (shell assets, comments API, SSE) and design origin (`startStaticServer` + bridge injection) on two loopback ports, each with its own 128-bit token; Origin check, body caps, write allow-list
+- [x] 3.2 Security tests: missing token → 404, design-origin request to the API rejected, `../` → 403, write outside `<entry>.comments*` refused
+- [x] 3.3 File watching with a debounce (per-folder watches on Linux, where Node's recursive watch loses files replaced by rename), and the sidecar watch; SSE `source-updated` / `comments-updated` / `checks-updated`
+- [x] 3.4 `openPreviewWindow.ts`: headed puppeteer-core (`--app`, persistent profile in the OS cache dir, 5 s appear timeout) → default browser (incl. WSL) → not opened; `OPEN_DESIGN_PREVIEW_BROWSER=default`; window reuse and navigation; tests with injected launchers
+- [x] 3.5 `captureCrop.ts`: CDP clip of the shell page (iframe offset + rect + 24 px, ≤800 px) and a headless re-render fallback through `openArtifactPage`; save to `<entry>.comments/<id>.png`; delete the crop with its comment
 
 ## 4. Browser shell
 
-- [ ] 4.1 `core/src/preview/shell/`: toolbar, View/Comment modes, artifact picker when no entry is given, fetch + EventSource transport, reload keeping mode and scroll
-- [ ] 4.2 Comment UI from `commentController`, overlays hidden during crop, Bridge Availability message
-- [ ] 4.3 Send to agent: mark `sent`, copy the instruction, show the paste hint
-- [ ] 4.4 Checks panel: list runs, before/after per label, findings delta, live update on `checks-updated`
-- [ ] 4.5 Light/dark styling consistent with the VS Code preview's open-design visual language; works at narrow widths
+- [x] 4.1 `core/src/preview/shell/`: toolbar, View/Comment modes, artifact picker when no entry is given, fetch + EventSource transport, reload keeping mode and scroll
+- [x] 4.2 Comment UI from `commentController`, overlays hidden during crop, Bridge Availability message
+- [x] 4.3 Send to agent: mark `sent`, copy the instruction, show the paste hint
+- [x] 4.4 Checks panel: list runs, before/after per label, findings delta, live update on `checks-updated`
+- [x] 4.5 Light/dark styling consistent with the VS Code preview's open-design visual language; works at narrow widths
 
 ## 5. Check history
 

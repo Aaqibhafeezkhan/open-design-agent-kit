@@ -39,6 +39,8 @@ export interface CommentController {
   markOpenSent(): ArtifactComment[];
   /** Applies a change to one comment and persists it. */
   patch(id: string, change: Partial<ArtifactComment>): void;
+  /** Replaces one comment locally with the host's copy (e.g. after the host saved its crop); nothing is persisted. */
+  upsertLocal(comment: ArtifactComment): void;
 }
 
 function newCommentId(): string {
@@ -186,6 +188,12 @@ export function createCommentController(options: CommentControllerOptions): Comm
       let updated: ArtifactComment | undefined;
       comments = comments.map((c) => (c.id === id ? (updated = { ...c, ...change, updatedAt: now }) : c));
       if (updated) changed([updated]);
+    },
+    upsertLocal(comment) {
+      const i = comments.findIndex((c) => c.id === comment.id);
+      if (i === -1) comments.push(comment);
+      else comments[i] = comment;
+      options.onListChanged();
     },
   };
   return controller;

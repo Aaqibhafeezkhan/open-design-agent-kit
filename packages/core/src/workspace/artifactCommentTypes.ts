@@ -40,16 +40,19 @@ export function isUnaddressed(comment: Pick<ArtifactComment, 'status'>): boolean
 }
 
 /**
- * `incoming` merged into `current` by id: a comment present in both keeps
- * whichever has the later `updatedAt`. Comments listed in `deletedIds` are
- * dropped. Order: current's order, then new comments in incoming's order.
+ * `incoming` merged into `current` by id: for a comment present in both, the
+ * one with the later `updatedAt` wins, field by field, so a writer that never
+ * saw a field (a crop added by another preview) doesn't drop it. Comments
+ * listed in `deletedIds` are dropped. Order: current's order, then new
+ * comments in incoming's order.
  */
 export function mergeComments(current: ArtifactComment[], incoming: ArtifactComment[], deletedIds: readonly string[] = []): ArtifactComment[] {
   const deleted = new Set(deletedIds);
   const byId = new Map(current.map((c) => [c.id, c]));
   for (const c of incoming) {
     const existing = byId.get(c.id);
-    if (!existing || c.updatedAt >= existing.updatedAt) byId.set(c.id, c);
+    if (!existing) byId.set(c.id, c);
+    else if (c.updatedAt >= existing.updatedAt) byId.set(c.id, { ...existing, ...c });
   }
   return [...byId.values()].filter((c) => !deleted.has(c.id));
 }

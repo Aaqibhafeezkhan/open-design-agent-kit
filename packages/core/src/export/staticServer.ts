@@ -47,6 +47,8 @@ export interface StaticServerOptions {
   entryPath?: string;
   /** Rewrites the entry document as served (never the file on disk), e.g. to inject the <deck-stage> fallback. */
   transformEntry?: (html: string) => string;
+  /** Rewrites every HTML document as served (after transformEntry), e.g. to inject the preview bridge into any page the preview navigates to. */
+  transformHtml?: (html: string, relPath: string) => string;
   /**
    * A secret first path segment every request must carry (`/<token>/…`).
    * For long-lived servers (the VS Code served preview), so another local
@@ -89,6 +91,7 @@ export async function startStaticServer(root: string, options: StaticServerOptio
       const file = stat.isDirectory() ? path.join(abs, 'index.html') : abs;
       let body = await fs.readFile(file);
       if (options.transformEntry && file === absEntry) body = Buffer.from(options.transformEntry(body.toString('utf8')), 'utf8');
+      if (options.transformHtml && /\.html?$/i.test(file)) body = Buffer.from(options.transformHtml(body.toString('utf8'), path.relative(absRoot, file).split(path.sep).join('/')), 'utf8');
       res.writeHead(200, {
         'Content-Type': CONTENT_TYPES[path.extname(file).toLowerCase()] ?? 'application/octet-stream',
         'Content-Length': body.length,
