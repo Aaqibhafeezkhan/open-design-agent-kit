@@ -8,6 +8,7 @@ import { mergeClaudeMcpConfig, writeClaudeSkills } from './claudeSetup';
 import { CODEX_CONFIG_SNIPPET, ensureCodexMcpConfig, writeCodexSkills } from './codexSetup';
 import { runCheck, type CheckCliOptions } from './checkCommand';
 import { runExport, runRenderVideo, type ExportCliOptions } from './exportCommand';
+import { runPreview, type PreviewCliOptions } from './previewCommand';
 import { cliHelpEpilogue } from './docsLinks';
 
 async function resolveTools(toolsFlag: string | undefined): Promise<ToolId[]> {
@@ -122,7 +123,7 @@ program
 
 program
   .command('check <entryPath>')
-  .description('Render a registered Open Design artifact (needs an installed Chrome, Edge, or Chromium) and print its preflight findings: pages at desktop and mobile widths, card designs at their format size, decks slide by slide. Writes nothing unless --screenshots is given')
+  .description('Render a registered Open Design artifact (needs an installed Chrome, Edge, or Chromium) and print its preflight findings: pages at desktop and mobile widths, card designs at their format size, decks slide by slide. Saves the run under .open-design/.checks/ (for the preview\'s Checks panel); writes screenshots elsewhere only with --screenshots')
   .option('--viewport <name:WxH>', 'Pages: a viewport to check instead of desktop 1440x900 and mobile 390x844; repeat for several', (value: string, previous: string[] = []) => [...previous, value])
   .option('--slides <list>', 'Decks: comma-separated 1-based slide numbers to check, e.g. 1,3')
   .option('--max-images <n>', 'Screenshots to write with --screenshots, 0-6 (default 3)')
@@ -135,6 +136,22 @@ program
   .action(async (entryPath: string, options: CheckCliOptions) => {
     try {
       process.exitCode = await runCheck(entryPath, options);
+    } catch (err) {
+      console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
+      process.exitCode = 1;
+    }
+  });
+
+program
+  .command('preview [entryPath]')
+  .description('Show a registered Open Design artifact in a live browser preview (reloads on change; click to comment), or the list of designs without an entry. Runs until Ctrl-C')
+  .option('--no-open', 'Print the URL without opening a browser')
+  .option('--port <n>', 'Port for the preview (default: a free one)')
+  .option('--browser <path>', 'Browser executable (default: OPEN_DESIGN_BROWSER_PATH, then auto-detect)')
+  .option('--workspace <dir>', 'Workspace root (default: nearest ancestor containing .open-design/)')
+  .action(async (entryPath: string | undefined, options: PreviewCliOptions) => {
+    try {
+      process.exitCode = await runPreview(entryPath, options);
     } catch (err) {
       console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
       process.exitCode = 1;

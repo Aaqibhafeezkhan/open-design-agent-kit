@@ -51,8 +51,8 @@
 
 ## 7. CLI
 
-- [ ] 7.1 `preview [entryPath]` with `--no-open`, `--port`, `--browser`, `--workspace`; foreground until Ctrl-C, clean shutdown
-- [ ] 7.2 Bundle the shell assets; CLI tests for argument parsing and the not-opened path
+- [x] 7.1 `preview [entryPath]` with `--no-open`, `--port`, `--browser`, `--workspace`; foreground until Ctrl-C, clean shutdown
+- [x] 7.2 Bundle the shell assets; CLI tests for argument parsing and the not-opened path
 
 ## 8. Instructions, prompts and docs
 

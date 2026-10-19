@@ -73,7 +73,7 @@ export class PreviewSession {
       await existing.focus().catch(() => undefined);
       return { url, how: 'app-window', reused: true };
     }
-    if (!open) return { url, how: 'not-opened', note: 'Not opened (open: false).' };
+    if (!open) return { url, how: 'not-opened' };
     const result = await (this.options.openWindow ?? openPreviewWindow)(url, { browserPath: this.options.browserPath, log: this.options.log });
     if (result.how === 'app-window') {
       server.setWindow(result.window);
