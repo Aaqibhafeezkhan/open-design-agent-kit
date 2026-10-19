@@ -176,7 +176,7 @@ Headers, banners, the email header and the display ads are left out of a shape s
 
 ### register_open_design_artifact
 
-Call after the entry file (and any supporting files) is written. Validates the artifact and writes its manifest sidecar `<entry>.artifact.json`. In VS Code it also opens the [preview](../guides/preview-comments-edit.md).
+Call after the entry file (and any supporting files) is written. Validates the artifact and writes its manifest sidecar `<entry>.artifact.json`. In VS Code it also opens the [preview](../guides/preview-comments-edit.md). Through the MCP server, the result points the agent at [`open_open_design_preview`](#open_open_design_preview), or opens the browser preview itself when [`OPEN_DESIGN_PREVIEW`](settings-and-env.md#open_design_preview) is `auto`.
 
 | Argument | Type | Required | Meaning |
 |---|---|---|---|
@@ -194,6 +194,7 @@ Call after the entry file (and any supporting files) is written. Validates the a
 | `directionId` | string | no | The direction this sketch is. Leave it out for a built-out or merged version registered against the exploration. |
 | `sources` | string[] | no | The same source paths passed to `prepare_open_design_brief`. Each source's hash is recorded in the manifest. |
 | `format` | [format id](#canvas-formats) | no | The canvas format passed to `prepare_open_design_brief`. Recorded as [`metadata.format`](artifact-manifest.md#metadataformat), so export, preflight and adaptation use it. Registering again keeps the manifest's earlier metadata (this format, export and share records); a new `format` replaces the old one. |
+| `resolvedCommentIds` | string[] | no | Ids of the user's [comments](../guides/browser-preview.md#comments) (from `openComments`) that this edit addressed. They're marked resolved and their pins leave the preview; unknown ids are reported. |
 
 **Result:** the written manifest. See [Artifact manifest](artifact-manifest.md). With `explorationId`, the result also reports the comparison page's path and which directions are still missing. If the exploration has no plan, the artifact is still registered and the result carries a warning.
 
@@ -207,7 +208,18 @@ Reads an artifact back.
 |---|---|---|---|
 | `entryPath` | string | yes | Workspace-relative path to the entry file. |
 
-**Result:** `{ manifest, supportingFiles, entryContent, openComments, staleSources? }`. `openComments` holds comments left in the VS Code preview that haven't been resolved; the agent should address them. See [Preview, comment and edit](../guides/preview-comments-edit.md). `staleSources` is present when the manifest records sources: each `{ path, reason }` where the source has `changed` since registration or is `missing`.
+**Result:** `{ manifest, supportingFiles, entryContent, openComments, commentScreenshotsAttached?, staleSources? }`. `openComments` holds the user's comments from the VS Code preview or the [browser preview](../guides/browser-preview.md) that haven't been resolved (status `open`, or `sent` once handed to the agent). Each names its element (`selector`, `text`, `htmlHint`, `rect` and `viewport`) and has the user's `note`; a comment made in the browser preview also has `screenshot`, the workspace-relative path of a crop of the element. Up to 4 crops are attached to the result as images, newest first, and `commentScreenshotsAttached` lists whose. The agent should address the comments, then pass their ids as `resolvedCommentIds` to `register_open_design_artifact`. See [Preview, comment and edit](../guides/preview-comments-edit.md). `staleSources` is present when the manifest records sources: each `{ path, reason }` where the source has `changed` since registration or is `missing`.
+
+### open_open_design_preview
+
+MCP hosts only (Claude Code, Codex, Cursor and others). Shows a registered artifact in the [browser preview](../guides/browser-preview.md): a live page that reloads when the design changes, with a Comment mode and a Checks panel. It opens an app window of the installed Chrome, Edge or Chromium; without one, the default browser; when nothing can be opened (a remote session), it returns the URL. The preview lasts as long as the MCP server; later calls switch the same window to another artifact.
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `entryPath` | string | no | Workspace-relative path to a registered entry file. Omit it for the list of the workspace's designs. |
+| `open` | boolean | no | Open a window (default `true`). `false` only starts the preview and returns its URL. |
+
+**Result:** the preview URL and how it was opened (browser window, default browser, or not opened and why). With [`OPEN_DESIGN_PREVIEW`](settings-and-env.md#open_design_preview) set to `off`, it starts nothing and says so.
 
 ### remix_open_design_example
 
@@ -399,7 +411,7 @@ A push always adds a new frame and never changes existing layers. Without a Figm
 
 ### check_open_design_artifact
 
-Renders a registered artifact in a headless browser (an installed Chrome, Edge or Chromium, never downloaded) and returns what it looks like: **screenshots attached as images** plus [preflight](../guides/posters.md#preflight-checks) findings. It writes no files and doesn't change the manifest. The agent calls it after creating or substantially editing a design, before saying it's done: it fixes every error, looks at the screenshots for what checks can't measure (balance, hierarchy, crowded or empty areas), and re-checks, for at most two rounds.
+Renders a registered artifact in a headless browser (an installed Chrome, Edge or Chromium, never downloaded) and returns what it looks like: **screenshots attached as images** plus [preflight](../guides/posters.md#preflight-checks) findings. It doesn't change the artifact or its manifest; it saves each run's screenshots and findings under `.open-design/.checks/` (see [Saved check runs](#saved-check-runs)). The agent calls it after creating or substantially editing a design, before saying it's done: it fixes every error, looks at the screenshots for what checks can't measure (balance, hierarchy, crowded or empty areas), and re-checks, for at most two rounds.
 
 What it renders depends on the artifact:
 
@@ -422,6 +434,10 @@ Screenshots are JPEG, at most 1568 px on the long edge. A page's first screen at
 **Result:** text with the findings (errors first), the attached screenshots' labels and sizes, what wasn't attached, and any warnings; then the screenshots. In VS Code they're image parts of the tool result; over MCP they're `image` content items after the text. A client that ignores images still gets every finding in the text.
 
 When the artifact was registered with `sources` and any of them changed since, the findings include `stale-sources` (info).
+
+#### Saved check runs
+
+Each check that renders saves its screenshots and a findings summary to `.open-design/.checks/<entry>/<time>/`, keeping the last 5 runs per artifact. The result lists the saved image paths and, when there's an earlier run, its folder and how the error and warning counts changed (for example `errors 2 → 0`). Terminal agents such as Claude Code and Codex CLI don't show tool images to you, so this is how you see them: in the [browser preview's](../guides/browser-preview.md#checks) Checks panel, before and after side by side, or by opening the files. Add `.open-design/.checks/` to `.gitignore` if you don't want them committed.
 
 For a 3D scene (a canvas marked `data-od-webgl`, or a three.js import), the check renders with software WebGL, waits for the scene's `window.odScene.ready`, and reports `webgl`: an error when the canvas has no WebGL context, a warning when it's one flat color. Export reports the same finding. See [3D objects](../guides/3d-objects.md).
 

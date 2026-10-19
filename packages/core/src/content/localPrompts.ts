@@ -16,6 +16,8 @@ export interface LocalPrompt {
   /** When the model should reach for this prompt's skill on its own (appended to skill descriptions). */
   modelTrigger?: string;
   placeholder: string;
+  /** Hosts that get this prompt (vscode, claude, codex, mcp); all when absent. */
+  hosts?: string[];
   body: string;
 }
 
@@ -38,6 +40,7 @@ export async function loadLocalPrompts(assetsRoot: string): Promise<LocalPrompt[
       argumentHint: typeof data.argument_hint === 'string' ? data.argument_hint : undefined,
       modelTrigger: typeof data.model_trigger === 'string' ? data.model_trigger : undefined,
       placeholder: typeof data.placeholder === 'string' ? data.placeholder : 'Describe what you want.',
+      hosts: Array.isArray(data.hosts) ? data.hosts.map(String) : undefined,
       body: content.trim(),
     });
   }

@@ -38,7 +38,7 @@ This writes the skills into `.agents/skills/` and creates `.codex/config.toml` w
 
 2. Copy this repository's generated [`.agents/skills/`](https://github.com/feimacode/open-design-agent-kit/tree/main/.agents/skills) folder into your project. It contains:
    - `open-design/`: the overview skill. It triggers on any design request and walks the agent through the tools.
-   - The workflow skills (`open-design-new/`, `open-design-social-post/`, `open-design-poster/`, `open-design-campaign/`, `open-design-docs/`, `open-design-explore/`, `open-design-publish/`, `open-design-deck-from-source/`, `open-design-integrations/`). Each also triggers by itself on its kind of request, such as a social post, a poster or "show me a few options".
+   - The workflow skills (`open-design-new/`, `open-design-social-post/`, `open-design-poster/`, `open-design-campaign/`, `open-design-docs/`, `open-design-explore/`, `open-design-publish/`, `open-design-deck-from-source/`, `open-design-integrations/`, `open-design-preview/`). Each also triggers by itself on its kind of request, such as a social post, a poster or "show me a few options".
    - One folder per curated entry (e.g. `guizang-ppt/`, `card-twitter/`). These are explicit-only: each has an `agents/openai.yaml` with `policy.allow_implicit_invocation: false`, so they run only when you pick them.
 
 The server never edits `~/.codex/config.toml` or your `.agents/skills/` itself.
@@ -49,7 +49,7 @@ Ask in plain words:
 
 > Make me a one-page landing page for a coffee subscription, warm and editorial.
 
-Codex loads the `open-design` skill, calls `list_open_design_skills` to pick a recipe, `prepare_open_design_brief` for instructions, writes the HTML with its own file tools, and calls `register_open_design_artifact`. The result lands under `.open-design/<name>/`.
+Codex loads the `open-design` skill, calls `list_open_design_skills` to pick a recipe, `prepare_open_design_brief` for instructions, writes the HTML with its own file tools, and calls `register_open_design_artifact`. The result lands under `.open-design/<name>/`, and Codex opens it in a [browser preview](../guides/browser-preview.md) that reloads as it changes. Click **Comment** there to point at elements and say what should change, then **Send to agent** and paste into Codex. The preview's **Checks** panel shows Codex's check screenshots, before and after.
 
 To run a curated recipe directly, pick its skill (for example `guizang-ppt` for an editorial slide deck) and add your brief. See [Prompts and commands](../reference/prompts-and-commands.md#codex) for the full list.
 

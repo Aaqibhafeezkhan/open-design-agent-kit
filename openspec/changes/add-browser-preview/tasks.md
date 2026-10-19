@@ -56,12 +56,12 @@
 
 ## 8. Instructions, prompts and docs
 
-- [ ] 8.1 Claude Code and Codex `open-design` skills and the shared instruction source: open the preview after the first registration; read comments with `get_open_design_artifact`; resolve with `resolvedCommentIds`; before/after in the Checks panel. Run the content drift check
-- [ ] 8.2 Claude plugin prompt `/open-design:preview`
-- [ ] 8.3 Docs: getting-started for Claude Code, Codex and Cursor (remove "no preview editor"), a guide "Preview and comment in the browser", tools and CLI references, env vars `OPEN_DESIGN_PREVIEW`, `OPEN_DESIGN_PREVIEW_BROWSER`, and `.gitignore` notes for `.checks/` and `*.comments/`; pass `check-docs`
+- [x] 8.1 Claude Code and Codex `open-design` skills and the shared instruction source: open the preview after the first registration; read comments with `get_open_design_artifact`; resolve with `resolvedCommentIds`; before/after in the Checks panel. Run the content drift check
+- [x] 8.2 Prompt `open-design-preview` (`/open-design:open-design-preview` in the plugin; also a Codex skill and an MCP prompt; left out of VS Code through a new `hosts` frontmatter field)
+- [x] 8.3 Docs: getting-started for Claude Code, Codex and Cursor (remove "no preview editor"), a guide "Preview and comment in the browser", tools and CLI references, env vars `OPEN_DESIGN_PREVIEW`, `OPEN_DESIGN_PREVIEW_BROWSER`, and `.gitignore` notes for `.checks/` and `*.comments/`; pass `check-docs`
 
 ## 9. Verification
 
 - [ ] 9.1 Manual run in Claude Code: generate a landing page, preview opens, comment with crop, Send to agent, agent fixes and resolves, pin disappears, Checks panel shows before/after
 - [ ] 9.2 Same flow with no Chromium (default browser, no crops) and with `--no-open` over SSH-style URL only
-- [ ] 9.3 `openspec validate add-browser-preview --strict`
+- [x] 9.3 `openspec validate add-browser-preview --strict`

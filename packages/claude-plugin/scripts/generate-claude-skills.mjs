@@ -11,7 +11,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { collectCuratedEntries } from '../../content/scripts/curatedEntries.mjs';
-import { loadLocalPrompts, renderPromptBody } from '../../content/scripts/localPrompts.mjs';
+import { loadLocalPrompts, promptIsForHost, renderPromptBody } from '../../content/scripts/localPrompts.mjs';
 import { buildRemixableExamplesReference } from '../../content/scripts/remixableExamplesReference.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -97,7 +97,7 @@ async function main() {
     await fs.writeFile(path.join(dir, 'SKILL.md'), skillMdContent(entry));
   }
 
-  const localPrompts = await loadLocalPrompts(assetsRoot);
+  const localPrompts = (await loadLocalPrompts(assetsRoot)).filter((p) => promptIsForHost(p, 'claude'));
   for (const prompt of localPrompts) {
     const dir = path.join(skillsDir, prompt.name);
     await fs.mkdir(dir, { recursive: true });

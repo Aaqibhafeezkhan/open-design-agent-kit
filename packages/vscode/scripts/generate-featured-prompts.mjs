@@ -12,7 +12,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { collectCuratedEntries } from '../../content/scripts/curatedEntries.mjs';
-import { loadLocalPrompts, renderPromptBody } from '../../content/scripts/localPrompts.mjs';
+import { loadLocalPrompts, promptIsForHost, renderPromptBody } from '../../content/scripts/localPrompts.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
@@ -68,7 +68,8 @@ async function main() {
     await fs.writeFile(path.join(featuredPromptsDir, `${entry.id}.prompt.md`), promptFileContent(entry));
   }
 
-  const localPrompts = await loadLocalPrompts(assetsRoot);
+  // Prompts for other hosts only (e.g. the browser preview) are left out.
+  const localPrompts = (await loadLocalPrompts(assetsRoot)).filter((p) => promptIsForHost(p, 'vscode'));
   await fs.rm(localPromptsDir, { recursive: true, force: true });
   await fs.mkdir(localPromptsDir, { recursive: true });
   for (const prompt of localPrompts) {

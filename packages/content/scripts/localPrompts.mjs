@@ -32,6 +32,8 @@ export async function loadLocalPrompts(assetsRoot) {
       // When the model should reach for this prompt's skill on its own (appended to skill descriptions).
       modelTrigger: typeof data.model_trigger === 'string' ? data.model_trigger : undefined,
       placeholder: typeof data.placeholder === 'string' ? data.placeholder : 'Describe what you want.',
+      // Hosts that get this prompt (vscode, claude, codex, mcp); all when absent.
+      hosts: Array.isArray(data.hosts) ? data.hosts.map(String) : undefined,
       body: content.trim(),
     });
   }
@@ -40,4 +42,9 @@ export async function loadLocalPrompts(assetsRoot) {
 
 export function renderPromptBody(prompt, briefText) {
   return prompt.body.split(BRIEF_PLACEHOLDER).join(briefText);
+}
+
+/** Whether `host` (vscode, claude, codex or mcp) gets this prompt. */
+export function promptIsForHost(prompt, host) {
+  return !prompt.hosts || prompt.hosts.includes(host);
 }

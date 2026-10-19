@@ -35,7 +35,7 @@ To skip the choosing, run a [curated recipe](../reference/prompts-and-commands.m
 
 > **In VS Code:** `/open-design-generate` runs the same flow explicitly, and `/open-design-list-skills` just browses. The result opens in the [preview](preview-comments-edit.md).
 
-> **In Claude Code / Codex:** the `open-design` skill drives this flow from any design request. Open the HTML in a browser to see it.
+> **In Claude Code / Codex:** the `open-design` skill drives this flow from any design request, then opens the design in the [browser preview](browser-preview.md).
 
 ## Grounded in your app
 

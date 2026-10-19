@@ -139,9 +139,9 @@ Crops are written to `<entry>.comments/<commentId>.png`. Deleting a comment dele
 
 ### D6. Live reload and concurrent writers
 
-The server watches the entry's directory recursively with `fs.watch`, debounced at 150 ms, plus the workspace files the entry references. It ignores `*.artifact.json` churn and the `.comments` dir. On change it sends `source-updated` over SSE. The shell reloads the design iframe, keeping scroll position and mode (it saves `scrollY` from the bridge `rects`/`ready` and restores it after `ready`). It also watches `<entry>.comments.json` and sends `comments-updated`, so pins update when the agent resolves comments.
+The server watches the entry's directory and its subfolders, debounced at 150 ms, plus the workspace files the entry references. On macOS and Windows it uses the platform's recursive `fs.watch`. On Linux, Node emulates recursive watching and loses track of a file once it is replaced by a rename, which is exactly how atomic sidecar writes work. So on Linux each folder gets its own plain watch (up to 64 folders). It ignores `*.artifact.json` churn and the `.comments` dir. On change it sends `source-updated` over SSE. The shell reloads the design iframe, keeping scroll position and mode (it saves `scrollY` from the bridge `rects`/`ready` and restores it after `ready`). It also watches `<entry>.comments.json` and sends `comments-updated`, so pins update when the agent resolves comments.
 
-The VS Code provider, the browser preview and the agent may all write the sidecar. `writeArtifactComments` becomes `updateArtifactComments(mutator)`: it reads, applies, then writes to a temp file and renames. Merging is by `id` with last-`updatedAt`-wins. This replaces blind whole-array writes from the shells: they send changed comments, not the whole list.
+The VS Code provider, the browser preview and the agent may all write the sidecar. `writeArtifactComments` becomes `updateArtifactComments(mutator)`: it reads, applies, then writes to a temp file and renames. Merging is by `id` with last-`updatedAt`-wins. This replaces blind whole-array writes from the shells: they send changed comments, not the whole list. A comment present on both sides is merged field by field, so a writer that never saw a field (a crop added by the browser preview) doesn't drop it. Within one process, updates to a sidecar are queued. Across processes, two writes in the same instant can still lose one update; the rename keeps the file whole either way.
 
 ### D7. How each host opens it
 
@@ -191,3 +191,10 @@ Additive. Old sidecars stay valid: new fields are optional, and `auto-` elementI
 - Should Cursor users be pointed at Cursor's built-in browser (Simple Browser) instead of an external window? Printing the URL already allows it.
 - `OPEN_DESIGN_PREVIEW` default: `manual` (proposed) or `auto` for the plugin install?
 - Resolving comments through `register_open_design_artifact.resolvedCommentIds` vs a small `resolve_open_design_comments` tool. A dedicated tool is clearer, but it adds to the tool count every host loads.
+
+## Implementation Notes
+
+- **Prompt hosts.** Local prompts gained an optional `hosts` frontmatter list (`vscode`, `claude`, `codex`, `mcp`). `open-design-preview` is for `claude`, `codex` and `mcp` only, because VS Code has its own preview and no `open_open_design_preview` tool.
+- **Paths in `openComments`.** `get_open_design_artifact` returns each comment's `screenshot` as a workspace-relative path. The sidecar keeps it relative to the entry's folder.
+- **Shared chrome.** Besides the bridge, DOM helpers and comment controller, the Open Design tokens (`preview/theme.ts`, with an `od-dark` class next to `vscode-dark`), the preview chrome CSS, the icons and the menu also moved to core, so both shells look the same.
+- **Bundles.** `core/build/previewBundles.ts` builds `shell.js` and `bridge.js` into each host's `out/preview/`. `loadPreviewAssets()` reads them back at runtime, and bundles them in memory under tsx and in core's own tests.

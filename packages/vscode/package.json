@@ -513,7 +513,9 @@
             },
             "resolvedCommentIds": {
               "type": "array",
-              "items": { "type": "string" },
+              "items": {
+                "type": "string"
+              },
               "description": "Ids of the user's comments (from get_open_design_artifact's openComments) that this edit addressed. They're marked resolved and their pins leave the preview."
             }
           },

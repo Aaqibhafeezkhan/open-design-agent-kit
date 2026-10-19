@@ -83,7 +83,19 @@ All hosts. The Chrome, Edge or Chromium executable used for export. When unset, 
 3. The Puppeteer browser cache (`~/.cache/puppeteer`, or `PUPPETEER_CACHE_DIR`).
 4. Snap-packaged Chromium, last, because it can't read hidden folders like `.open-design/`.
 
-Nothing is ever downloaded. See [Troubleshooting](../troubleshooting.md#no-chrome-edge-or-chromium-browser-was-found).
+Nothing is ever downloaded. See [Troubleshooting](../troubleshooting.md#no-chrome-edge-or-chromium-browser-was-found). The [browser preview](../guides/browser-preview.md) uses the same browser for its window and comment screenshots.
+
+### OPEN_DESIGN_PREVIEW
+
+MCP server. When the [browser preview](../guides/browser-preview.md) opens:
+
+- `manual` (default): when the agent calls [`open_open_design_preview`](tools.md#open_open_design_preview), which the `open-design` skill asks it to do once after the first design in a session.
+- `auto`: also by itself the first time an artifact is registered in a session.
+- `off`: never; the tool says the preview is off.
+
+### OPEN_DESIGN_PREVIEW_BROWSER
+
+MCP server and CLI. Set to `default` to open the [browser preview](../guides/browser-preview.md) in your default browser (with your own extensions and sign-ins) instead of an app window of Chrome, Edge or Chromium. Comment screenshots are then re-rendered headless rather than taken from the window, so they may not show a state you clicked into, such as an open tab.
 
 ## Contributor-only variables
 

@@ -652,8 +652,8 @@ export async function pushToFigma(ctx: ToolContext, input: { entryPath: string; 
 }
 
 /** Hand-written prompts (e.g. open-design-social-post) shipped under the content assets' prompts/ folder. */
-export function listLocalPrompts(ctx: ToolContext): Promise<LocalPrompt[]> {
-  return loadLocalPrompts(ctx.assetsRoot);
+export async function listLocalPrompts(ctx: ToolContext): Promise<LocalPrompt[]> {
+  return (await loadLocalPrompts(ctx.assetsRoot)).filter((p) => !p.hosts || p.hosts.includes('mcp'));
 }
 
 export function buildLocalPromptMessage(prompt: LocalPrompt, brief: string | undefined): string {

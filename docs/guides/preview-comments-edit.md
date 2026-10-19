@@ -1,5 +1,7 @@
 # Preview, comment and edit (VS Code)
 
+In Claude Code, Codex, Cursor and other MCP hosts, see [Browser preview and comments](browser-preview.md) instead.
+
 VS Code opens every generated or remixed HTML artifact in the **Open Design Artifact Preview**, a live view with three modes and a Tweaks panel. Open any HTML file this way with right-click → **Open Artifact Preview**, or **Open Design: Open Artifact Preview**.
 
 ## View
