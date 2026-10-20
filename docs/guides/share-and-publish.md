@@ -1,6 +1,6 @@
 # Share and publish
 
-Get a design in front of people who don't have your repo: as **one HTML file** you can attach or send, or as a **live link**. A link can be temporary with no account, or last on your own Netlify, Vercel, Cloudflare Pages or GitHub Pages.
+Get a design in front of people who don't have your repo: as **one HTML file** you can attach or send, as a **live link**, or, in Claude Code and Claude Desktop, as a private **Claude artifact**. A link can be temporary with no account, or last on your own Netlify, Vercel, Cloudflare Pages or GitHub Pages.
 
 ## Before you start
 
@@ -55,6 +55,25 @@ Name the host up front to skip the question:
 4. **Deploy.** It runs the deploy from `exports/site/` only, never from your workspace root. If a command fails, you see the real error; the agent doesn't improvise other commands.
 5. **Record.** The link is saved in the artifact's manifest ([`metadata.shares`](../reference/artifact-manifest.md#metadatashares)). The next publish to the same host updates the same site instead of creating a new one, and VS Code's **Share** menu offers **Copy link** for it.
 
+## A Claude artifact
+
+In Claude Code or the Claude desktop app, signed in to claude.ai on a Pro, Max, Team or Enterprise plan, the agent has its own Artifact tool and offers a Claude artifact first. Ask:
+
+> Publish the pitch deck as an artifact.
+
+The agent calls [`publish_open_design_artifact`](../reference/tools.md#publish_open_design_artifact) with `provider: "claude-artifact"`. It writes the one-file export, `exports/<name>.html`, and the agent publishes that file by its path with its Artifact tool, so the page itself doesn't pass through the conversation. You get a claude.ai link.
+
+- **Private.** Only you can open it until you share it from claude.ai, so the agent doesn't stop to confirm first. The badge is off unless you ask for it.
+- **One artifact per design.** The link is recorded in the manifest. Publishing again updates the same artifact as a new version, and an open tab shows it.
+- **Exports stay files.** PNG, PDF and PowerPoint exports are files on disk, not artifacts.
+- **Copilot, Codex, Cursor** and API-key sessions have no Artifact tool, so the agent doesn't offer this there.
+
+The artifact viewer has its own rules, which the agent checks before publishing and tells you about:
+
+- **One page of at most 16 MB.** From 12 MB you get a warning; above 16 MB the publish stops.
+- **Scripts only from** cdnjs, jsDelivr (`/npm/`), unpkg, the Tailwind CDN and the jQuery CDN, **stylesheets only from** Google Fonts. Images, data and other files from any other site are blocked, and each one is named with what will break (`artifact-blocked-host`).
+- **No downloads or print dialog** from the page.
+
 ## The "Made with Open Design" badge
 
 Published pages get a small "Made with Open Design · Remix this" note in the bottom corner. Viewers can close it. It's inline HTML: it loads nothing from the internet and doesn't track anyone. Standalone HTML files don't get it unless you ask.
@@ -89,3 +108,5 @@ None of these block publishing, but fixing them first usually makes for a better
 - **Netlify says you've reached the daily limit for anonymous deploys:** log in with `netlify login` and use the `netlify` provider.
 - **The Vercel link asks viewers to sign in:** your team has Deployment Protection on production deployments. Turn it off for this project in Vercel, or share with people on your team.
 - **The GitHub Pages link shows 404:** the first Pages build takes a minute or two.
+- **"artifact-too-large":** the one-file page is over 16 MB, usually because of large images. Use smaller images, or publish it as a site instead.
+- **An artifact shows broken images or a blank 3D scene:** the page loads files from a site the artifact viewer blocks. The publish result names each one; host the page as a site, or make the files part of the page.

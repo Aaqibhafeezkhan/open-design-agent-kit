@@ -4,7 +4,7 @@
 // against netlify-cli 27.10, wrangler 4.147 and vercel 62.2 (see the
 // add-artifact-sharing design, Open Questions). Keep every CLI detail here so
 // a flag change is a one-place fix. openspec: add-artifact-sharing.
-import type { PublishProvider } from '../workspace/shareRecords';
+import { isHostingProvider, type HostingProvider, type PublishProvider } from '../workspace/shareRecords';
 
 export interface RecipeContext {
   /** Absolute path of the bundle folder (exports/site). */
@@ -20,7 +20,7 @@ export interface RecipeContext {
 }
 
 export interface ProviderRecipe {
-  id: PublishProvider;
+  id: HostingProvider;
   label: string;
   temporary: boolean;
   /** One line each, for the provider-choice table. */
@@ -44,7 +44,7 @@ const VERCEL = 'npx -y vercel@latest';
 const shellQuote = (value: string) => `'${value.replace(/'/g, `'\\''`)}'`;
 const inBundle = (ctx: RecipeContext) => `cd ${shellQuote(ctx.bundleDir)}`;
 
-export const PUBLISH_RECIPES: Readonly<Record<PublishProvider, ProviderRecipe>> = {
+export const PUBLISH_RECIPES: Readonly<Record<HostingProvider, ProviderRecipe>> = {
   'netlify-temporary': {
     id: 'netlify-temporary',
     label: 'Netlify, temporary (no account)',
@@ -169,3 +169,20 @@ export const PUBLISH_RECIPES: Readonly<Record<PublishProvider, ProviderRecipe>> 
     ],
   },
 };
+
+/**
+ * The `claude-artifact` provider's row in the provider choice. It has no
+ * recipe: the model publishes the standalone file with its own Artifact tool
+ * (openspec add-claude-artifact-provider).
+ */
+export const CLAUDE_ARTIFACT_CHOICE = {
+  label: 'Claude artifact (private)',
+  account: "the user's claude.ai login; needs Claude Code or Claude Desktop with an Artifact tool",
+  lifetime: 'until deleted',
+  visibility: 'only the user, until they share it from claude.ai',
+} as const;
+
+/** A provider's display name, for share records and menus. */
+export function publishProviderLabel(provider: PublishProvider): string {
+  return isHostingProvider(provider) ? PUBLISH_RECIPES[provider].label : CLAUDE_ARTIFACT_CHOICE.label;
+}

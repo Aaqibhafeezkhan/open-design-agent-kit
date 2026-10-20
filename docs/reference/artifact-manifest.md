@@ -92,10 +92,10 @@ Where the artifact has been published, recorded by [`publish_open_design_artifac
 
 | Field | Meaning |
 |---|---|
-| `provider` | `netlify-temporary`, `cloudflare-temporary`, `netlify`, `vercel`, `cloudflare-pages` or `github-pages`. |
-| `url` | The public link (always `https:`). |
+| `provider` | `netlify-temporary`, `cloudflare-temporary`, `netlify`, `vercel`, `cloudflare-pages`, `github-pages` or `claude-artifact`. |
+| `url` | The public link (always `https:`), or for `claude-artifact` the private `https://claude.ai/…` artifact link. |
 | `claimUrl`, `expiresAt` | Temporary providers: where the user claims the site, and when the link stops working otherwise. The claim URL is private to the user. |
-| `siteRef` | The site id, project name or `owner/repo/folder` that the next publish redeploys to. |
+| `siteRef` | The site id, project name or `owner/repo/folder` that the next publish redeploys to. For `claude-artifact`, the artifact's URL. |
 | `publishedAt` | When it was recorded. |
 
 Expired temporary entries are kept, but they're no longer offered as links.

@@ -2,16 +2,22 @@
 // hosts. Two modes:
 //  - prepare (no `published`): builds the `site` bundle, then composes the
 //    staged publish instructions for the chosen (or to-be-chosen) provider;
+//    for `claude-artifact`, builds the `standalone` file instead, runs the
+//    artifact preflight, and composes publish-by-path instructions for the
+//    model's own Artifact tool (openspec add-claude-artifact-provider);
 //  - record (`published` given): validates what the model reports after a
 //    deploy and stores it in the manifest's `metadata.shares`.
 // Never runs a provider command, never makes a network request.
 // openspec: add-artifact-sharing.
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
+import { artifactPreflight } from '../export/artifactPreflight';
 import { exportArtifact, formatExportResult } from '../export/exportArtifact';
 import { readArtifact, writeArtifactManifest } from '../vendored/artifactCreate';
 import {
+  CLAUDE_ARTIFACT_PROVIDER,
   isExpired,
+  isHostingProvider,
   isPublishProvider,
   latestShareFor,
   PUBLISH_PROVIDERS,
@@ -19,9 +25,10 @@ import {
   upsertShareRecord,
   validatePublished,
   type PublishedInput,
+  type ShareRecord,
 } from '../workspace/shareRecords';
-import { composePublishInstructions, siteNameForShare, slugForShare } from './publishInstructions';
-import { PUBLISH_RECIPES } from './publishProviders';
+import { composeArtifactPublishInstructions, composePublishInstructions, siteNameForShare, slugForShare } from './publishInstructions';
+import { PUBLISH_RECIPES, publishProviderLabel } from './publishProviders';
 
 export interface PublishArtifactOptions {
   workspaceRoot: string;
@@ -74,20 +81,27 @@ export async function publishArtifact(options: PublishArtifactOptions): Promise<
     } catch (err) {
       return { ok: false, text: `Couldn't record the share in the manifest: ${err instanceof Error ? err.message : String(err)}` };
     }
-    const lines = [`Recorded: ${options.entryPath} is published on ${PUBLISH_RECIPES[record.provider].label} at ${record.url}.`];
+    const lines = [`Recorded: ${options.entryPath} is published on ${publishProviderLabel(record.provider)} at ${record.url}.`];
     if (record.expiresAt) lines.push(`It expires at ${record.expiresAt} unless claimed.`);
     if (record.claimUrl) lines.push('The claim URL is stored for the user; keep it out of anything posted publicly.');
     return { ok: true, text: lines.join('\n') };
   }
 
+  const records = readShareRecords(manifest);
+  if (options.provider === CLAUDE_ARTIFACT_PROVIDER) {
+    if (options.includeFiles?.length) {
+      return { ok: false, text: 'includeFiles needs a hosted site: a Claude artifact is one page. Give the user the exported files\' paths instead, or pick a hosting provider.\n\nNothing was published.' };
+    }
+    return prepareArtifact(options, title, records);
+  }
+
   const included = await resolveIncludedFiles(options.workspaceRoot, options.entryPath, options.includeFiles ?? []);
   if (!included.ok) return { ok: false, text: `${included.error}\n\nNothing was published.` };
 
-  const records = readShareRecords(manifest);
-  const provider = options.provider as (typeof PUBLISH_PROVIDERS)[number] | undefined;
+  const provider = isHostingProvider(options.provider) ? options.provider : undefined;
   // og:image needs the address the site will be served from: the provider's newest live link.
   const previous = provider ? latestShareFor(records, provider) : undefined;
-  const baseUrl = previous && !isExpired(previous, now) && !PUBLISH_RECIPES[provider!].temporary ? previous.url : undefined;
+  const baseUrl = previous && provider && !isExpired(previous, now) && !PUBLISH_RECIPES[provider].temporary ? previous.url : undefined;
 
   const bundle = await exportArtifact({
     workspaceRoot: options.workspaceRoot,
@@ -125,6 +139,38 @@ export async function publishArtifact(options: PublishArtifactOptions): Promise<
     siteName: siteNameForShare(slug),
     slug,
     today: now.toISOString().slice(0, 10),
+  });
+  return { ok: true, text };
+}
+
+/** claude-artifact: the standalone file, the artifact preflight, then publish-by-path instructions. */
+async function prepareArtifact(options: PublishArtifactOptions, title: string | undefined, records: ShareRecord[]): Promise<PublishArtifactResult> {
+  const file = await exportArtifact({
+    workspaceRoot: options.workspaceRoot,
+    entryPath: options.entryPath,
+    format: 'standalone',
+    badge: options.badge,
+    badgeSetting: options.badgeSetting,
+  });
+  if (!file.ok) return { ok: false, text: `${formatExportResult(file)}\n\nNothing was published.` };
+  if (file.mode !== 'standalone') return { ok: false, text: 'The standalone export returned an unexpected result. Nothing was published.' };
+  const filePath = path.join(options.workspaceRoot, file.output);
+  const html = await fs.readFile(filePath, 'utf8');
+  const preflight = artifactPreflight({ html, bytes: file.totalBytes, externalDependencies: file.externalDependencies });
+  if (preflight.blocking) {
+    const tooLarge = preflight.findings.find((f) => f.code === 'artifact-too-large');
+    return { ok: false, text: `Can't publish as a Claude artifact (artifact-too-large): ${tooLarge?.message ?? ''}\n\nNothing was published. The file is at ${file.output}.` };
+  }
+  const text = composeArtifactPublishInstructions({
+    entryPath: options.entryPath,
+    title,
+    filePath,
+    bytes: file.totalBytes,
+    badge: file.badge,
+    records,
+    findings: preflight.findings,
+    // The preflight covers remote references and size, so the export's own notes on them are left out.
+    warnings: file.warnings.filter((w) => !w.startsWith('Still loads from another site') && !w.includes('for hosting, the "site" format')),
   });
   return { ok: true, text };
 }

@@ -22,6 +22,7 @@ If the request names a design, find its entry file (`get_open_design_artifact`, 
 
 Call `publish_open_design_artifact` with the `entryPath`. Pass `provider` only if the user already said where:
 
+- `claude-artifact`: only if you have an Artifact tool (Claude Code or Claude Desktop). A private Claude artifact the user can open, and share from claude.ai when they want to. Offer it first when you have one.
 - `netlify-temporary` or `cloudflare-temporary`: no account, the link lasts about an hour unless claimed
 - `netlify`, `vercel`, `cloudflare-pages` or `github-pages`: the user's own account, a link that lasts
 
@@ -29,8 +30,10 @@ Without a provider, the tool returns the choices: show them to the user and call
 
 ## 4. Follow the returned instructions exactly
 
-They check the host's CLI, then **stop for the user's explicit yes** before anything goes online. That stop is mandatory: say what goes out, who can see it, how long it lasts, and that the small "Made with Open Design" footer badge is included unless they ask for `badge: false`. Deploy only the bundle folder the tool names.
+For `claude-artifact`, they name one file: publish it by its path with your Artifact tool, without reading it into the conversation, and mention what they say won't load in the artifact. There's no confirmation step, since the artifact stays private until the user shares it.
+
+For the other providers, they check the host's CLI, then **stop for the user's explicit yes** before anything goes online. That stop is mandatory: say what goes out, who can see it, how long it lasts, and that the small "Made with Open Design" footer badge is included unless they ask for `badge: false`. Deploy only the bundle folder the tool names.
 
 ## 5. Finish
 
-Give the user the link. For a temporary link, also give the claim URL and when it expires, for them only. Then record it by calling `publish_open_design_artifact` again with `published`, as the instructions show, so a later publish updates the same site.
+Give the user the link. For an artifact, say it's private until they share it from claude.ai. For a temporary link, also give the claim URL and when it expires, for them only. Then record it by calling `publish_open_design_artifact` again with `published`, as the instructions show, so a later publish updates the same site.

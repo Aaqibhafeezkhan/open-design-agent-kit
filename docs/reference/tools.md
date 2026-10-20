@@ -602,16 +602,18 @@ Generates a QR code offline as SVG, writes it to `<artifact-dir>/assets/<name>.s
 
 Packages a registered artifact into a deploy-ready folder (`exports/site/`) and composes step-by-step instructions to publish it as a link, with the host's own CLI and the user's own login, or as a temporary no-account link. **It deploys nothing and handles no tokens.** The instructions stop for the user's explicit yes before any deploy command. A second mode records the link afterwards. See [Share and publish](../guides/share-and-publish.md).
 
+With `provider: "claude-artifact"`, it writes the `standalone` file (`exports/<name>.html`) instead, checks it against the Claude artifact viewer's limits (16 MB, and which hosts may serve scripts and stylesheets), and returns instructions for the agent to publish that file by its path with its own Artifact tool. The artifact is private until the user shares it, so there is no confirmation stage, and the badge is off unless asked. A page over 16 MB returns `artifact-too-large` and no instructions. Only agents with an Artifact tool (Claude Code, Claude Desktop) can use it.
+
 | Argument | Type | Required | Meaning |
 |---|---|---|---|
 | `entryPath` | string | yes | The registered artifact's entry file. |
-| `provider` | `netlify-temporary` · `cloudflare-temporary` · `netlify` · `vercel` · `cloudflare-pages` · `github-pages` | no | Where to publish. Omitted: the instructions list the choices for the user to pick. |
+| `provider` | `netlify-temporary` · `cloudflare-temporary` · `netlify` · `vercel` · `cloudflare-pages` · `github-pages` · `claude-artifact` | no | Where to publish. Omitted: the instructions list the choices for the user to pick. |
 | `includeFiles` | string[] | no | Up to 10 files from this artifact's own `exports/` folder (e.g. an exported PDF) to host alongside the page, at `files/<name>` in the bundle and publicly downloadable at `<site URL>/files/<name>`. They're listed among the files going out at the confirmation stage. A path outside the artifact's `exports/`, a missing file or a duplicate name is an error, and nothing is built. The Canva flow uses this to give Canva a URL to import. |
 | `badge` | boolean | no | Add the closeable "Made with Open Design" footer badge. Default `true`, unless [`openDesign.share.badge`](settings-and-env.md#opendesignsharebadge) is off or [`OPEN_DESIGN_SHARE_BADGE`](settings-and-env.md#open_design_share_badge) is `0`. |
-| `published` | object | no | Record mode, after a successful deploy: `{ provider, url, claimUrl?, expiresAt?, siteRef? }`. `url` and `claimUrl` must be `https:`. Nothing is rebuilt. |
+| `published` | object | no | Record mode, after a successful deploy or publish: `{ provider, url, claimUrl?, expiresAt?, siteRef? }`. `url` and `claimUrl` must be `https:`; for `claude-artifact`, `url` is the `https://claude.ai/…` link and is also used as `siteRef`. Nothing is rebuilt. |
 
 **Result (text):**
-- Without `published`: the bundle's file list and preflight findings, then either the provider choices or the instructions for the chosen provider (check, confirm, deploy, report and record).
+- Without `published`: the bundle's file list and preflight findings, then either the provider choices or the instructions for the chosen provider (check, confirm, deploy, report and record). For `claude-artifact`: the file's path and size, what won't load in the artifact, and the publish-and-record steps.
 - With `published`: a confirmation. The link is stored in the manifest's [`metadata.shares`](artifact-manifest.md#metadatashares), replacing an earlier record for the same provider and site.
 
 **Example (MCP arguments):**

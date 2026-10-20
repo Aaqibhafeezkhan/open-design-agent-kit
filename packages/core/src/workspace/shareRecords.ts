@@ -4,7 +4,8 @@
 // openspec: add-artifact-sharing.
 import type { JsonRecord } from '../vendored/artifactManifest';
 
-export const PUBLISH_PROVIDERS = [
+/** Providers that host the `site` bundle, deployed by the model with the host's own CLI. */
+export const HOSTING_PROVIDERS = [
   'netlify-temporary',
   'cloudflare-temporary',
   'netlify',
@@ -12,12 +13,28 @@ export const PUBLISH_PROVIDERS = [
   'cloudflare-pages',
   'github-pages',
 ] as const;
+export type HostingProvider = (typeof HOSTING_PROVIDERS)[number];
+
+/** A private Claude artifact, published by the model with its own Artifact tool (openspec add-claude-artifact-provider). */
+export const CLAUDE_ARTIFACT_PROVIDER = 'claude-artifact';
+
+export const PUBLISH_PROVIDERS = [...HOSTING_PROVIDERS, CLAUDE_ARTIFACT_PROVIDER] as const;
 export type PublishProvider = (typeof PUBLISH_PROVIDERS)[number];
 
 export const MAX_SHARE_RECORDS = 20;
 
 export function isPublishProvider(value: unknown): value is PublishProvider {
   return typeof value === 'string' && (PUBLISH_PROVIDERS as readonly string[]).includes(value);
+}
+
+export function isHostingProvider(value: unknown): value is HostingProvider {
+  return typeof value === 'string' && (HOSTING_PROVIDERS as readonly string[]).includes(value);
+}
+
+/** claude.ai or one of its subdomains, where artifacts live. */
+function isClaudeUrl(value: string): boolean {
+  const host = new URL(value).hostname;
+  return host === 'claude.ai' || host.endsWith('.claude.ai');
 }
 
 export interface ShareRecord {
@@ -52,6 +69,9 @@ function isHttpsUrl(value: unknown): value is string {
 export function validatePublished(input: PublishedInput, now = new Date()): { ok: true; record: ShareRecord } | { ok: false; error: string } {
   if (!isPublishProvider(input.provider)) return { ok: false, error: `published.provider must be one of ${PUBLISH_PROVIDERS.join(', ')}.` };
   if (!isHttpsUrl(input.url)) return { ok: false, error: `published.url must be an https URL (got "${input.url}").` };
+  if (input.provider === CLAUDE_ARTIFACT_PROVIDER && !isClaudeUrl(input.url)) {
+    return { ok: false, error: `published.url for claude-artifact must be the artifact's https://claude.ai/... link (got "${input.url}").` };
+  }
   if (input.claimUrl !== undefined && !isHttpsUrl(input.claimUrl)) return { ok: false, error: 'published.claimUrl must be an https URL.' };
   if (input.expiresAt !== undefined && Number.isNaN(Date.parse(input.expiresAt))) {
     return { ok: false, error: 'published.expiresAt must be an ISO date-time.' };
@@ -63,6 +83,8 @@ export function validatePublished(input: PublishedInput, now = new Date()): { ok
   if (input.claimUrl) record.claimUrl = input.claimUrl;
   if (input.expiresAt) record.expiresAt = new Date(input.expiresAt).toISOString();
   if (input.siteRef) record.siteRef = input.siteRef;
+  // An artifact is identified by its URL: the next publish updates it as a new version.
+  else if (input.provider === CLAUDE_ARTIFACT_PROVIDER) record.siteRef = input.url;
   return { ok: true, record };
 }
 

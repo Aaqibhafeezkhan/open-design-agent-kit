@@ -912,7 +912,7 @@ const TOOL_DEFS: ToolDef[] = [
     tool: {
       name: 'publish_open_design_artifact',
       description:
-        "Publishes a registered Open Design artifact as a live web page, so the user can share a link with teammates or stakeholders. Use when the user asks to share, publish, deploy, host or \"get a link\" for a design. (For a single file to attach or send, use export_open_design_artifact with format \"standalone\" instead.) It builds a deploy-ready folder (exports/site/) locally, then returns step-by-step instructions for publishing it with the host's own CLI from your terminal, under the user's own login or a temporary no-account link: netlify-temporary or cloudflare-temporary (no account, about 60 minutes unless claimed), or netlify, vercel, cloudflare-pages or github-pages (the user's own account). It never deploys anything itself and never handles tokens. Without provider, the instructions ask the user to choose. The instructions require the user's explicit yes before anything goes online. After a successful deploy, call this tool again with published: { provider, url, claimUrl?, expiresAt?, siteRef? } to record the link, so the next publish updates the same site.",
+        "Publishes a registered Open Design artifact as a live web page, so the user can share a link with teammates or stakeholders. Use when the user asks to share, publish, deploy, host or \"get a link\" for a design. (For a single file to attach or send, use export_open_design_artifact with format \"standalone\" instead.) It builds a deploy-ready folder (exports/site/) locally, then returns step-by-step instructions for publishing it with the host's own CLI from your terminal, under the user's own login or a temporary no-account link: netlify-temporary or cloudflare-temporary (no account, about 60 minutes unless claimed), or netlify, vercel, cloudflare-pages or github-pages (the user's own account). It never deploys anything itself and never handles tokens. Without provider, the instructions ask the user to choose. The instructions require the user's explicit yes before anything goes online. With provider claude-artifact (only if you have an Artifact tool: Claude Code or Claude Desktop), it writes the standalone file instead, checks it against the artifact viewer's limits, and returns instructions to publish that file by path with your Artifact tool; the artifact stays private until the user shares it, so there is no confirmation step. After a successful deploy or publish, call this tool again with published: { provider, url, claimUrl?, expiresAt?, siteRef? } to record the link, so the next publish updates the same site or artifact.",
       inputSchema: {
         type: 'object',
         properties: {
@@ -922,7 +922,7 @@ const TOOL_DEFS: ToolDef[] = [
           },
           provider: {
             type: 'string',
-            enum: ['netlify-temporary', 'cloudflare-temporary', 'netlify', 'vercel', 'cloudflare-pages', 'github-pages'],
+            enum: ['netlify-temporary', 'cloudflare-temporary', 'netlify', 'vercel', 'cloudflare-pages', 'github-pages', 'claude-artifact'],
             description: 'Where to publish. Omit to get the choices to show the user.',
           },
           badge: {
@@ -939,8 +939,8 @@ const TOOL_DEFS: ToolDef[] = [
             type: 'object',
             description: 'Record mode: what the deploy reported. Doesn\'t rebuild anything.',
             properties: {
-              provider: { type: 'string', enum: ['netlify-temporary', 'cloudflare-temporary', 'netlify', 'vercel', 'cloudflare-pages', 'github-pages'] },
-              url: { type: 'string', description: 'The public https link.' },
+              provider: { type: 'string', enum: ['netlify-temporary', 'cloudflare-temporary', 'netlify', 'vercel', 'cloudflare-pages', 'github-pages', 'claude-artifact'] },
+              url: { type: 'string', description: 'The public https link, or the https://claude.ai/... artifact link.' },
               claimUrl: { type: 'string', description: "Temporary providers: the https link the user claims the site with. It's private to the user." },
               expiresAt: { type: 'string', description: 'Temporary providers: ISO date-time when the link stops working unless claimed.' },
               siteRef: { type: 'string', description: 'Site id, project name or owner/repo/folder to redeploy to next time.' },
