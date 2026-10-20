@@ -11,6 +11,8 @@ export interface PreviewCliOptions {
   port?: string;
   browser?: string;
   workspace?: string;
+  /** --root-redirect: `/` redirects to the preview, for Claude Desktop's launch.json. */
+  rootRedirect?: boolean;
 }
 
 export function parsePreviewPort(raw: string | undefined): number | undefined {
@@ -62,7 +64,7 @@ export async function runPreview(entryArg: string | undefined, flags: PreviewCli
   const out = deps.out ?? ((line: string) => console.log(line));
   const err = deps.err ?? ((line: string) => console.error(line));
 
-  const session = (deps.createSession ?? ((o) => new PreviewSession(o)))({ workspaceRoot, browserPath: flags.browser, port, log: err });
+  const session = (deps.createSession ?? ((o) => new PreviewSession(o)))({ workspaceRoot, browserPath: flags.browser, port, rootRedirect: flags.rootRedirect, log: err });
   try {
     const outcome = await session.open(entryPath, flags.open !== false);
     // stdout: the URL alone, for scripts; details to stderr.

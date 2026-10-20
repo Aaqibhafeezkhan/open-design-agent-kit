@@ -49,14 +49,14 @@ If you set the project up with `npx @feimacode/open-design-agent-kit init --tool
     {
       "name": "open-design-preview",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["-y", "@feimacode/open-design-agent-kit", "preview", "--no-open", "--port", "5317"],
+      "runtimeArgs": ["-y", "@feimacode/open-design-agent-kit", "preview", "--no-open", "--root-redirect", "--port", "5317"],
       "port": 5317
     }
   ]
 }
 ```
 
-Then ask Claude to "start open-design-preview in the Browser pane". Comments you leave there are saved next to the design, the same as in any other browser. The pane has no chat box of its own, so when you're done, tell Claude in the Code tab "apply my comments on the coffee poster".
+Then ask Claude to "start open-design-preview in the Browser pane". If it fails to start because `npx` isn't found (common when Node comes from nvm), set `runtimeExecutable` to the full path that `which npx` prints in a terminal. Comments you leave there are saved next to the design, the same as in any other browser. The pane has no chat box of its own, so when you're done, tell Claude in the Code tab "apply my comments on the coffee poster".
 
 ## Chat with a folder
 

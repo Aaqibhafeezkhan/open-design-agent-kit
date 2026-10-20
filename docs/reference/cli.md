@@ -30,7 +30,7 @@ What it writes:
   - the workflow skills: `open-design-new`, `open-design-social-post`, `open-design-poster`, `open-design-campaign`, `open-design-docs`, `open-design-explore`, `open-design-publish`, `open-design-deck-from-source` and `open-design-integrations` (see [Prompts and commands](prompts-and-commands.md#claude-code));
   - one explicit-only skill per curated entry;
   - an `open-design` entry merged into `.mcp.json` (other servers in the file are kept);
-  - an `open-design-preview` configuration merged into `.claude/launch.json`, which runs `preview --no-open --port 5317` so Claude Desktop's Code tab can open the preview in its Browser pane (see [Claude Desktop](../getting-started/claude-desktop.md#the-live-preview-in-the-browser-pane)). Other configurations are kept, and a re-run leaves the file as it is.
+  - an `open-design-preview` configuration merged into `.claude/launch.json`, which runs `preview --no-open --root-redirect --port 5317` so Claude Desktop's Code tab can open the preview in its Browser pane (see [Claude Desktop](../getting-started/claude-desktop.md#the-live-preview-in-the-browser-pane)). Other configurations are kept, and a re-run leaves the file as it is.
 - **Codex:**
   - the same skills in `.agents/skills/`, with curated entries marked explicit-only by `agents/openai.yaml`;
   - `.codex/config.toml` with the MCP server, created only if that file doesn't exist. Otherwise the snippet to add is printed.
@@ -150,6 +150,7 @@ npx @feimacode/open-design-agent-kit preview [entryPath] [options]
 | `--no-open` | Print the URL without opening a browser, e.g. over SSH (forward the port, then open the URL locally). |
 | `--port <n>` | The port to listen on, on `127.0.0.1`. Default: a free one. |
 | `--browser <path>` | Browser executable. Default: [`OPEN_DESIGN_BROWSER_PATH`](settings-and-env.md#open_design_browser_path), then auto-detect. |
+| `--root-redirect` | Also answer the port's bare `/` with a redirect to the preview, for hosts that can only open a port, such as Claude Desktop's `.claude/launch.json`. |
 | `--workspace <dir>` | Workspace root. Default: the nearest folder above the entry file (or the current directory) that contains `.open-design/`, else the current directory. |
 
 Output: the preview URL on **stdout**, then how it was opened on stderr. Exit code `0` after Ctrl-C, `1` when the preview couldn't start.
