@@ -12,6 +12,7 @@
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import { artifactPreflight } from '../export/artifactPreflight';
+import { declaredRemoteAssets, type BinaryFetch } from '../export/embedAssets';
 import { exportArtifact, formatExportResult } from '../export/exportArtifact';
 import { readArtifact, writeArtifactManifest } from '../vendored/artifactCreate';
 import {
@@ -45,6 +46,8 @@ export interface PublishArtifactOptions {
   includeFiles?: string[];
   published?: PublishedInput;
   now?: Date;
+  /** Tests: the downloader for claude-artifact's embedded assets. */
+  assetFetch?: BinaryFetch;
 }
 
 export type PublishArtifactResult = { ok: boolean; text: string };
@@ -92,7 +95,7 @@ export async function publishArtifact(options: PublishArtifactOptions): Promise<
     if (options.includeFiles?.length) {
       return { ok: false, text: 'includeFiles needs a hosted site: a Claude artifact is one page. Give the user the exported files\' paths instead, or pick a hosting provider.\n\nNothing was published.' };
     }
-    return prepareArtifact(options, title, records);
+    return prepareArtifact(options, title, records, declaredRemoteAssets(artifact.entryContent).length > 0);
   }
 
   const included = await resolveIncludedFiles(options.workspaceRoot, options.entryPath, options.includeFiles ?? []);
@@ -144,19 +147,27 @@ export async function publishArtifact(options: PublishArtifactOptions): Promise<
 }
 
 /** claude-artifact: the standalone file, the artifact preflight, then publish-by-path instructions. */
-async function prepareArtifact(options: PublishArtifactOptions, title: string | undefined, records: ShareRecord[]): Promise<PublishArtifactResult> {
+async function prepareArtifact(options: PublishArtifactOptions, title: string | undefined, records: ShareRecord[], declaresAssets: boolean): Promise<PublishArtifactResult> {
+  // A page that declares remote assets (a 3D scene's HDRI, textures, models) gets them embedded:
+  // the artifact viewer blocks the CDN (openspec embed-3d-assets-for-artifacts).
   const file = await exportArtifact({
     workspaceRoot: options.workspaceRoot,
     entryPath: options.entryPath,
     format: 'standalone',
     badge: options.badge,
     badgeSetting: options.badgeSetting,
+    ...(declaresAssets ? { embedAssets: true, assetFetch: options.assetFetch } : {}),
   });
   if (!file.ok) return { ok: false, text: `${formatExportResult(file)}\n\nNothing was published.` };
   if (file.mode !== 'standalone') return { ok: false, text: 'The standalone export returned an unexpected result. Nothing was published.' };
   const filePath = path.join(options.workspaceRoot, file.output);
   const html = await fs.readFile(filePath, 'utf8');
-  const preflight = artifactPreflight({ html, bytes: file.totalBytes, externalDependencies: file.externalDependencies });
+  const preflight = artifactPreflight({
+    html,
+    bytes: file.totalBytes,
+    externalDependencies: file.externalDependencies,
+    embeddedUrls: file.embeddedAssets?.map((a) => a.url),
+  });
   if (preflight.blocking) {
     const tooLarge = preflight.findings.find((f) => f.code === 'artifact-too-large');
     return { ok: false, text: `Can't publish as a Claude artifact (artifact-too-large): ${tooLarge?.message ?? ''}\n\nNothing was published. The file is at ${file.output}.` };
@@ -169,8 +180,9 @@ async function prepareArtifact(options: PublishArtifactOptions, title: string | 
     badge: file.badge,
     records,
     findings: preflight.findings,
+    embedded: file.embeddedAssets,
     // The preflight covers remote references and size, so the export's own notes on them are left out.
-    warnings: file.warnings.filter((w) => !w.startsWith('Still loads from another site') && !w.includes('for hosting, the "site" format')),
+    warnings: file.warnings.filter((w) => !w.startsWith('Still loads from another site') && !w.includes('for hosting, the "site" format') && !w.includes('close to the 16.0 MB artifact limit')),
   });
   return { ok: true, text };
 }

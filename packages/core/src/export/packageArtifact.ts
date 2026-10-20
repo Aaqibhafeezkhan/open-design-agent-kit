@@ -7,6 +7,7 @@ import * as path from 'node:path';
 import type { JsonRecord } from '../vendored/artifactManifest';
 import { writeArtifactManifest } from '../vendored/artifactCreate';
 import { bundleStandaloneHtml, StandaloneHtmlExportError } from '../vendored/standaloneHtml';
+import { embedDeclaredAssets, type AssetResolution, type BinaryFetch, type EmbeddedAsset, type NotEmbeddedAsset } from './embedAssets';
 import { EXPORTS_BY_KIND, PACKAGEABLE_KINDS } from './exportFormats';
 import { injectBadge, injectLinkPreviewTags, resolveBadge, type PackageFormat } from './shareDecorations';
 import { analyzeSiteBundle, planSiteBundle, writeSiteBundle, type PreflightWarning, type SiteFile } from './siteBundle';
@@ -27,6 +28,7 @@ export type PackageErrorCode =
   | 'unsupported-format'
   | 'missing-references'
   | 'path-outside-workspace'
+  | 'too-large'
   | 'package-failed';
 
 export interface PackagedFile {
@@ -49,6 +51,9 @@ export type PackageExportResult =
       preflight: PreflightWarning[];
       externalDependencies: string[];
       warnings: string[];
+      /** standalone with embedAssets: what was embedded, and what was left as a remote URL. */
+      embeddedAssets?: EmbeddedAsset[];
+      notEmbedded?: NotEmbeddedAsset[];
     }
   | { ok: false; code: PackageErrorCode; error: string };
 
@@ -64,6 +69,11 @@ export interface PackageArtifactInput {
   badgeSetting?: boolean;
   /** Absolute https URL the site will be served from, for og:image. */
   baseUrl?: string;
+  /** standalone: download and embed the page's declared remote assets (openspec embed-3d-assets-for-artifacts). */
+  embedAssets?: boolean;
+  maxResolution?: AssetResolution;
+  /** Tests: the downloader embedAssets uses. */
+  assetFetch?: BinaryFetch;
 }
 
 function fail(code: PackageErrorCode, error: string): PackageExportResult {
@@ -135,13 +145,25 @@ async function packageStandalone(input: PackageArtifactInput, badge: boolean): P
     }
     return fail('package-failed', err instanceof Error ? err.message : String(err));
   }
-  const html = badge ? injectBadge(bundled.html) : bundled.html;
+  let html = badge ? injectBadge(bundled.html) : bundled.html;
+  let embedded: Awaited<ReturnType<typeof embedDeclaredAssets>> | undefined;
+  if (input.embedAssets) {
+    embedded = await embedDeclaredAssets(html, { maxResolution: input.maxResolution, fetchImpl: input.assetFetch });
+    if (embedded.tooLarge) return fail('too-large', embedded.tooLarge);
+    html = embedded.html;
+  }
   const output = path.posix.join(exportsDirFor(input.entryPath), `${baseName(input.entryPath)}.html`);
   const abs = path.join(input.workspaceRoot, output);
   await fs.mkdir(path.dirname(abs), { recursive: true });
   await fs.writeFile(abs, html);
   const bytes = Buffer.byteLength(html, 'utf8');
-  const warnings = bundled.externalDependencies.map((url) => `Still loads from another site at view time (not inlined): ${url}`);
+  const covered = (url: string) => embedded?.embedded.some((a) => a.url === url || a.url.startsWith(url)) ?? false;
+  const externalDependencies = bundled.externalDependencies.filter((url) => !covered(url));
+  const warnings = externalDependencies.map((url) => `Still loads from another site at view time (not inlined): ${url}`);
+  if (embedded) {
+    warnings.push(...embedded.warnings);
+    for (const a of embedded.notEmbedded) warnings.push(`Not embedded (${a.reason}), so it still loads from its site: ${a.url}`);
+  }
   if (bytes > 10 * 1024 * 1024) warnings.push(`${output} is ${(bytes / (1024 * 1024)).toFixed(1)} MiB — for hosting, the "site" format keeps large images as separate files.`);
   return {
     ok: true,
@@ -151,8 +173,9 @@ async function packageStandalone(input: PackageArtifactInput, badge: boolean): P
     totalBytes: bytes,
     badge,
     preflight: [],
-    externalDependencies: bundled.externalDependencies,
+    externalDependencies,
     warnings,
+    ...(embedded ? { embeddedAssets: embedded.embedded, notEmbedded: embedded.notEmbedded } : {}),
   };
 }
 
@@ -225,7 +248,12 @@ export function formatPackageResult(result: PackageExportResult): string {
   const kb = (bytes: number) => `${(bytes / 1024).toFixed(0)} KB`;
   const lines =
     result.mode === 'standalone'
-      ? [`Exported a self-contained HTML file: ${result.output} — ${kb(result.totalBytes)}.`]
+      ? [
+          `Exported a self-contained HTML file: ${result.output} — ${kb(result.totalBytes)}.`,
+          ...(result.embeddedAssets?.length
+            ? [`Embedded ${result.embeddedAssets.length} remote asset(s), so the page needs no other site for them:`, ...result.embeddedAssets.map((a) => `- ${a.url} — ${kb(a.bytes)}${a.fetchedFrom ? ` (from ${a.fetchedFrom})` : ''}`)]
+            : []),
+        ]
       : [
           `Exported a deploy-ready site folder: ${result.output}/ — ${result.files.length} file(s), ${kb(result.totalBytes)} total:`,
           ...result.files.map((f) => `- ${f.path} — ${kb(f.bytes)}`),

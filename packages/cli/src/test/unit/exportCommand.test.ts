@@ -8,7 +8,7 @@ describe('export command', () => {
   it('maps string flags onto export options', () => {
     assert.deepStrictEqual(
       parseExportFlags({ width: '1080', height: '1350', scale: '2', format: 'jpg', quality: '80', maxBytes: '5000000', selector: '[data-od-card]', browser: '/b' }),
-      { width: 1080, height: 1350, scale: 2, format: 'jpeg', quality: 80, maxBytes: 5000000, selector: '[data-od-card]', browserPath: '/b', deck: undefined, slides: undefined, badge: undefined, preset: undefined, bleed: undefined, cropMarks: undefined, checkOnly: undefined, data: undefined, sheet: undefined, nameField: undefined, split: undefined, presets: undefined, shapeSheet: undefined, target: undefined, baseUrl: undefined, campaignSheet: undefined, transparent: undefined, fps: undefined, duration: undefined, loop: undefined, ffmpegPath: undefined },
+      { width: 1080, height: 1350, scale: 2, format: 'jpeg', quality: 80, maxBytes: 5000000, selector: '[data-od-card]', browserPath: '/b', deck: undefined, slides: undefined, badge: undefined, preset: undefined, bleed: undefined, cropMarks: undefined, checkOnly: undefined, data: undefined, sheet: undefined, nameField: undefined, split: undefined, presets: undefined, shapeSheet: undefined, target: undefined, baseUrl: undefined, embedAssets: undefined, maxResolution: undefined, campaignSheet: undefined, transparent: undefined, fps: undefined, duration: undefined, loop: undefined, ffmpegPath: undefined },
     );
     assert.deepStrictEqual(parseExportFlags({}), {
       width: undefined,
@@ -34,6 +34,8 @@ describe('export command', () => {
       shapeSheet: undefined,
       target: undefined,
       baseUrl: undefined,
+      embedAssets: undefined,
+      maxResolution: undefined,
       campaignSheet: undefined,
       transparent: undefined,
       fps: undefined,
@@ -71,6 +73,10 @@ describe('export command', () => {
   });
 
   it('parses email and paste flags', () => {
+    const embedded = parseExportFlags({ format: 'standalone', embedAssets: true, maxResolution: '2K' });
+    assert.strictEqual(embedded.embedAssets, true);
+    assert.strictEqual(embedded.maxResolution, '2k');
+    assert.throws(() => parseExportFlags({ maxResolution: '8k' }), ExportArgsError);
     const email = parseExportFlags({ format: 'email', baseUrl: 'https://cdn.example.com/launch/' });
     assert.strictEqual(email.format, 'email');
     assert.strictEqual(email.baseUrl, 'https://cdn.example.com/launch/');

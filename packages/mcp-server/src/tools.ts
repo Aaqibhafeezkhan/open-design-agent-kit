@@ -1,5 +1,6 @@
 import * as path from 'node:path';
 import {
+  type AssetResolution,
   CLAUDE_ARTIFACT_PROVIDER,
   latestShareFor,
   readShareRecords,
@@ -606,6 +607,8 @@ export async function exportArtifact(
     slides?: number[];
     badge?: boolean;
     baseUrl?: string;
+    embedAssets?: boolean;
+    maxResolution?: AssetResolution;
     preset?: string;
     bleed?: number;
     cropMarks?: boolean;

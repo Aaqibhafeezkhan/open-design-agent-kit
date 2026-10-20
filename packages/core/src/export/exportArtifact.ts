@@ -18,6 +18,7 @@ import { ELEMENT_LAYOUT_VIEWPORT, isValidDimension, resolveExportSize, type Size
 import { exportInline, formatInlineExportResult, type InlineExportResult, type PasteTarget } from './inlineExport';
 import type { MotionFormat } from './motion/ffmpeg';
 import { exportMotion, formatMotionExportResult, isMotionFormat, type MotionExportResult } from './motion/motionExport';
+import { ASSET_RESOLUTIONS, type AssetResolution, type BinaryFetch } from './embedAssets';
 import { formatPackageResult, isPackageFormat, packageArtifact, type PackageExportResult, type PackageFormat } from './packageArtifact';
 import { checkDataAgainstFields, loadDataTable, rowFileSuffixes, scanBoundFields, type DataTable } from '../poster/data';
 import { bleedBox, DEFAULT_SHEET_FORMAT_IDS, getFormat, isFluidHtml, unknownFormatError, type CanvasFormat } from '../poster/formats';
@@ -76,6 +77,12 @@ export interface ExportArtifactOptions {
   badgeSetting?: boolean;
   /** site: the https URL the bundle will be served from, so og:image can be absolute. */
   baseUrl?: string;
+  /** standalone: download the page's declared remote assets (3D scene spec or asset block) and embed them. */
+  embedAssets?: boolean;
+  /** standalone with embedAssets: the highest Poly Haven resolution to fetch (1k, 2k or 4k; default 1k). */
+  maxResolution?: AssetResolution;
+  /** Tests: the downloader embedAssets uses. */
+  assetFetch?: BinaryFetch;
   /** A canvas format id (see ../poster/formats.ts): fills in size, selector, byte budget, or the print path. */
   preset?: string;
   /** Print PDFs: bleed in mm on every side (default: the format's). */
@@ -210,6 +217,9 @@ function validateOptions(o: ExportArtifactOptions): string | undefined {
     return 'quality must be an integer between 1 and 100.';
   }
   if (o.format !== undefined && !EXPORT_FORMATS.includes(o.format)) return `format must be one of ${EXPORT_FORMATS.join(', ')}.`;
+  if (o.format !== 'standalone' && (o.embedAssets !== undefined || o.maxResolution !== undefined)) return 'embedAssets and maxResolution apply to the "standalone" format only.';
+  if (o.maxResolution !== undefined && !ASSET_RESOLUTIONS.includes(o.maxResolution)) return `maxResolution must be one of ${ASSET_RESOLUTIONS.join(', ')}.`;
+  if (o.maxResolution !== undefined && !o.embedAssets) return 'maxResolution applies only with embedAssets.';
   if (o.slides !== undefined && (!Array.isArray(o.slides) || o.slides.length === 0 || !o.slides.every((n) => Number.isInteger(n) && n >= 1))) {
     return 'slides must be a non-empty list of 1-based slide numbers.';
   }
@@ -396,6 +406,9 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
       badge: options.badge,
       badgeSetting: options.badgeSetting,
       baseUrl: options.baseUrl,
+      embedAssets: options.embedAssets,
+      maxResolution: options.maxResolution,
+      assetFetch: options.assetFetch,
     });
   }
   const renderer = typeof artifact.manifest.renderer === 'string' ? artifact.manifest.renderer : 'html';

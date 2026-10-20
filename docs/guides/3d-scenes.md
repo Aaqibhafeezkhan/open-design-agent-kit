@@ -49,7 +49,7 @@ Software rendering is slow for scenes: a 10-second 960×540 flythrough takes a f
 
 - No games, physics or player controls.
 - Models come from Poly Haven, from your own `.glb`, or are built from shapes. There's no text-to-3D generation.
-- Scenes load three.js and assets from CDNs, including `standalone` exports, unless you ask for offline copies.
+- Scenes load three.js and assets from CDNs, including `standalone` exports, unless you ask for offline copies. A `standalone` export with `embedAssets` (CLI: `--embed-assets`) puts the Poly Haven assets inside the file, at 1k unless you ask for more. Publishing a scene as a [Claude artifact](share-and-publish.md#a-claude-artifact) does this for you, since the artifact viewer blocks Poly Haven. three.js itself still loads from jsDelivr, which artifacts allow.
 
 ## Related
 

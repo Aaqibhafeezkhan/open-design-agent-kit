@@ -66,6 +66,8 @@ export * from './generation/diagramRuntime';
 export * from './export/exportFormats';
 export * from './export/exportSize';
 export * from './export/packageArtifact';
+export * from './export/artifactPreflight';
+export * from './export/embedAssets';
 export * from './export/shareDecorations';
 export * from './export/siteBundle';
 

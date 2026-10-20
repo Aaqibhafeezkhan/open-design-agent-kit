@@ -822,6 +822,19 @@
               "type": "string",
               "description": "site only: the https address the bundle will be served from, so the link-preview image (og:image) can be an absolute URL. For email and paste: relative image and link URLs are rewritten against it."
             },
+            "embedAssets": {
+              "type": "boolean",
+              "description": "standalone only: download the remote assets the page declares (a 3d-scene spec's assets, or an application/od-assets+json block: HDRIs, textures, glTF models with their files) and embed them in the page, so it works where other sites are blocked (a Claude artifact) or offline. The result lists each embedded asset and the page size; above 16 MB the export fails, naming the largest. An asset that can't be downloaded is reported and left as its URL."
+            },
+            "maxResolution": {
+              "type": "string",
+              "enum": [
+                "1k",
+                "2k",
+                "4k"
+              ],
+              "description": "With embedAssets: the highest Poly Haven resolution to fetch for textures and HDRIs (1k, 2k or 4k; default 1k). Models keep the resolution the page uses."
+            },
             "preset": {
               "type": "string",
               "enum": [
