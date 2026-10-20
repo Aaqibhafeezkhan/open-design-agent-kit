@@ -1,8 +1,10 @@
-import { PREVIEW_ONLY_ATTR, type ManualEditPatch, type CuratedStyles } from './dom/sourcePatches';
-import type { ArtifactComment } from './dom/commentOverlay';
-import { BRIDGE_TAG, isBridgeMessage, type BridgeRect, type ElementSnapshot, type FromBridge, type StyleSnapshot, type ToBridge, type Untagged } from './bridge/protocol';
-import { icon } from './dom/icons';
-import { attachMenu } from './dom/menuButton';
+import { PREVIEW_ONLY_ATTR, type ManualEditPatch, type CuratedStyles } from '@feimacode/open-design-agent-kit-core/src/preview/dom/sourcePatches';
+import type { ArtifactComment } from '@feimacode/open-design-agent-kit-core/src/workspace/artifactCommentTypes';
+import { createCommentController } from '@feimacode/open-design-agent-kit-core/src/preview/commentController';
+import { escapeHtml, highlightBox, hostRectOf, selectionGuides } from '@feimacode/open-design-agent-kit-core/src/preview/overlays';
+import { BRIDGE_TAG, isBridgeMessage, type BridgeRect, type ElementSnapshot, type FromBridge, type StyleSnapshot, type ToBridge, type Untagged } from '@feimacode/open-design-agent-kit-core/src/preview/protocol';
+import { icon } from '@feimacode/open-design-agent-kit-core/src/preview/dom/icons';
+import { attachMenu } from '@feimacode/open-design-agent-kit-core/src/preview/dom/menuButton';
 import { createTweaksPanel } from './tweaksPanel';
 
 declare function acquireVsCodeApi(): {
@@ -96,7 +98,19 @@ tweaksToggle.addEventListener('click', () => {
 });
 
 let mode: Mode = 'view';
-let comments: ArtifactComment[] = [];
+// Comment mode's list, input and pins (shared with the browser preview; openspec add-browser-preview).
+const comments = createCommentController({
+  panel,
+  iframe,
+  host: 'vscode',
+  persist: (changed: ArtifactComment[], deletedIds: string[]) => vscode.postMessage({ type: 'comments-changed', changed, deletedIds }),
+  closePanel: () => closePanel(),
+  onListChanged: () => {
+    updateSendComments();
+    sendCommentsToBridge();
+    renderOverlays();
+  },
+});
 // Hover/selection state, ported (simplified) from open-design's own
 // comment-mode overlay approach (apps/web/src/runtime/srcdoc.ts's
 // injectSelectionBridge): one positioned box per state, hover thin,
@@ -154,7 +168,7 @@ modeButtons.forEach((btn, i) => {
 // Shown only in comment mode, and only enabled while there is something to
 // send; the count makes the pending batch visible without opening pins.
 function updateSendComments(): void {
-  const open = comments.filter((c) => c.status === 'open').length;
+  const open = comments.open().length;
   sendCommentsBtn.hidden = mode !== 'comment';
   sendCommentsBtn.disabled = open === 0;
   sendCommentsCount.textContent = open ? String(open) : '';
@@ -242,7 +256,7 @@ function newRequestId(): string {
 }
 
 function sendCommentsToBridge(): void {
-  toBridge({ type: 'set-comments', comments: comments.map((c) => ({ id: c.id, elementId: c.elementId, selector: c.selector, status: c.status })) });
+  toBridge({ type: 'set-comments', comments: comments.forBridge() });
 }
 
 function onBridgeMessage(message: FromBridge): void {
@@ -258,7 +272,7 @@ function onBridgeMessage(message: FromBridge): void {
       selectionRect = message.element.rect;
       hoverRect = null;
       renderOverlays();
-      if (mode === 'comment') openCommentInput(selection);
+      if (mode === 'comment') comments.openInput(selection);
       else openEditPanel(selection);
       break;
     case 'rects':
@@ -305,43 +319,6 @@ function closePanel(): void {
   selectionRect = null;
   toBridge({ type: 'clear-selection' });
   renderOverlays();
-}
-
-function openCommentInput(target: ElementSnapshot): void {
-  panel.hidden = false;
-  panel.innerHTML = `
-    <div class="od-panel-header">
-      <span class="od-panel-header-title">Add comment</span>
-      <button id="od-comment-close" class="od-panel-close" aria-label="Close">×</button>
-    </div>
-    <div class="od-panel-body">
-      <textarea id="od-comment-text" class="od-textarea" rows="3" placeholder="What should change here?"></textarea>
-    </div>
-    <div class="od-panel-footer">
-      <span class="od-spacer"></span>
-      <button id="od-comment-cancel" class="od-btn">Cancel</button>
-      <button id="od-comment-save" class="od-btn od-btn-primary">Add</button>
-    </div>
-  `;
-  document.getElementById('od-comment-close')!.addEventListener('click', closePanel);
-  document.getElementById('od-comment-cancel')!.addEventListener('click', closePanel);
-  document.getElementById('od-comment-save')!.addEventListener('click', () => {
-    const text = (document.getElementById('od-comment-text') as HTMLTextAreaElement).value.trim();
-    if (!text) return;
-    const now = new Date().toISOString();
-    comments.push({
-      id: `c-${Math.random().toString(36).slice(2, 10)}`,
-      elementId: target.elementId,
-      selector: target.selector,
-      htmlHint: target.htmlHint,
-      note: text,
-      status: 'open',
-      createdAt: now,
-      updatedAt: now,
-    });
-    persistComments();
-    closePanel();
-  });
 }
 
 // Element-kind-aware Content section + a much larger curated Style section,
@@ -597,99 +574,28 @@ function commitPatches(patches: ManualEditPatch[]): void {
   toBridge({ type: 'apply-patches', requestId, patches });
 }
 
-function persistComments(): void {
-  vscode.postMessage({ type: 'comments-changed', comments });
-  updateSendComments();
-  sendCommentsToBridge();
-}
-
-// A bridge rect (page viewport) in the HOST document's coordinate space: the
-// iframe's own rect plus the element's rect within it.
-function hostRectOf(r: BridgeRect): { left: number; top: number; width: number; height: number } {
-  const iframeRect = iframe.getBoundingClientRect();
-  return { left: iframeRect.left + r.left, top: iframeRect.top + r.top, width: r.width, height: r.height };
-}
-
-function highlightBox(rect: { left: number; top: number; width: number; height: number }, className: string): HTMLDivElement {
-  const box = document.createElement('div');
-  box.className = className;
-  box.style.left = `${rect.left}px`;
-  box.style.top = `${rect.top}px`;
-  box.style.width = `${rect.width}px`;
-  box.style.height = `${rect.height}px`;
-  return box;
-}
-
-// Figma-style alignment guides: dashed lines extending from the selected
-// element's four edges across the full canvas, so you can see how it lines
-// up against the rest of the layout at a glance — a simplified version of
-// upstream's edit-mode guide layer (which also draws live gap/measurement
-// labels between hover and selection; not ported, this is the "grid"
-// reference part only).
-function selectionGuides(rect: { left: number; top: number; width: number; height: number }): HTMLDivElement[] {
-  const stage = iframe.getBoundingClientRect();
-  const h = (top: number): HTMLDivElement => {
-    const line = document.createElement('div');
-    line.className = 'od-guide-line od-guide-h';
-    line.style.left = `${stage.left}px`;
-    line.style.top = `${top}px`;
-    line.style.width = `${stage.width}px`;
-    return line;
-  };
-  const v = (left: number): HTMLDivElement => {
-    const line = document.createElement('div');
-    line.className = 'od-guide-line od-guide-v';
-    line.style.top = `${stage.top}px`;
-    line.style.left = `${left}px`;
-    line.style.height = `${stage.height}px`;
-    return line;
-  };
-  return [h(rect.top), h(rect.top + rect.height), v(rect.left), v(rect.left + rect.width)];
-}
-
 function renderOverlays(): void {
   pinsLayer.innerHTML = '';
 
   if (mode === 'view') return;
   if (hoverRect) {
-    pinsLayer.appendChild(highlightBox(hostRectOf(hoverRect), 'od-hover-box'));
+    pinsLayer.appendChild(highlightBox(hostRectOf(iframe, hoverRect), 'od-hover-box'));
   }
   if (selection && selectionRect) {
-    const rect = hostRectOf(selectionRect);
-    selectionGuides(rect).forEach((line) => pinsLayer.appendChild(line));
+    const rect = hostRectOf(iframe, selectionRect);
+    selectionGuides(iframe, rect).forEach((line) => pinsLayer.appendChild(line));
     pinsLayer.appendChild(highlightBox(rect, 'od-select-box'));
   }
 
   if (mode !== 'comment') return;
-  for (const comment of comments) {
-    if (comment.status === 'resolved') continue;
-    const anchor = pinRects.find((p) => p.commentId === comment.id)?.rect;
-    const pos = anchor ? { x: hostRectOf(anchor).left + anchor.width / 2, y: hostRectOf(anchor).top } : null;
-    const pin = document.createElement('div');
-    pin.className = `od-pin ${pos ? 'anchored' : 'lost'}`;
-    pin.title = comment.note;
-    if (pos) {
-      pin.style.left = `${pos.x}px`;
-      pin.style.top = `${pos.y}px`;
-    } else {
-      pin.style.left = '8px';
-      pin.style.top = '8px';
-    }
-    pinsLayer.appendChild(pin);
-  }
+  comments.pins(pinRects).forEach((pin) => pinsLayer.appendChild(pin));
 }
 
 sendCommentsBtn.addEventListener('click', () => {
-  const open = comments.filter((c) => c.status === 'open');
+  const open = comments.open();
   if (open.length === 0) return;
   vscode.postMessage({ type: 'send-comments-to-chat', comments: open });
-  const now = new Date().toISOString();
-  for (const c of open) {
-    c.status = 'sent';
-    c.updatedAt = now;
-  }
-  persistComments();
-  renderOverlays();
+  comments.markOpenSent();
 });
 
 promoteToAppBtn.addEventListener('click', () => {
@@ -787,8 +693,7 @@ window.addEventListener('message', (event) => {
         .catch((err: unknown) => vscode.postMessage({ type: 'copy-result', ok: false, target: message.target, file: message.file, error: err instanceof Error ? err.message : String(err) }));
       break;
     case 'init':
-      comments = message.comments ?? [];
-      updateSendComments();
+      comments.setComments(message.comments ?? []);
       applyCollectionInfo(message.collection);
       applyShapeInfo(message.shape);
       tweaks.update(message.tweaks);
@@ -815,6 +720,10 @@ window.addEventListener('message', (event) => {
     case 'shape-default-updated':
       if (shapeInfo) shapeInfo.defaultFormat = message.defaultFormat;
       renderShapeControls();
+      break;
+    case 'comments-updated':
+      // Another writer (the agent resolving comments, a browser preview) changed the sidecar.
+      comments.setComments(message.comments ?? []);
       break;
     case 'nav-updated':
       // A sibling screen/direction was registered or removed: only the
@@ -991,10 +900,6 @@ function showShapeCheck(message: ShapeCheck): void {
 window.addEventListener('resize', () => applyShapeOverride());
 
 vscode.postMessage({ type: 'ready' });
-
-function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
-}
 
 function rgbToHex(rgb: string): string {
   const match = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(rgb);

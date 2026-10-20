@@ -293,6 +293,11 @@ const TOOL_DEFS: ToolDef[] = [
             enum: [...FORMAT_IDS],
             description: "The canvas format passed to prepare_open_design_brief (or the adaptation's registerArgs), if any. Recorded in the manifest's metadata.format so export, preflight and adaptation use it without repeating it.",
           },
+          resolvedCommentIds: {
+            type: 'array',
+            items: { type: 'string' },
+            description: "Ids of the user's comments (from get_open_design_artifact's openComments) that this edit addressed. They're marked resolved and their pins leave the preview.",
+          },
         },
         required: ['entryPath', 'kind', 'title'],
       },
@@ -315,6 +320,7 @@ const TOOL_DEFS: ToolDef[] = [
           directionId?: string;
           sources?: string[];
           format?: string;
+          resolvedCommentIds?: string[];
         },
       ),
   },
@@ -322,7 +328,7 @@ const TOOL_DEFS: ToolDef[] = [
     tool: {
       name: 'get_open_design_artifact',
       description:
-        "Reads back a registered Open Design artifact: its manifest, entry file content, supporting file list, and any open comments. This host has no comment-authoring UI, so 'openComments' will normally be empty.",
+        "Reads back a registered Open Design artifact: its manifest, entry file content, supporting file list, and the user's unaddressed comments from the browser preview or VS Code ('openComments', status open or sent). Each comment names its element (selector, text excerpt, htmlHint, rect) and its note; up to 4 comment screenshots are attached as images, newest first, and every comment's screenshot path is listed. Call it when the user says they left comments; address each one, then pass their ids as resolvedCommentIds to register_open_design_artifact.",
       inputSchema: {
         type: 'object',
         properties: { entryPath: { type: 'string', description: "Workspace-relative path to the artifact's entry file." } },
@@ -330,6 +336,21 @@ const TOOL_DEFS: ToolDef[] = [
       },
     },
     handler: (ctx, args) => tools.getArtifact(ctx, args as { entryPath: string }),
+  },
+  {
+    tool: {
+      name: 'open_open_design_preview',
+      description:
+        "Shows a registered Open Design artifact to the user in a live browser preview: an app window of their installed Chrome, Edge or Chromium (else their default browser; else it returns the URL to open). The preview reloads whenever the design's files change. In its Comment mode the user clicks an element to leave a comment with a screenshot; its Send to agent button copies an instruction for them to paste here, and get_open_design_artifact returns the comments. Its Checks panel shows the screenshots of each check_open_design_artifact run, before and after. Call it once per session after the first register_open_design_artifact, unless the user declined; later calls switch the same window to another artifact. Omit entryPath for a list of the workspace's designs. Pass open: false to only get the URL.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          entryPath: { type: 'string', description: "Workspace-relative path to the registered artifact's entry file. Omit for the list of designs." },
+          open: { type: 'boolean', description: 'Open a window (default true). false only starts the preview and returns its URL.' },
+        },
+      },
+    },
+    handler: (ctx, args) => tools.openPreview(ctx, args as { entryPath?: string; open?: boolean }),
   },
   {
     tool: {
@@ -705,7 +726,7 @@ const TOOL_DEFS: ToolDef[] = [
     tool: {
       name: 'check_open_design_artifact',
       description:
-        "Renders a registered Open Design artifact in a headless browser (an installed Chrome, Edge, or Chromium) and returns what it looks like: screenshots attached as images, plus preflight findings (overflow and clipped text, contrast, text overlap, safe area, broken images/fonts, emoji, QR codes, and horizontal-scroll for pages that scroll sideways). Writes no files and leaves the manifest alone. Call it after creating or substantially editing an artifact and registering it, before telling the user it's done: fix every ERROR, look at the screenshots for what the checks can't measure (balance, hierarchy, crowded or empty areas, text over busy imagery), then re-check — at most two fix rounds; tell the user about anything left. For a 3D design with a review sheet, a clean check isn't the end: get the critique the result asks for, for up to three critique rounds. What it renders: a page without a [data-od-card] at each viewport (default desktop 1440×900 and mobile 390×844, findings tagged by viewport); a card design (poster, social post) at its registered format size; a deck slide by slide (findings tagged by slide, one contact sheet of up to 12 slides — pass slides to see others). Screenshots are JPEG with a long edge of at most 1568 px; maxImages (default 3, max 6) bounds how many are attached, and 0 returns findings only. Returns a 'no-browser' error when no browser is installed: then skip the check and tell the user once that visual checking needs Chrome, Edge or Chromium. For bulk data rows or shape sheets, use export_open_design_artifact with checkOnly instead. A 3D scene that exposes window.odScene.scene, camera and renderer (the 3d-object ready contract) also gets a review sheet, one image showing the overview, close-up, low-angle and wireframe views (placed second), plus 3D evidence (pixel metrics, renderer statistics) and a webgl-budget warning for scenes too heavy for software rendering; views picks which views go on the sheet, or false for none.",
+        "Renders a registered Open Design artifact in a headless browser (an installed Chrome, Edge, or Chromium) and returns what it looks like: screenshots attached as images, plus preflight findings (overflow and clipped text, contrast, text overlap, safe area, broken images/fonts, emoji, QR codes, and horizontal-scroll for pages that scroll sideways). Leaves the artifact and its manifest alone; saves the run's screenshots under .open-design/.checks/ so the user can see them, before and after, in the browser preview's Checks panel or at the listed paths. Call it after creating or substantially editing an artifact and registering it, before telling the user it's done: fix every ERROR, look at the screenshots for what the checks can't measure (balance, hierarchy, crowded or empty areas, text over busy imagery), then re-check — at most two fix rounds; tell the user about anything left. For a 3D design with a review sheet, a clean check isn't the end: get the critique the result asks for, for up to three critique rounds. What it renders: a page without a [data-od-card] at each viewport (default desktop 1440×900 and mobile 390×844, findings tagged by viewport); a card design (poster, social post) at its registered format size; a deck slide by slide (findings tagged by slide, one contact sheet of up to 12 slides — pass slides to see others). Screenshots are JPEG with a long edge of at most 1568 px; maxImages (default 3, max 6) bounds how many are attached, and 0 returns findings only. Returns a 'no-browser' error when no browser is installed: then skip the check and tell the user once that visual checking needs Chrome, Edge or Chromium. For bulk data rows or shape sheets, use export_open_design_artifact with checkOnly instead. A 3D scene that exposes window.odScene.scene, camera and renderer (the 3d-object ready contract) also gets a review sheet, one image showing the overview, close-up, low-angle and wireframe views (placed second), plus 3D evidence (pixel metrics, renderer statistics) and a webgl-budget warning for scenes too heavy for software rendering; views picks which views go on the sheet, or false for none.",
       inputSchema: {
         type: 'object',
         properties: {

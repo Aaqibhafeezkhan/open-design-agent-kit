@@ -5,6 +5,7 @@
 import { promises as fs } from 'node:fs';
 import * as esbuild from 'esbuild';
 import { cheerioLoadParsePlugin } from '../core/build/cheerioLoadParsePlugin';
+import { buildPreviewBundles } from '../core/build/previewBundles';
 
 async function main() {
   await fs.rm('out', { recursive: true, force: true });
@@ -19,6 +20,8 @@ async function main() {
     plugins: [cheerioLoadParsePlugin],
     logLevel: 'info',
   });
+  // The browser preview's shell and in-page bridge, read at runtime from out/preview/.
+  await buildPreviewBundles('out');
 }
 
 main().catch((err) => {

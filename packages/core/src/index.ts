@@ -55,6 +55,7 @@ export * from './workspace/sourceStore';
 export * from './export/browserDiscovery';
 export * from './export/exportArtifact';
 export * from './export/checkArtifact';
+export * from './export/checkHistory';
 export * from './export/webgl';
 export * from './export/sceneReview';
 export * from './assets/polyHaven';
@@ -78,3 +79,9 @@ export * from './poster/shapeSheet';
 
 export * from './integrations';
 export * from './figma';
+
+// The browser preview (openspec add-browser-preview).
+export * from './preview/server/previewSession';
+export { startPreviewServer, type PreviewServer, type PreviewServerOptions } from './preview/server/previewServer';
+export { openPreviewWindow, defaultOpeners, PREVIEW_BROWSER_ENV, type PreviewOpenResult, type PreviewWindow } from './preview/server/openPreviewWindow';
+export { loadPreviewAssets, type PreviewAssets } from './preview/server/assets';

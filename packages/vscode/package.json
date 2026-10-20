@@ -510,6 +510,13 @@
                 "poster-24x36"
               ],
               "description": "The canvas format passed to prepare_open_design_brief (or the adaptation's registerArgs), if any. Recorded in the manifest's metadata.format so export, preflight and adaptation use it without repeating it."
+            },
+            "resolvedCommentIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Ids of the user's comments (from get_open_design_artifact's openComments) that this edit addressed. They're marked resolved and their pins leave the preview."
             }
           },
           "required": [
@@ -522,7 +529,7 @@
       {
         "name": "get_open_design_artifact",
         "displayName": "Get Open Design Artifact",
-        "modelDescription": "Reads back a registered Open Design artifact: its manifest, entry file content, supporting file list, and any open preview comments (left by the user in the Open Design Artifact Preview editor) that haven't been addressed yet. Use this to review what was generated, and check 'openComments' before telling the user you're done — address any pending ones.",
+        "modelDescription": "Reads back a registered Open Design artifact: its manifest, entry file content, supporting file list, and the user's unaddressed preview comments ('openComments', status open or sent) from the Open Design Artifact Preview editor or the browser preview, with up to 4 comment screenshots attached. Use this to review what was generated, and check 'openComments' before telling the user you're done — address any pending ones, then pass their ids as resolvedCommentIds to register_open_design_artifact.",
         "userDescription": "Read back an Open Design artifact",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-artifact",

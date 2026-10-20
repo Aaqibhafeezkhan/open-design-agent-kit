@@ -108,7 +108,7 @@ See [Export images](../guides/export-images.md), [Export decks and PDFs](../guid
 
 ### check
 
-Renders a registered artifact with an installed Chrome, Edge or Chromium and prints its [preflight](../guides/posters.md#preflight-checks) findings: a page at desktop and mobile widths, a card design at its format size, a deck slide by slide. It writes nothing unless you ask for the screenshots. It calls the same code as the [`check_open_design_artifact`](tools.md#check_open_design_artifact) tool.
+Renders a registered artifact with an installed Chrome, Edge or Chromium and prints its [preflight](../guides/posters.md#preflight-checks) findings: a page at desktop and mobile widths, a card design at its format size, a deck slide by slide. It saves the run's findings under `.open-design/.checks/` (see [Saved check runs](tools.md#saved-check-runs)) and writes screenshots only when you ask for them. It calls the same code as the [`check_open_design_artifact`](tools.md#check_open_design_artifact) tool.
 
 ```bash
 npx @feimacode/open-design-agent-kit check <entryPath> [options]
@@ -134,6 +134,27 @@ npx @feimacode/open-design-agent-kit check .open-design/landing/landing.html --f
 
 # Save what the agent sees
 npx @feimacode/open-design-agent-kit check .open-design/pitch/pitch.html --screenshots ./check-shots
+```
+
+### preview
+
+Shows a registered artifact in the [browser preview](../guides/browser-preview.md), the same one the [`open_open_design_preview`](tools.md#open_open_design_preview) tool opens: a live page that reloads when the design changes, where you can click elements to comment and compare check screenshots. It runs in the foreground until you press Ctrl-C. Without an entry path it shows the list of the workspace's designs.
+
+```bash
+npx @feimacode/open-design-agent-kit preview [entryPath] [options]
+```
+
+| Option | Meaning |
+|---|---|
+| `--no-open` | Print the URL without opening a browser, e.g. over SSH (forward the port, then open the URL locally). |
+| `--port <n>` | The port to listen on, on `127.0.0.1`. Default: a free one. |
+| `--browser <path>` | Browser executable. Default: [`OPEN_DESIGN_BROWSER_PATH`](settings-and-env.md#open_design_browser_path), then auto-detect. |
+| `--workspace <dir>` | Workspace root. Default: the nearest folder above the entry file (or the current directory) that contains `.open-design/`, else the current directory. |
+
+Output: the preview URL on **stdout**, then how it was opened on stderr. Exit code `0` after Ctrl-C, `1` when the preview couldn't start.
+
+```bash
+npx @feimacode/open-design-agent-kit preview .open-design/landing/landing.html
 ```
 
 ### render-video

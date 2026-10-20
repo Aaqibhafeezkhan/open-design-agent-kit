@@ -32,6 +32,7 @@ Task-by-task, for every host ([how the guides are laid out](guides/README.md)):
 - [Remix and the gallery](guides/remix-and-gallery.md): start from a real example instead of a blank page
 - [Community designs](guides/community-designs.md): the awesome-open-design catalog, and contributing your own (VS Code)
 - [Preview, comment and edit](guides/preview-comments-edit.md) (VS Code)
+- [Browser preview and comments](guides/browser-preview.md) (Claude Code, Codex, Cursor)
 - [Figma](guides/figma.md): frame to code, and artifact to Figma layers
 - [Promote to app code](guides/promote-to-app-code.md): turn a prototype into real components
 - [Social media posts](guides/social-posts.md): X, Instagram, LinkedIn, Xiaohongshu, Stories, YouTube thumbnails

@@ -7,7 +7,7 @@ In Claude Code, Open Design comes as **skills** (they tell Claude when and how t
 - Claude Code.
 - Node.js 18 or later (the MCP server runs with `npx`).
 - Optional:
-  - an installed Chrome, Edge or Chromium, for exporting images, PDFs and PowerPoint;
+  - an installed Chrome, Edge or Chromium, for the [browser preview](../guides/browser-preview.md)'s window and comment screenshots, and for exporting images, PDFs and PowerPoint;
   - [FFmpeg](https://ffmpeg.org/), for video and for exporting animations.
 
 ## Option A: the plugin
@@ -47,7 +47,7 @@ You get the [tools](../reference/tools.md) without the skills. Claude can still 
 
 Claude loads the `open-design` skill, browses the catalog, prepares a brief, writes the HTML with its own tools and registers it under `.open-design/<name>/`.
 
-Not sure what to ask for? Run `/open-design:open-design-new` (or `/open-design-new` after `init`) to see what Open Design can make: wireframes, slides, posters, diagrams and more. Open the HTML in a browser to see it. Claude Code has no preview editor; the [VS Code extension](vscode.md) adds one.
+Not sure what to ask for? Run `/open-design:open-design-new` (or `/open-design-new` after `init`) to see what Open Design can make: wireframes, slides, posters, diagrams and more. Claude then opens the design in a [browser preview](../guides/browser-preview.md) that reloads as it changes. Click **Comment** there to point at elements and say what should change, then **Send to agent** and paste into Claude Code. The preview's **Checks** panel shows the screenshots Claude checked its work with, before and after.
 
 The server writes to the project Claude Code was started in. To point it somewhere else, set [`OPEN_DESIGN_WORKSPACE_ROOT`](../reference/settings-and-env.md#open_design_workspace_root).
 

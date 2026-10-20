@@ -10,7 +10,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { collectCuratedEntries } from '../../content/scripts/curatedEntries.mjs';
-import { loadLocalPrompts, renderPromptBody } from '../../content/scripts/localPrompts.mjs';
+import { loadLocalPrompts, promptIsForHost, renderPromptBody } from '../../content/scripts/localPrompts.mjs';
 import { buildRemixableExamplesReference } from '../../content/scripts/remixableExamplesReference.mjs';
 import { checkIntegrationUsage } from '../../content/scripts/integrations.mjs';
 
@@ -75,7 +75,7 @@ async function pathExists(p) {
 
 async function main() {
   const entries = await collectCuratedEntries(assetsRoot);
-  const localPrompts = await loadLocalPrompts(assetsRoot);
+  const localPrompts = (await loadLocalPrompts(assetsRoot)).filter((p) => promptIsForHost(p, 'claude'));
   const expectedIds = new Set([...entries.map((e) => e.id), ...localPrompts.map((p) => p.name)]);
 
   const problems = [];
