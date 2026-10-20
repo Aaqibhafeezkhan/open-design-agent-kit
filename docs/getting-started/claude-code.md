@@ -31,7 +31,7 @@ This installs:
 npx @feimacode/open-design-agent-kit init --tools claude
 ```
 
-This writes the same skills into `.claude/skills/` (commands are then `/od-<mode>-<id>`) and merges an `open-design` server into `.mcp.json`, keeping any other servers. Commit these files and everyone who clones the repo gets the same setup. See [`init`](../reference/cli.md#init).
+This writes the same skills into `.claude/skills/` (commands are then `/od-<mode>-<id>`) and merges an `open-design` server into `.mcp.json`, keeping any other servers. It also adds an `open-design-preview` entry to `.claude/launch.json`, for the [Browser pane in Claude Desktop](claude-desktop.md#the-live-preview-in-the-browser-pane). Commit these files and everyone who clones the repo gets the same setup. See [`init`](../reference/cli.md#init).
 
 ## Option C: just the MCP server
 

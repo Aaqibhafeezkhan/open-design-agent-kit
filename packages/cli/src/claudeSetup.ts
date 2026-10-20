@@ -55,3 +55,51 @@ export async function mergeClaudeMcpConfig(targetPath: string): Promise<{ create
   await fs.writeFile(mcpJsonPath, JSON.stringify(config, null, 2) + '\n', 'utf8');
   return { created };
 }
+
+/** Fixed so the `.claude/launch.json` entry can name it; loopback-only, like every preview. */
+export const LAUNCH_PREVIEW_PORT = 5317;
+
+/**
+ * The browser preview as a Claude Desktop launch configuration, so the Code
+ * tab can open it in its Browser pane (openspec add-claude-desktop-guide).
+ * Field names follow the `od-preview` entry the MCP App spike ran there.
+ */
+export const OPEN_DESIGN_LAUNCH_ENTRY = {
+  name: 'open-design-preview',
+  runtimeExecutable: 'npx',
+  runtimeArgs: ['-y', '@feimacode/open-design-agent-kit', 'preview', '--no-open', '--port', String(LAUNCH_PREVIEW_PORT)],
+  port: LAUNCH_PREVIEW_PORT,
+};
+
+/**
+ * Merges the `open-design-preview` configuration into
+ * `<targetPath>/.claude/launch.json`, creating the file if absent, replacing
+ * our own entry in place and leaving every other configuration untouched.
+ * Doesn't rewrite the file when nothing would change.
+ */
+export async function mergeClaudeLaunchConfig(targetPath: string): Promise<{ outcome: 'created' | 'updated' | 'unchanged' }> {
+  const launchJsonPath = path.join(targetPath, '.claude', 'launch.json');
+
+  let config: Record<string, unknown> = { version: '0.0.1' };
+  let raw: string | undefined;
+  if (await pathExists(launchJsonPath)) {
+    raw = await fs.readFile(launchJsonPath, 'utf8');
+    try {
+      if (raw.trim().length > 0) config = JSON.parse(raw);
+    } catch (err) {
+      throw new MalformedMcpJsonError(launchJsonPath, err);
+    }
+  }
+
+  const configurations = Array.isArray(config.configurations) ? [...config.configurations] : [];
+  const ours = configurations.findIndex((c) => (c as { name?: unknown } | null)?.name === OPEN_DESIGN_LAUNCH_ENTRY.name);
+  if (ours >= 0) configurations[ours] = OPEN_DESIGN_LAUNCH_ENTRY;
+  else configurations.push(OPEN_DESIGN_LAUNCH_ENTRY);
+  config.configurations = configurations;
+
+  const next = JSON.stringify(config, null, 2) + '\n';
+  if (raw === next) return { outcome: 'unchanged' };
+  await fs.mkdir(path.dirname(launchJsonPath), { recursive: true });
+  await fs.writeFile(launchJsonPath, next, 'utf8');
+  return { outcome: raw === undefined ? 'created' : 'updated' };
+}

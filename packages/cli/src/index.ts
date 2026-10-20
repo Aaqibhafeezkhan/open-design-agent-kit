@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { checkbox } from '@inquirer/prompts';
 import { ALL_TOOL_IDS, buildToolChoices, InvalidToolsArgError, parseToolsArg, type ToolId } from './toolSelection';
 import { getClaudeSkillsAssetRoot, getCodexSkillsAssetRoot } from './env';
-import { mergeClaudeMcpConfig, writeClaudeSkills } from './claudeSetup';
+import { mergeClaudeLaunchConfig, mergeClaudeMcpConfig, writeClaudeSkills } from './claudeSetup';
 import { CODEX_CONFIG_SNIPPET, ensureCodexMcpConfig, writeCodexSkills } from './codexSetup';
 import { runCheck, type CheckCliOptions } from './checkCommand';
 import { runExport, runRenderVideo, type ExportCliOptions } from './exportCommand';
@@ -35,7 +35,10 @@ async function runInit(targetPathArg: string, toolsFlag: string | undefined): Pr
   if (tools.includes('claude')) {
     const { writtenCount } = await writeClaudeSkills(targetPath, getClaudeSkillsAssetRoot());
     const { created } = await mergeClaudeMcpConfig(targetPath);
-    console.log(`Claude Code: wrote ${writtenCount} skills to .claude/skills/, ${created ? 'created' : 'updated'} .mcp.json`);
+    const launch = await mergeClaudeLaunchConfig(targetPath);
+    console.log(
+      `Claude Code: wrote ${writtenCount} skills to .claude/skills/, ${created ? 'created' : 'updated'} .mcp.json, ${launch.outcome === 'unchanged' ? 'kept' : launch.outcome} .claude/launch.json (open-design-preview, for Claude Desktop's Browser pane)`,
+    );
   }
 
   if (tools.includes('codex')) {
