@@ -234,6 +234,36 @@ MCP hosts only (Claude Code, Codex, Cursor and others). Shows a registered artif
 
 **Result:** the preview URL and how it was opened (browser window, default browser, or not opened and why). With [`OPEN_DESIGN_PREVIEW`](settings-and-env.md#open_design_preview) set to `off`, it starts nothing and says so.
 
+### show_open_design_artifact
+
+MCP hosts only. Shows a registered artifact, or an exploration's directions side by side, [inline in the conversation](../guides/inline-preview.md) in hosts that render MCP Apps (Claude Desktop Chat). There the user can comment on elements and click **Ask Claude to apply**, which posts a message naming the entry and the comment ids; the export buttons post a request for `export_open_design_artifact`, since the host doesn't allow downloads. For an exploration, **Take this one** posts the user's pick, and the agent confirms the next step before calling `choose_open_design_direction`.
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `entryPath` | string | no | Workspace-relative path to a registered entry file. |
+| `explorationId` | string | no | An [exploration](#exploring-directions) to show instead: its directions side by side. |
+
+**Result:** text for every host: the title, entry path and open comments. A host without MCP Apps (the Claude Code terminal, Codex) gets only this text, plus a hint to use [`open_open_design_preview`](#open_open_design_preview). An unregistered entry returns a not-registered result. The tool declares the `ui://open-design/preview` resource as its UI and returns the target as structured content for it.
+
+### get_open_design_preview_state
+
+Called only by the inline preview page, never by the model: hosts that render MCP Apps keep it out of the model's tool list, and the server lists it only to those hosts. It returns the design as one self-contained page (local fonts and images inlined, the preview bridge injected), its comments, its latest check screenshots and the export formats offered. Over 5 MiB, or for a kind that isn't HTML, the page shows the latest check screenshot instead.
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `entryPath` | string | no | The registered entry to show. |
+| `explorationId` | string | no | The exploration to show instead. |
+
+### save_open_design_comment
+
+Called only by the inline preview page, like `get_open_design_preview_state`. It creates or edits one comment in `<entry>.comments.json`, merged by id the same way as the [browser preview](../guides/browser-preview.md#comments), or deletes one. `get_open_design_artifact` lists the result in `openComments`.
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `entryPath` | string | yes | The registered entry. |
+| `comment` | object | no | The whole comment record to create or edit. |
+| `deleteId` | string | no | The id of a comment to delete. |
+
 ### remix_open_design_example
 
 Copies a real example into the workspace (with its assets), registers it, and returns instructions to **modify** it rather than start over. In VS Code the preview opens.

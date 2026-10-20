@@ -8,6 +8,7 @@
   "license": "MIT",
   "dependencies": {
     "@babel/parser": "^7.29.9",
+    "@modelcontextprotocol/ext-apps": "1.7.5",
     "cheerio": "^1.2.0",
     "gray-matter": "^4.0.3",
     "jsqr": "^1.4.0",

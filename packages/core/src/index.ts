@@ -85,3 +85,6 @@ export * from './preview/server/previewSession';
 export { startPreviewServer, type PreviewServer, type PreviewServerOptions } from './preview/server/previewServer';
 export { openPreviewWindow, defaultOpeners, PREVIEW_BROWSER_ENV, type PreviewOpenResult, type PreviewWindow } from './preview/server/openPreviewWindow';
 export { loadPreviewAssets, type PreviewAssets } from './preview/server/assets';
+// The preview MCP App (openspec add-mcp-app-preview).
+export * from './preview/mcpApp/protocol';
+export * from './preview/server/mcpApp';

@@ -15,11 +15,22 @@ import {
   CallToolRequestSchema,
   GetPromptRequestSchema,
   ListPromptsRequestSchema,
+  ListResourcesRequestSchema,
   ListToolsRequestSchema,
+  ReadResourceRequestSchema,
   RootsListChangedNotificationSchema,
   type Tool,
 } from '@modelcontextprotocol/sdk/types.js';
-import { ContentIndex, FORMAT_IDS, type ListSkillsInput } from '@feimacode/open-design-agent-kit-core';
+import {
+  appOnlyToolMeta,
+  clientSupportsMcpApps,
+  ContentIndex,
+  FORMAT_IDS,
+  MCP_APP_MIME_TYPE,
+  PREVIEW_APP_URI,
+  previewAppToolMeta,
+  type ListSkillsInput,
+} from '@feimacode/open-design-agent-kit-core';
 import { getAssetsRoot, getFigmaToken, getOutputDirectory, getWorkspaceRoot, getWorkspaceRootOverride, isHomeFolder, workspaceRootFromArg, workspaceRootFromClientRoots } from './env';
 import { createFileActiveDesignSystemStore } from './store';
 import * as tools from './tools';
@@ -28,6 +39,8 @@ import type { ToolContext } from './tools';
 interface ToolDef {
   tool: Tool;
   handler: (ctx: ToolContext, args: Record<string, unknown>) => Promise<string | tools.ToolOutput>;
+  /** Called only by the preview MCP App's page: listed only to clients that render MCP Apps, which keep it from the model. */
+  appOnly?: boolean;
 }
 
 const TOOL_DEFS: ToolDef[] = [
@@ -351,6 +364,53 @@ const TOOL_DEFS: ToolDef[] = [
       },
     },
     handler: (ctx, args) => tools.openPreview(ctx, args as { entryPath?: string; open?: boolean }),
+  },
+  {
+    tool: {
+      name: 'show_open_design_artifact',
+      description:
+        "Shows a registered Open Design artifact, or an exploration's directions side by side, to the user inline in the conversation, in hosts that render MCP Apps (Claude Desktop Chat). There the user can switch to Comment mode, click an element and leave a comment, then click \"Ask Claude to apply\", which posts a message here naming the comment ids; export buttons post a request for export_open_design_artifact (the page never downloads). For an exploration, \"Take this one\" posts the user's pick; confirm the next step with them before calling choose_open_design_direction. Every host also gets a text result (title, path, open comments); hosts without MCP Apps are told to use open_open_design_preview. In Claude Desktop Chat call it after register_open_design_artifact and after applying comments. Pass entryPath, or explorationId for an exploration.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          entryPath: { type: 'string', description: "Workspace-relative path to the registered artifact's entry file." },
+          explorationId: { type: 'string', description: 'An exploration id from prepare_open_design_exploration, to show its directions instead.' },
+        },
+      },
+      _meta: previewAppToolMeta(),
+    },
+    handler: (ctx, args) => tools.showArtifact(ctx, args as { entryPath?: string; explorationId?: string }),
+  },
+  {
+    tool: {
+      name: 'get_open_design_preview_state',
+      description: "Used by the Open Design preview page only: the design as one self-contained page, its comments and its latest check screenshots.",
+      inputSchema: {
+        type: 'object',
+        properties: { entryPath: { type: 'string' }, explorationId: { type: 'string' } },
+      },
+      _meta: appOnlyToolMeta(),
+    },
+    handler: (ctx, args) => tools.previewAppState(ctx, args as { entryPath?: string; explorationId?: string }),
+    appOnly: true,
+  },
+  {
+    tool: {
+      name: 'save_open_design_comment',
+      description: "Used by the Open Design preview page only: creates or edits one comment (merged by id) or deletes one, in the artifact's comments sidecar.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          entryPath: { type: 'string' },
+          comment: { type: 'object', description: 'The whole comment record to create or edit.' },
+          deleteId: { type: 'string', description: 'The id of a comment to delete.' },
+        },
+        required: ['entryPath'],
+      },
+      _meta: appOnlyToolMeta(),
+    },
+    handler: (ctx, args) => tools.saveComment(ctx, args as { entryPath: string; comment?: unknown; deleteId?: string }),
+    appOnly: true,
   },
   {
     tool: {
@@ -971,7 +1031,8 @@ function buildContext(workspaceRoot: string = getWorkspaceRoot()): ToolContext {
 
 async function main(): Promise<void> {
   let ctx = buildContext();
-  const server = new Server({ name: 'open-design', version: '0.1.0' }, { capabilities: { tools: {}, prompts: {} } });
+  const server = new Server({ name: 'open-design', version: '0.1.0' }, { capabilities: { tools: {}, prompts: {}, resources: {} } });
+  const rendersMcpApps = (): boolean => clientSupportsMcpApps(server.getClientCapabilities());
 
   // Workspace root precedence: OPEN_DESIGN_WORKSPACE_ROOT, then the client's
   // MCP roots, then the cwd (already in ctx). Requests wait for the first
@@ -995,7 +1056,21 @@ async function main(): Promise<void> {
     rootsReady = syncRootsFromClient();
   });
 
-  server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOL_DEFS.map((d) => d.tool) }));
+  // App-only tools go only to hosts that render MCP Apps: those keep them out of
+  // the model's list by their `visibility`; any other host would show them to it.
+  server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOL_DEFS.filter((d) => !d.appOnly || rendersMcpApps()).map((d) => d.tool) }));
+
+  // The preview MCP App's page (openspec add-mcp-app-preview).
+  server.setRequestHandler(ListResourcesRequestSchema, async () => ({
+    resources: [{ uri: PREVIEW_APP_URI, name: 'Open Design preview', description: 'Shows an Open Design artifact inline, with comments.', mimeType: MCP_APP_MIME_TYPE }],
+  }));
+  server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+    if (request.params.uri !== PREVIEW_APP_URI) throw new Error(`Unknown resource: ${request.params.uri}`);
+    const { html, resourceDomains } = await tools.previewAppResource();
+    return {
+      contents: [{ uri: PREVIEW_APP_URI, mimeType: MCP_APP_MIME_TYPE, text: html, _meta: { ui: { csp: { resourceDomains, connectDomains: [] }, prefersBorder: true } } }],
+    };
+  });
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     await rootsReady;
@@ -1020,8 +1095,10 @@ async function main(): Promise<void> {
       return { content: [{ type: 'text' as const, text }], isError: true };
     }
     try {
-      const callCtx = { ...ctx, figmaToken: getFigmaToken(), clientName: server.getClientVersion()?.name };
-      return { content: tools.toCallToolContent(await def.handler(callCtx, (request.params.arguments as Record<string, unknown>) ?? {})) };
+      const callCtx = { ...ctx, figmaToken: getFigmaToken(), clientName: server.getClientVersion()?.name, rendersMcpApps: rendersMcpApps() };
+      const out = await def.handler(callCtx, (request.params.arguments as Record<string, unknown>) ?? {});
+      const structuredContent = typeof out === 'string' ? undefined : out.structuredContent;
+      return { content: tools.toCallToolContent(out), ...(structuredContent ? { structuredContent } : {}) };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       return { content: [{ type: 'text' as const, text: `Tool "${request.params.name}" failed: ${message}` }], isError: true };

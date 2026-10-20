@@ -69,6 +69,10 @@ The plugin's MCP server runs on your machine, not in Claude's sandbox. It starts
 
 The first start downloads the server package once (about 12 MB), so it needs the network that time. npm caches it afterwards.
 
+### See the design in the chat
+
+After Claude registers a design, it shows it [inline in the conversation](../guides/inline-preview.md). Desktop asks you to allow the preview the first time. Click **Comment**, click an element and type what should change, then click **Ask Claude to apply**: the comments go straight back to Claude. The export buttons ask Claude to export, since the inline page can't download files.
+
 For Figma without Figma's own connector, save a token in `~/.config/open-design/figma-token`. Plugin settings can't hold it, because Desktop won't start a plugin server that uses them. See [Figma: no access token](../troubleshooting.md#figma-no-access-token).
 
 > Chat with a folder needs a server release that includes `set_open_design_workspace`. If tools refuse with a message about the home folder and Claude has no `set_open_design_workspace` tool, the plugin still runs an older server. Update the plugin once a newer one is out.
@@ -85,5 +89,5 @@ A Chat with no folder has nowhere on your disk for Claude to write, so the kit c
 
 ## Next
 
-- [Generate a design](../guides/generate-a-design.md), [Posters and print](../guides/posters.md) and [Browser preview and comments](../guides/browser-preview.md)
+- [Generate a design](../guides/generate-a-design.md), [Posters and print](../guides/posters.md) and [Browser preview and comments](../guides/browser-preview.md), [Inline preview in Claude Desktop Chat](../guides/inline-preview.md)
 - [Troubleshooting Claude Desktop](../troubleshooting.md#claude-desktop)
