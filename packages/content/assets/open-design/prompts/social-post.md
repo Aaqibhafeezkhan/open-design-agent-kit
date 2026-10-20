@@ -44,6 +44,10 @@ Author the files yourself with your own file-editing tools, following the return
 
 Call `register_open_design_artifact` with the entry path, kind `html`, a title, `sourceSkillId` set to the row's `skillId`, and the same `format` you passed to the brief, so the export can find the right size.
 
+<!-- claude-only -->
+**Artifact preview.** If you have an Artifact tool, publish this design as its private artifact preview once it's registered and checked: call `publish_open_design_artifact` with `provider: "claude-artifact"` and follow what it returns. Publish again after each round of feedback you apply; it goes to the same artifact. Give the link once, then just say the preview was updated.
+<!-- /claude-only -->
+
 ## 4. Export
 
 - **Image formats**: call `export_open_design_artifact` with the entry path and the row's export arguments. If its preflight reports errors (text cut off, a card that isn't the canvas size) or it returns warnings (failed fonts or images, over budget), fix the artifact and export again. Before exporting, call `check_open_design_artifact` to see the post as an image with its preflight findings, without writing files; fix every error first.

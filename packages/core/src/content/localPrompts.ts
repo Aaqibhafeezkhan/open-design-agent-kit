@@ -47,6 +47,17 @@ export async function loadLocalPrompts(assetsRoot: string): Promise<LocalPrompt[
   return prompts;
 }
 
-export function renderLocalPrompt(prompt: LocalPrompt, briefText: string): string {
-  return prompt.body.split(BRIEF_PLACEHOLDER).join(briefText);
+// Mirrors forHost() in packages/content/scripts/localPrompts.mjs.
+const CLAUDE_ONLY_RE = /\n?<!-- claude-only -->[\s\S]*?<!-- \/claude-only -->\n?/g;
+
+/** `text` with claude-only blocks (Artifact-tool guidance) kept for claude and mcp, removed for other hosts. */
+export function localPromptForHost(text: string, host: string): string {
+  if (host === 'claude' || host === 'mcp') return text;
+  const trailing = /\s*$/.exec(text)?.[0] ?? '';
+  return text.replace(CLAUDE_ONLY_RE, '\n').replace(/\n{3,}/g, '\n\n').trimEnd() + trailing;
+}
+
+/** The MCP server's rendering: claude-only blocks are kept, since Claude clients use it too. */
+export function renderLocalPrompt(prompt: LocalPrompt, briefText: string, host = 'mcp'): string {
+  return localPromptForHost(prompt.body.split(BRIEF_PLACEHOLDER).join(briefText), host);
 }

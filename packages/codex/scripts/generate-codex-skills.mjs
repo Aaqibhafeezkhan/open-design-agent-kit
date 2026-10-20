@@ -17,7 +17,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { collectCuratedEntries } from '../../content/scripts/curatedEntries.mjs';
-import { loadLocalPrompts, promptIsForHost, renderPromptBody } from '../../content/scripts/localPrompts.mjs';
+import { forHost, loadLocalPrompts, promptIsForHost, renderPromptBody } from '../../content/scripts/localPrompts.mjs';
 import { buildRemixableExamplesReference } from '../../content/scripts/remixableExamplesReference.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -59,7 +59,7 @@ description: ${prompt.description}${prompt.modelTrigger ? ` — ${prompt.modelTr
 
 ${GENERATED_MARKER}
 
-${renderPromptBody(prompt, `the rest of the user's message (if there is none, ask the user: "${prompt.placeholder}")`)}
+${renderPromptBody(prompt, `the rest of the user's message (if there is none, ask the user: "${prompt.placeholder}")`, 'codex')}
 `;
 }
 
@@ -103,7 +103,7 @@ async function main() {
   const overviewParts = overviewSource.split(/^---\s*$/m);
   // overviewParts: ['', frontmatter, body] — insert the marker right after
   // the frontmatter close, same position every generated file uses it.
-  const overviewContent = `---${overviewParts[1]}---\n\n${GENERATED_MARKER}\n\n${overviewParts.slice(2).join('---').trimStart()}`;
+  const overviewContent = `---${overviewParts[1]}---\n\n${GENERATED_MARKER}\n\n${forHost(overviewParts.slice(2).join('---').trimStart(), 'codex')}`;
   await fs.writeFile(path.join(overviewDir, 'SKILL.md'), overviewContent);
 
   const referencesDir = path.join(overviewDir, 'references');

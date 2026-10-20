@@ -437,6 +437,48 @@ describe('mcp-server publishing', () => {
   });
 });
 
+describe('mcp-server artifact preview hints', () => {
+  async function write(ctx: ToolContext): Promise<string> {
+    const entryPath = '.open-design/v/v.html';
+    await fs.mkdir(path.join(ctx.workspaceRoot, '.open-design', 'v'), { recursive: true });
+    await fs.writeFile(path.join(ctx.workspaceRoot, entryPath), '<!doctype html><html><body><h1>V</h1></body></html>');
+    return entryPath;
+  }
+
+  it('suggests the artifact preview to Claude clients only, until one is recorded', async () => {
+    const claude = { ...(await makeContext()), clientName: 'claude-code' };
+    const entryPath = await write(claude);
+    assert.match(await tools.registerArtifact(claude, { entryPath, kind: 'html', title: 'V' }), /Artifact preview: .*provider "claude-artifact"/);
+
+    const codex = { ...(await makeContext()), clientName: 'codex-mcp-client' };
+    const codexEntry = await write(codex);
+    assert.ok(!/Artifact preview/.test(await tools.registerArtifact(codex, { entryPath: codexEntry, kind: 'html', title: 'V' })));
+
+    await tools.publishArtifact(claude, { entryPath, published: { provider: 'claude-artifact', url: 'https://claude.ai/artifact/abc' } });
+    assert.ok(!/Artifact preview/.test(await tools.registerArtifact(claude, { entryPath, kind: 'html', title: 'V' })));
+  });
+
+  it('getArtifact returns the newest artifact link as previewUrl', async () => {
+    const ctx = await makeContext();
+    const entryPath = await write(ctx);
+    await tools.registerArtifact(ctx, { entryPath, kind: 'html', title: 'V' });
+    assert.strictEqual(JSON.parse((await tools.getArtifact(ctx, { entryPath })).text).previewUrl, undefined);
+    await tools.publishArtifact(ctx, { entryPath, published: { provider: 'claude-artifact', url: 'https://claude.ai/artifact/abc' } });
+    assert.strictEqual(JSON.parse((await tools.getArtifact(ctx, { entryPath })).text).previewUrl, 'https://claude.ai/artifact/abc');
+  });
+
+  it('keeps claude-only prompt text for MCP clients', async () => {
+    const ctx = await makeContext();
+    await fs.mkdir(path.join(ctx.assetsRoot, 'prompts'), { recursive: true });
+    await fs.writeFile(
+      path.join(ctx.assetsRoot, 'prompts', 'p.md'),
+      ['---', 'name: p', 'description: P', '---', '', 'Brief: {{brief}}', '<!-- claude-only -->', 'Preview it.', '<!-- /claude-only -->', 'Done.'].join('\n'),
+    );
+    const [prompt] = await tools.listLocalPrompts(ctx);
+    assert.match(tools.buildLocalPromptMessage(prompt, 'x'), /Preview it\./);
+  });
+});
+
 describe('mcp-server image content', () => {
   it('maps a plain string to a single text item, as every other tool returns', () => {
     assert.deepStrictEqual(tools.toCallToolContent('done'), [{ type: 'text', text: 'done' }]);

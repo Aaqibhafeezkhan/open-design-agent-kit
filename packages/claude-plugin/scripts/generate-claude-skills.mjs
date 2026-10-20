@@ -60,7 +60,7 @@ argument-hint: ${prompt.argumentHint ?? 'a brief'}
 
 <!-- generated:curated-entry -->
 
-${renderPromptBody(prompt, `"$ARGUMENTS" — or, if that is empty, the user's request in this conversation (if it isn't clear, ask the user: "${prompt.placeholder}")`)}
+${renderPromptBody(prompt, `"$ARGUMENTS" — or, if that is empty, the user's request in this conversation (if it isn't clear, ask the user: "${prompt.placeholder}")`, 'claude')}
 `;
 }
 

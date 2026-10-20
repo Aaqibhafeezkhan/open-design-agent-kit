@@ -50,6 +50,10 @@ Ask which channels the campaign needs, unless the brief says. Offer this menu (f
 
 Call `export_open_design_artifact` with `presets` set to the chosen formats, `data: "<campaign folder>/copy.csv"`, `nameField: "locale"` and `checkOnly: true`. Fix every **error** in the findings (per shape and per row). For a shape that looks wrong or has errors, call `adapt_open_design_artifact` with those format ids and tune it in the same file. Tiny ad sizes usually need their own `@container` rule: headline and call to action only. Repeat until there are no errors.
 
+<!-- claude-only -->
+**Artifact preview.** If you have an Artifact tool, publish this design as its private artifact preview (the master) once every shape is clean: call `publish_open_design_artifact` with `provider: "claude-artifact"` and follow what it returns. Publish again after each round of feedback you apply; it goes to the same artifact. Give the link once, then just say the preview was updated.
+<!-- /claude-only -->
+
 ## 5. Other pieces (optional)
 
 If the user wants a landing page or an email, build each with its own skill (`od:prototype:saas-landing` or `od:prototype:web-prototype`, and `od:prototype:email-campaign`) using the same design system and the first row of the copy deck. Register each with the same `collectionId` and `collectionName`, and `screenRole` `landing` or `email`. Check each with `check_open_design_artifact`.

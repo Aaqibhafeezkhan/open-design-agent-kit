@@ -34,6 +34,10 @@ Build from the approved outline. Use numbers, names and quotes exactly as in the
 
 Call `register_open_design_artifact` with the same `sources`. For every number its result says it couldn't find in the sources, check it: fix it, or say in that slide's notes how it was derived. Register again after fixing.
 
+<!-- claude-only -->
+**Artifact preview.** If you have an Artifact tool, publish this design as its private artifact preview once it's registered: call `publish_open_design_artifact` with `provider: "claude-artifact"` and follow what it returns. Publish again after each round of feedback you apply; it goes to the same artifact. Give the link once, then just say the preview was updated.
+<!-- /claude-only -->
+
 ## 6. Hand it over
 
 Tell the user where the deck and its outline are, mention any images reused from the documents, and offer to export it as PowerPoint or PDF with `export_open_design_artifact`. PowerPoint exports include the speaker notes.

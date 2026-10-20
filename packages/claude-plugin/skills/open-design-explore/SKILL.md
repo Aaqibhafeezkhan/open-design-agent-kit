@@ -44,3 +44,7 @@ Give the user the comparison page path (it opens in any browser straight from th
 ## 5. Take the choice forward
 
 Call `choose_open_design_direction` with the `explorationId`, the chosen `directionId`, `next` (`build-out`, `merge` with `mergeFrom`, or `save-design-system`) and the user's own adjustments as `notes`. Follow the returned `instructions` and register the result as they say.
+
+<!-- claude-only -->
+**Artifact preview.** If you have an Artifact tool, publish the result as its private artifact preview (the built-out design, not the sketches) once it's registered: call `publish_open_design_artifact` with `provider: "claude-artifact"` and follow what it returns. Publish again after each round of feedback you apply; it goes to the same artifact. Give the link once, then just say the preview was updated.
+<!-- /claude-only -->
