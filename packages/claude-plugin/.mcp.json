@@ -2,12 +2,7 @@
   "mcpServers": {
     "open-design": {
       "command": "node",
-      "args": [
-        "${CLAUDE_PLUGIN_ROOT}/node_modules/@feimacode/open-design-agent-kit-mcp/out/index.js"
-      ],
-      "env": {
-        "OPEN_DESIGN_FIGMA_TOKEN": "${user_config.figma_token}"
-      }
+      "args": ["${CLAUDE_PLUGIN_ROOT}/bin/open-design-mcp.mjs"]
     }
   }
 }

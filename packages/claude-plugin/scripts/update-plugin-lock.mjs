@@ -3,8 +3,9 @@
 // (`npm ci --ignore-scripts --workspaces=false` in the plugin root), and the
 // Claude plugin directory requires that lockfile for its Verified badge. The
 // MCP server is therefore pinned in package.json + package-lock.json here and
-// launched from node_modules by .mcp.json, rather than fetched by npx at run
-// time.
+// launched from node_modules by .mcp.json's bin/open-design-mcp.mjs. Claude
+// Desktop installs no plugin dependencies, so that launcher falls back to npx
+// with the same pin there.
 //
 // Inside this monorepo npm only maintains the root workspace lockfile, so
 // this script resolves a standalone package-lock.json in a temp copy of the
@@ -51,9 +52,13 @@ async function check() {
   }
 
   const server = (await readJson(mcpJsonPath)).mcpServers?.['open-design'];
-  const entry = `\${CLAUDE_PLUGIN_ROOT}/node_modules/${MCP_PACKAGE}/out/index.js`;
-  if (server?.command !== 'node' || server?.args?.[0] !== entry) {
-    problems.push(`.mcp.json must launch the locked server: node ${entry}`);
+  const launcher = '${CLAUDE_PLUGIN_ROOT}/bin/open-design-mcp.mjs';
+  if (server?.command !== 'node' || server?.args?.[0] !== launcher) {
+    problems.push(`.mcp.json must start the server through its launcher: node ${launcher}`);
+  }
+  // Claude Desktop won't start a plugin server whose config refers to a plugin setting.
+  if (JSON.stringify(server ?? {}).includes('${user_config.')) {
+    problems.push('.mcp.json must not use ${user_config.*}: Claude Desktop refuses to start the server');
   }
 
   if (problems.length > 0) {

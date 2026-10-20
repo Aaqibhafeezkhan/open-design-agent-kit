@@ -73,6 +73,7 @@ import {
   type ExportFormat,
   type LocalPrompt,
 } from '@feimacode/open-design-agent-kit-core';
+import { figmaTokenFilePath } from './env';
 
 export interface ToolContext {
   contentIndex: ContentIndex;
@@ -474,7 +475,7 @@ export async function pullFigmaFrame(ctx: ToolContext, input: { figmaUrl: string
     token: ctx.figmaToken,
     outputDir: ctx.outputDir,
     tokenSetupHint:
-      'set the OPEN_DESIGN_FIGMA_TOKEN environment variable for this MCP server (in the Claude Code plugin, its "Figma access token" option) to a personal access token from Figma → Settings → Personal access tokens',
+      `save a personal access token from Figma → Settings → Personal access tokens in ${figmaTokenFilePath()} on the machine this server runs on, or set the OPEN_DESIGN_FIGMA_TOKEN environment variable for this MCP server`,
   });
 }
 

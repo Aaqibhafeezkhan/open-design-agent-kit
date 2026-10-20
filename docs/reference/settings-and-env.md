@@ -56,7 +56,7 @@ For the MCP server and the CLI, set these in the environment of the process that
 
 ### OPEN_DESIGN_WORKSPACE_ROOT
 
-MCP server. Default: the first workspace folder the client reports through MCP roots (VS Code does), otherwise the server process's working directory, which Claude Code and Codex set to your project. Setting it overrides both. It's the workspace artifacts are written to, and where `.open-design/config.json` (the active design system) is kept.
+MCP server. Default: the first workspace folder the client reports through MCP roots (VS Code does), otherwise the server process's working directory, which Claude Code and Codex set to your project. Setting it overrides both. The agent can still pick a folder for one session with [`set_open_design_workspace`](tools.md#set_open_design_workspace), which Claude Desktop needs because it starts the server in your home folder. It's the workspace artifacts are written to, and where `.open-design/config.json` (the active design system) is kept.
 
 ### OPEN_DESIGN_OUTPUT_DIR
 
@@ -64,7 +64,7 @@ MCP server. Default: `.open-design`. The MCP equivalent of [`openDesign.outputDi
 
 ### OPEN_DESIGN_FIGMA_TOKEN
 
-MCP server. A Figma personal access token (Figma → Settings → Personal access tokens), needed by [`pull_open_design_figma_frame`](tools.md#pull_open_design_figma_frame). In VS Code, use **Open Design: Set Figma Access Token** instead; it stores the token encrypted.
+MCP server. A Figma personal access token (Figma → Settings → Personal access tokens), needed by [`pull_open_design_figma_frame`](tools.md#pull_open_design_figma_frame) when Figma isn't connected. When it's unset, the server reads the token from the file `~/.config/open-design/figma-token` (under `$XDG_CONFIG_HOME` when that's set), so a token saved there works in the Claude Code plugin and Claude Desktop without editing any config. In VS Code, use **Open Design: Set Figma Access Token** instead; it stores the token encrypted.
 
 ### OPEN_DESIGN_SHARE_BADGE
 

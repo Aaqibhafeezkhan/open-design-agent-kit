@@ -31,7 +31,7 @@ Both workflows publish the artifacts already built for the GitHub Release, and b
 
 ## 4. Update the Claude Code plugin's MCP pin (manual, after npm publish)
 
-The Claude Code plugin (`packages/claude-plugin`) does not follow the release version automatically. It pins the MCP server to an exact version in its own `package.json` and `package-lock.json`, which Claude Code installs with `npm ci` when the plugin is installed (the Claude plugin directory requires this lockfile for its Verified badge). `.mcp.json` then launches the server from the plugin's `node_modules`, not through `npx`.
+The Claude Code plugin (`packages/claude-plugin`) does not follow the release version automatically. It pins the MCP server to an exact version in its own `package.json` and `package-lock.json`, which Claude Code installs with `npm ci` when the plugin is installed (the Claude plugin directory requires this lockfile for its Verified badge). `.mcp.json` then starts `bin/open-design-mcp.mjs`, which runs the server from the plugin's `node_modules`. Claude Desktop doesn't install plugin dependencies, so there the launcher runs `npx` with the same pinned version instead.
 
 Once the new `mcp-server` version is on npm:
 

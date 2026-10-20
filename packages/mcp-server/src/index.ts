@@ -20,7 +20,7 @@ import {
   type Tool,
 } from '@modelcontextprotocol/sdk/types.js';
 import { ContentIndex, FORMAT_IDS, type ListSkillsInput } from '@feimacode/open-design-agent-kit-core';
-import { getAssetsRoot, getFigmaToken, getOutputDirectory, getWorkspaceRoot, getWorkspaceRootOverride, workspaceRootFromClientRoots } from './env';
+import { getAssetsRoot, getFigmaToken, getOutputDirectory, getWorkspaceRoot, getWorkspaceRootOverride, isHomeFolder, workspaceRootFromArg, workspaceRootFromClientRoots } from './env';
 import { createFileActiveDesignSystemStore } from './store';
 import * as tools from './tools';
 import type { ToolContext } from './tools';
@@ -938,7 +938,28 @@ const TOOL_DEFS: ToolDef[] = [
     },
     handler: (ctx, args) => tools.pushToFigma(ctx, args as { entryPath: string; refresh?: boolean }),
   },
+  {
+    // main() handles this one itself: it replaces the server's context
+    // instead of acting within it.
+    tool: {
+      name: 'set_open_design_workspace',
+      description:
+        "Sets the folder Open Design works in for the rest of this session: where designs, manifests and .open-design/config.json are written, and what every workspace-relative path in other tools' results is relative to. Call it once, before any other Open Design tool, when this server can't know the user's folder on its own — in Claude Desktop chats with a connected folder it starts in the user's home folder. Pass the folder's absolute path on the machine this server runs on (in Claude Desktop, the path get_device_info lists under connectedFolders), not the path your own file tools see it under. Afterwards, join the workspace-relative paths other tools return onto your own path for that folder when you read or write files. Not needed in Claude Code, Codex or VS Code, which start the server in the project.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: "Absolute path of the user's folder on the machine this server runs on." },
+        },
+        required: ['path'],
+      },
+    },
+    handler: async () => {
+      throw new Error('handled by the server itself');
+    },
+  },
 ];
+
+const SET_WORKSPACE_TOOL = 'set_open_design_workspace';
 
 function buildContext(workspaceRoot: string = getWorkspaceRoot()): ToolContext {
   const outputDir = getOutputDirectory();
@@ -955,8 +976,10 @@ async function main(): Promise<void> {
   // Workspace root precedence: OPEN_DESIGN_WORKSPACE_ROOT, then the client's
   // MCP roots, then the cwd (already in ctx). Requests wait for the first
   // roots lookup so nothing is written to the cwd before it's known.
+  // A folder set through set_open_design_workspace beats later roots too.
+  let workspaceSetByAgent = false;
   const syncRootsFromClient = async (): Promise<void> => {
-    if (getWorkspaceRootOverride() || !server.getClientCapabilities()?.roots) return;
+    if (workspaceSetByAgent || getWorkspaceRootOverride() || !server.getClientCapabilities()?.roots) return;
     try {
       const root = workspaceRootFromClientRoots((await server.listRoots()).roots);
       if (root && root !== ctx.workspaceRoot) ctx = buildContext(root);
@@ -976,12 +999,28 @@ async function main(): Promise<void> {
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     await rootsReady;
+    if (request.params.name === SET_WORKSPACE_TOOL) {
+      try {
+        const root = workspaceRootFromArg(request.params.arguments?.path);
+        ctx = buildContext(root);
+        workspaceSetByAgent = true;
+        const text = `Open Design now works in ${root}. Designs go under ${ctx.outputDir}/ there, and the paths other tools return are relative to that folder.`;
+        return { content: [{ type: 'text' as const, text }] };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return { content: [{ type: 'text' as const, text: `Tool "${SET_WORKSPACE_TOOL}" failed: ${message}` }], isError: true };
+      }
+    }
     const def = TOOL_DEFS.find((d) => d.tool.name === request.params.name);
     if (!def) {
       return { content: [{ type: 'text' as const, text: `Unknown tool: ${request.params.name}` }], isError: true };
     }
+    if (!workspaceSetByAgent && !getWorkspaceRootOverride() && isHomeFolder(ctx.workspaceRoot)) {
+      const text = `Open Design would be working straight in the user's home folder (${ctx.workspaceRoot}), which usually means this host didn't say which folder to use. Call ${SET_WORKSPACE_TOOL} with the absolute path, on the machine this server runs on, of the folder the user connected (in Claude Desktop, the one get_device_info lists under connectedFolders), then call ${request.params.name} again. If the user really wants their home folder, pass that path.`;
+      return { content: [{ type: 'text' as const, text }], isError: true };
+    }
     try {
-      const callCtx = { ...ctx, clientName: server.getClientVersion()?.name };
+      const callCtx = { ...ctx, figmaToken: getFigmaToken(), clientName: server.getClientVersion()?.name };
       return { content: tools.toCallToolContent(await def.handler(callCtx, (request.params.arguments as Record<string, unknown>) ?? {})) };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

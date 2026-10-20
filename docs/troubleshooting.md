@@ -34,7 +34,7 @@ A token is only needed when Figma isn't connected to your agent. The easiest fix
 To use a token instead:
 
 - **VS Code:** run **Open Design: Set Figma Access Token**.
-- **MCP:** set [`OPEN_DESIGN_FIGMA_TOKEN`](reference/settings-and-env.md#open_design_figma_token) in the server's `env` and restart the agent.
+- **MCP:** save it in `~/.config/open-design/figma-token`, or set [`OPEN_DESIGN_FIGMA_TOKEN`](reference/settings-and-env.md#open_design_figma_token) in the server's `env` and restart the agent.
 
 Also use a frame link from **Copy link to selection** (it contains `node-id`), not a file link.
 
