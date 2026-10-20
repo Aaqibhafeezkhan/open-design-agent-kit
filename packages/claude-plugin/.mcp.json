@@ -2,7 +2,7 @@
   "mcpServers": {
     "open-design": {
       "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/bin/open-design-mcp.mjs"]
+      "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/open-design-mcp.mjs"]
     }
   }
 }
