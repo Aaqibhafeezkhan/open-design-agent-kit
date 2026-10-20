@@ -46,6 +46,12 @@ export interface PreviewServerOptions {
   browserPath?: string;
   /** Shell port; 0 or unset picks a free one. */
   port?: number;
+  /**
+   * Also answer a GET of `/` with a redirect to the tokened shell, for hosts
+   * that can only open the bare port (Claude Desktop's `.claude/launch.json`).
+   * Another site can trigger the redirect but can't read where it leads.
+   */
+  rootRedirect?: boolean;
   log?: (message: string) => void;
 }
 
@@ -268,6 +274,11 @@ export async function startPreviewServer(options: PreviewServerOptions): Promise
     const host = req.headers.host ?? '';
     const port = shellOrigin.split(':').pop();
     if (host !== `127.0.0.1:${port}` && host !== `localhost:${port}`) throw new HttpError(403, 'Unexpected host.');
+    if (options.rootRedirect && url.pathname === '/' && (req.method === 'GET' || req.method === 'HEAD')) {
+      res.writeHead(302, { Location: shellPrefix, 'Cache-Control': 'no-store' });
+      res.end();
+      return;
+    }
     if (!url.pathname.startsWith(shellPrefix) && url.pathname !== shellPrefix.slice(0, -1)) throw new HttpError(404, 'Not found.');
     const route = url.pathname.slice(shellPrefix.length - 1) || '/';
     const method = req.method ?? 'GET';

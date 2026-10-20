@@ -152,6 +152,7 @@ program
   .option('--port <n>', 'Port for the preview (default: a free one)')
   .option('--browser <path>', 'Browser executable (default: OPEN_DESIGN_BROWSER_PATH, then auto-detect)')
   .option('--workspace <dir>', 'Workspace root (default: nearest ancestor containing .open-design/)')
+  .option('--root-redirect', "Redirect the port's bare / to the preview (for Claude Desktop's .claude/launch.json)")
   .action(async (entryPath: string | undefined, options: PreviewCliOptions) => {
     try {
       process.exitCode = await runPreview(entryPath, options);

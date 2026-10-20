@@ -29,6 +29,8 @@ export interface PreviewSessionOptions {
   outputDir?: string;
   browserPath?: string;
   port?: number;
+  /** Redirect `/` to the shell (see PreviewServerOptions.rootRedirect). */
+  rootRedirect?: boolean;
   /** Where the host's build put shell.js and bridge.js (default: next to the running bundle). */
   assetsDir?: string;
   log?: (message: string) => void;
@@ -54,6 +56,7 @@ export class PreviewSession {
         assets,
         browserPath: this.options.browserPath,
         port: this.options.port,
+        rootRedirect: this.options.rootRedirect,
         log: this.options.log,
       });
     })();

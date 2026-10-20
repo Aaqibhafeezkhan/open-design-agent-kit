@@ -49,7 +49,7 @@ If you set the project up with `npx @feimacode/open-design-agent-kit init --tool
     {
       "name": "open-design-preview",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["-y", "@feimacode/open-design-agent-kit", "preview", "--no-open", "--port", "5317"],
+      "runtimeArgs": ["-y", "@feimacode/open-design-agent-kit", "preview", "--no-open", "--root-redirect", "--port", "5317"],
       "port": 5317
     }
   ]

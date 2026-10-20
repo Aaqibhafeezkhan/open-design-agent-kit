@@ -54,9 +54,11 @@ describe('preview command', () => {
     const root = await workspace();
     let entry: string | undefined = 'unset';
     let workspaceRoot = '';
-    await runPreview(undefined, {}, root, {
+    let rootRedirect: boolean | undefined;
+    await runPreview(undefined, { rootRedirect: true }, root, {
       createSession: (o) => {
         workspaceRoot = o.workspaceRoot;
+        rootRedirect = o.rootRedirect;
         return { open: async (e) => ((entry = e), { url: 'u', how: 'app-window' }), close: async () => undefined };
       },
       untilStopped: async () => undefined,
@@ -65,6 +67,7 @@ describe('preview command', () => {
     });
     assert.strictEqual(entry, undefined);
     assert.strictEqual(workspaceRoot, root);
+    assert.strictEqual(rootRedirect, true);
   });
 
   it('describes each way it opened', () => {

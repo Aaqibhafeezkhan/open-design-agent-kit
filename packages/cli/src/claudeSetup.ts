@@ -67,7 +67,7 @@ export const LAUNCH_PREVIEW_PORT = 5317;
 export const OPEN_DESIGN_LAUNCH_ENTRY = {
   name: 'open-design-preview',
   runtimeExecutable: 'npx',
-  runtimeArgs: ['-y', '@feimacode/open-design-agent-kit', 'preview', '--no-open', '--port', String(LAUNCH_PREVIEW_PORT)],
+  runtimeArgs: ['-y', '@feimacode/open-design-agent-kit', 'preview', '--no-open', '--root-redirect', '--port', String(LAUNCH_PREVIEW_PORT)],
   port: LAUNCH_PREVIEW_PORT,
 };
 

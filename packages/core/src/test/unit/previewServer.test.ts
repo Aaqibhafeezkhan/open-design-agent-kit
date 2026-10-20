@@ -95,6 +95,20 @@ describe('preview server', () => {
     assert.strictEqual((await fetch(`${server.shellBaseUrl}api/artifacts`)).status, 200);
   });
 
+  it('redirects / to the shell only when rootRedirect is set', async () => {
+    const redirecting = await startPreviewServer({ workspaceRoot: root, assets: { shellJs: '', bridgeJs: '' }, rootRedirect: true });
+    try {
+      const origin = new URL(redirecting.shellBaseUrl).origin;
+      const res = await fetch(`${origin}/`, { redirect: 'manual' });
+      assert.strictEqual(res.status, 302);
+      assert.strictEqual(res.headers.get('location'), new URL(redirecting.shellBaseUrl).pathname);
+      assert.strictEqual((await fetch(`${origin}/other`)).status, 404);
+      assert.strictEqual(await rawRequest(`${origin}/`, { Host: `evil.example:${new URL(origin).port}` }), 403);
+    } finally {
+      await redirecting.close();
+    }
+  });
+
   it('serves the shell page with the entry and a CSP framing only the design origin', async () => {
     const res = await fetch(server.urlFor(ENTRY));
     assert.strictEqual(res.status, 200);
