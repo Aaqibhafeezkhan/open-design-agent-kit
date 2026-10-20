@@ -13,7 +13,7 @@
 
 - [x] 3.1 Merge an `open-design-preview` configuration into `.claude/launch.json` (create if absent, keep other configurations, update ours in place)
 - [x] 3.2 Tests: fresh project, existing launch.json with other entries, re-run is a no-op
-- [ ] 3.3 Confirm the exact launch.json fields against the MCP App spike's working `od-preview` entry (open: the entry uses the `name`/`runtimeExecutable`/`runtimeArgs`/`port` shape with `version: "0.0.1"`; the spike's own file on the test machine still needs a side-by-side look)
+- [x] 3.3 Confirm the exact launch.json fields against the MCP App spike's working `od-preview` entry (same `version` and `name`/`runtimeExecutable`/`runtimeArgs`/`port` fields; the spike ran `node` by its absolute nvm path, so 4.2 should confirm Desktop finds `npx` on its PATH)
 
 ## 4. Verification
 
