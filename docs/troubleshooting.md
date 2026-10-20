@@ -38,6 +38,29 @@ To use a token instead:
 
 Also use a frame link from **Copy link to selection** (it contains `node-id`), not a file link.
 
+## Claude Desktop
+
+See [Claude Desktop](getting-started/claude-desktop.md) for what works where.
+
+### Claude Desktop: the server is not_started
+
+Desktop lists the `open-design` server as `not_started`, and Claude has Open Design's skills but none of its tools.
+
+- With reason `user_config_unsupported`, the plugin is an old version that still had a Figma token setting. Update the plugin.
+- Otherwise check that Node.js 18 or later is installed and that `npx -y @feimacode/open-design-agent-kit-mcp` starts in a terminal. The first start downloads the server, so it needs the network once.
+
+### Claude Desktop: designs go to the home folder
+
+A tool refuses with "Open Design would be working straight in the user's home folder", or designs appear under `~/.open-design/`. In a Chat, the server starts in your home folder until Claude calls `set_open_design_workspace` with the folder you connected.
+
+- Connect a folder to the Chat if there isn't one.
+- Ask Claude to "set the Open Design workspace to the connected folder", then repeat the request.
+- If Claude has no `set_open_design_workspace` tool, the plugin runs a server release from before it was added. Update the plugin once a newer one is out.
+
+### Claude Desktop: Node not found on macOS
+
+The server fails with "could not start the MCP server with npx … Node.js 18 or later must be on PATH". Apps started from the Dock don't load your shell profile, so a Node installed with nvm may be invisible to Desktop. Install Node from [nodejs.org](https://nodejs.org/) or Homebrew so it is in `/usr/local/bin` or `/opt/homebrew/bin`, then restart Desktop. This hasn't been tested yet; tell us if you hit it.
+
 ## Export
 
 ### No Chrome, Edge, or Chromium browser was found

@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { MalformedMcpJsonError, mergeClaudeMcpConfig, writeClaudeSkills } from '../../claudeSetup';
+import { MalformedMcpJsonError, mergeClaudeLaunchConfig, mergeClaudeMcpConfig, OPEN_DESIGN_LAUNCH_ENTRY, writeClaudeSkills } from '../../claudeSetup';
 
 const GENERATED_MARKER = '<!-- generated:open-design-agent-kit -->';
 
@@ -96,5 +96,60 @@ describe('mergeClaudeMcpConfig', () => {
     await mergeClaudeMcpConfig(target);
     const config = JSON.parse(await fs.readFile(path.join(target, '.mcp.json'), 'utf8'));
     assert.strictEqual(Object.keys(config.mcpServers).length, 1);
+  });
+});
+
+describe('mergeClaudeLaunchConfig', () => {
+  const launchJson = (target: string) => path.join(target, '.claude', 'launch.json');
+
+  it('creates .claude/launch.json with only the open-design-preview configuration', async () => {
+    const target = await makeTargetPath();
+    const { outcome } = await mergeClaudeLaunchConfig(target);
+    assert.strictEqual(outcome, 'created');
+    const config = JSON.parse(await fs.readFile(launchJson(target), 'utf8'));
+    assert.strictEqual(config.version, '0.0.1');
+    assert.deepStrictEqual(config.configurations, [OPEN_DESIGN_LAUNCH_ENTRY]);
+    assert.deepStrictEqual(OPEN_DESIGN_LAUNCH_ENTRY.runtimeArgs.slice(2, 4), ['preview', '--no-open']);
+  });
+
+  it('adds itself beside existing configurations and leaves them unchanged', async () => {
+    const target = await makeTargetPath();
+    await fs.mkdir(path.join(target, '.claude'), { recursive: true });
+    const web = { name: 'web', runtimeExecutable: 'npm', runtimeArgs: ['run', 'dev'], port: 3000 };
+    await fs.writeFile(launchJson(target), JSON.stringify({ version: '0.0.1', configurations: [web] }));
+
+    const { outcome } = await mergeClaudeLaunchConfig(target);
+    assert.strictEqual(outcome, 'updated');
+    const config = JSON.parse(await fs.readFile(launchJson(target), 'utf8'));
+    assert.deepStrictEqual(config.configurations, [web, OPEN_DESIGN_LAUNCH_ENTRY]);
+  });
+
+  it('updates its own configuration in place', async () => {
+    const target = await makeTargetPath();
+    await fs.mkdir(path.join(target, '.claude'), { recursive: true });
+    const web = { name: 'web', runtimeExecutable: 'npm', port: 3000 };
+    const stale = { name: 'open-design-preview', runtimeExecutable: 'npx', runtimeArgs: ['old'], port: 1234 };
+    await fs.writeFile(launchJson(target), JSON.stringify({ version: '0.0.1', configurations: [stale, web] }));
+
+    await mergeClaudeLaunchConfig(target);
+    const config = JSON.parse(await fs.readFile(launchJson(target), 'utf8'));
+    assert.deepStrictEqual(config.configurations, [OPEN_DESIGN_LAUNCH_ENTRY, web]);
+  });
+
+  it('is a no-op on re-run', async () => {
+    const target = await makeTargetPath();
+    await mergeClaudeLaunchConfig(target);
+    const before = await fs.readFile(launchJson(target), 'utf8');
+    const { outcome } = await mergeClaudeLaunchConfig(target);
+    assert.strictEqual(outcome, 'unchanged');
+    assert.strictEqual(await fs.readFile(launchJson(target), 'utf8'), before);
+  });
+
+  it('throws on invalid existing JSON, without overwriting it', async () => {
+    const target = await makeTargetPath();
+    await fs.mkdir(path.join(target, '.claude'), { recursive: true });
+    await fs.writeFile(launchJson(target), '{ nope');
+    await assert.rejects(() => mergeClaudeLaunchConfig(target), MalformedMcpJsonError);
+    assert.strictEqual(await fs.readFile(launchJson(target), 'utf8'), '{ nope');
   });
 });

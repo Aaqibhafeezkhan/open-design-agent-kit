@@ -29,7 +29,8 @@ What it writes:
   - `.claude/skills/open-design/` (the overview skill);
   - the workflow skills: `open-design-new`, `open-design-social-post`, `open-design-poster`, `open-design-campaign`, `open-design-docs`, `open-design-explore`, `open-design-publish`, `open-design-deck-from-source` and `open-design-integrations` (see [Prompts and commands](prompts-and-commands.md#claude-code));
   - one explicit-only skill per curated entry;
-  - an `open-design` entry merged into `.mcp.json`. Other servers in the file are kept.
+  - an `open-design` entry merged into `.mcp.json` (other servers in the file are kept);
+  - an `open-design-preview` configuration merged into `.claude/launch.json`, which runs `preview --no-open --port 5317` so Claude Desktop's Code tab can open the preview in its Browser pane (see [Claude Desktop](../getting-started/claude-desktop.md#the-live-preview-in-the-browser-pane)). Other configurations are kept, and a re-run leaves the file as it is.
 - **Codex:**
   - the same skills in `.agents/skills/`, with curated entries marked explicit-only by `agents/openai.yaml`;
   - `.codex/config.toml` with the MCP server, created only if that file doesn't exist. Otherwise the snippet to add is printed.

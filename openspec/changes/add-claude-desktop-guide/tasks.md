@@ -1,19 +1,19 @@
 ## 1. Docs
 
-- [ ] 1.1 `docs/getting-started/claude-desktop.md`: install, Code tab, Chat with a folder, Chat without a folder, known limits
-- [ ] 1.2 Link it from `docs/README.md` and the getting-started index; add troubleshooting entries (server `not_started`, writes going to the home folder, Node not found on macOS)
-- [ ] 1.3 Run the docs and link checks
+- [x] 1.1 `docs/getting-started/claude-desktop.md`: install, Code tab, Chat with a folder, Chat without a folder, known limits
+- [x] 1.2 Link it from `docs/README.md` and the getting-started index; add troubleshooting entries (server `not_started`, writes going to the home folder, Node not found on macOS)
+- [x] 1.3 Run the docs and link checks
 
 ## 2. Skills
 
-- [ ] 2.1 Shared instruction source: give the entry path on its own line after register/update, plus comparison page and contact sheet paths
-- [ ] 2.2 Regenerate and run the drift check
+- [x] 2.1 Shared instruction source: give the entry path on its own line after register/update, plus comparison page and contact sheet paths
+- [x] 2.2 Regenerate and run the drift check
 
 ## 3. init
 
-- [ ] 3.1 Merge an `open-design-preview` configuration into `.claude/launch.json` (create if absent, keep other configurations, update ours in place)
-- [ ] 3.2 Tests: fresh project, existing launch.json with other entries, re-run is a no-op
-- [ ] 3.3 Confirm the exact launch.json fields against the MCP App spike's working `od-preview` entry
+- [x] 3.1 Merge an `open-design-preview` configuration into `.claude/launch.json` (create if absent, keep other configurations, update ours in place)
+- [x] 3.2 Tests: fresh project, existing launch.json with other entries, re-run is a no-op
+- [ ] 3.3 Confirm the exact launch.json fields against the MCP App spike's working `od-preview` entry (open: the entry uses the `name`/`runtimeExecutable`/`runtimeArgs`/`port` shape with `version: "0.0.1"`; the spike's own file on the test machine still needs a side-by-side look)
 
 ## 4. Verification
 

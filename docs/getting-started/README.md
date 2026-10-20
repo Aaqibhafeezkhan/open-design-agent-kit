@@ -4,5 +4,6 @@ Pick the host you use. Each page gets you from install to your first design, the
 
 - [VS Code (GitHub Copilot Chat)](vscode.md)
 - [Claude Code](claude-code.md)
+- [Claude Desktop](claude-desktop.md): Code tab, Chat with a folder
 - [Codex CLI](codex.md)
 - [Command line and scripts](cli.md)
