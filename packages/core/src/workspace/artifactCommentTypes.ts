@@ -31,7 +31,7 @@ export interface ArtifactComment {
   screenshot?: string;
   /** True when the crop was re-rendered headless rather than taken from the window the user saw. */
   screenshotRerendered?: boolean;
-  host?: 'vscode' | 'browser';
+  host?: 'vscode' | 'browser' | 'mcp-app';
 }
 
 /** Unaddressed comments: not yet resolved by the agent. */

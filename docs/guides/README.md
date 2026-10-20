@@ -19,6 +19,7 @@ Each guide covers one task for every host. Where a host differs, the guide says 
 - [Community designs](community-designs.md)
 - [Preview, comment and edit](preview-comments-edit.md) (VS Code)
 - [Browser preview and comments](browser-preview.md) (Claude Code, Codex, Cursor)
+- [Inline preview in Claude Desktop Chat](inline-preview.md)
 - [Figma](figma.md)
 - [Promote to app code](promote-to-app-code.md)
 - [Social media posts](social-posts.md)

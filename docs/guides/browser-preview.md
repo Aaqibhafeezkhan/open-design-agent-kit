@@ -1,6 +1,6 @@
 # Browser preview and comments (Claude Code, Codex, Cursor)
 
-Agents in a terminal can't show you a design, so Open Design opens one for you: a **browser preview** of the artifact that reloads whenever the agent changes it. In it you can click any element to leave a comment for the agent, and compare the agent's check screenshots before and after. It works with any host that runs the [MCP server](../getting-started/claude-code.md): Claude Code, Codex, Cursor and others. In VS Code, the [Artifact Preview](preview-comments-edit.md) does this inside the editor.
+Agents in a terminal can't show you a design, so Open Design opens one for you: a **browser preview** of the artifact that reloads whenever the agent changes it. In it you can click any element to leave a comment for the agent, and compare the agent's check screenshots before and after. It works with any host that runs the [MCP server](../getting-started/claude-code.md): Claude Code, Codex, Cursor and others. In VS Code, the [Artifact Preview](preview-comments-edit.md) does this inside the editor. In Claude Desktop Chat, the design shows [inline in the conversation](inline-preview.md) instead.
 
 ## Open it
 

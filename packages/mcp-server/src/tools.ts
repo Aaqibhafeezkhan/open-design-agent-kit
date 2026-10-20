@@ -45,6 +45,14 @@ import {
   resolveArtifactComments,
   PreviewSession,
   formatPreviewOutcome,
+  loadPreviewAssets,
+  buildArtifactPreviewState,
+  buildExplorationPreviewState,
+  prepareShow,
+  previewAppResourceDomains,
+  remoteOrigins,
+  renderPreviewAppPage,
+  saveCommentFromApp,
   previewModeFromEnv,
   type PreviewMode,
   resolveActiveDesignSystem,
@@ -84,6 +92,8 @@ export interface ToolContext {
   figmaToken?: string;
   /** The client name from the MCP initialize handshake (e.g. "claude-code", "codex-mcp-client"). */
   clientName?: string;
+  /** True when the client renders MCP Apps (it lists the io.modelcontextprotocol/ui extension). */
+  rendersMcpApps?: boolean;
 }
 
 function slugify(input: string): string {
@@ -399,6 +409,51 @@ export async function openPreview(ctx: ToolContext, input: { entryPath?: string;
   return formatPreviewOutcome(outcome, input.entryPath);
 }
 
+// ── Preview MCP App (openspec add-mcp-app-preview) ───────────────────────
+// Remote origins the designs shown in this process still load from, declared
+// in the `ui://` resource's CSP on its next read.
+const previewAppOrigins = new Set<string>();
+
+function notePreviewAppOrigins(urls: string[]): void {
+  remoteOrigins(urls).forEach((o) => previewAppOrigins.add(o));
+}
+
+/** The `ui://open-design/preview` page and the remote domains it may load from. */
+export async function previewAppResource(): Promise<{ html: string; resourceDomains: string[] }> {
+  const assets = await loadPreviewAssets();
+  return { html: renderPreviewAppPage(assets.mcpAppJs), resourceDomains: previewAppResourceDomains(previewAppOrigins) };
+}
+
+/** show_open_design_artifact: the text every host gets, plus the target the preview app renders. */
+export async function showArtifact(ctx: ToolContext, input: { entryPath?: string; explorationId?: string }): Promise<ToolOutput> {
+  const shown = await prepareShow({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, ...input, hostRendersApp: ctx.rendersMcpApps === true });
+  if (!shown.ok) return { text: shown.text };
+  return { text: shown.text, structuredContent: shown.target };
+}
+
+/** get_open_design_preview_state (app only): the design as a standalone page with the bridge, its comments and check screenshots. */
+export async function previewAppState(ctx: ToolContext, input: { entryPath?: string; explorationId?: string }): Promise<ToolOutput> {
+  if (input.explorationId) {
+    const result = await buildExplorationPreviewState({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, explorationId: input.explorationId });
+    if (!result.ok) throw new Error(result.message);
+    notePreviewAppOrigins(result.externalDependencies);
+    return { text: `Exploration ${input.explorationId}: ${result.state.directions.length} directions.`, structuredContent: { ...result.state } };
+  }
+  if (!input.entryPath) throw new Error('Pass entryPath or explorationId.');
+  const { bridgeJs } = await loadPreviewAssets();
+  const result = await buildArtifactPreviewState({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, entryPath: input.entryPath, bridgeJs });
+  if (!result.ok) throw new Error(result.message);
+  notePreviewAppOrigins(result.externalDependencies);
+  return { text: `${result.state.title} (${input.entryPath}): ${result.state.comments.length} comments.`, structuredContent: { ...result.state } };
+}
+
+/** save_open_design_comment (app only): creates, edits or deletes one comment in the sidecar. */
+export async function saveComment(ctx: ToolContext, input: { entryPath: string; comment?: unknown; deleteId?: string }): Promise<ToolOutput> {
+  const result = await saveCommentFromApp({ workspaceRoot: ctx.workspaceRoot, ...input });
+  if (!result.ok) throw new Error(result.message);
+  return { text: `Saved. ${result.comments.length} comments on ${input.entryPath}.`, structuredContent: { comments: result.comments } };
+}
+
 async function previewNoteAfterRegister(ctx: ToolContext, entryPath: string): Promise<string> {
   const mode = previewMode();
   if (mode === 'off') return '';
@@ -568,6 +623,8 @@ export async function exportArtifact(
 export interface ToolOutput {
   text: string;
   images?: Array<{ data: Buffer; mime: string }>;
+  /** For an MCP App: the data its page reads from the tool result. */
+  structuredContent?: Record<string, unknown>;
 }
 
 /** MCP `content` for a handler's result: one text item, then one image item per image. */

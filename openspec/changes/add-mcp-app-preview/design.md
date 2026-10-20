@@ -22,6 +22,14 @@ The page only renders in Chat. The Code tab and the Claude Code terminal show th
 - **App-only tools for writes.** Comment writes come from the page, not the model, so they are hidden from the model's tool list.
 - **No downloads.** The host refuses them; exports stay a server tool that returns a path.
 
+## Implementation notes
+
+- **Opaque-origin design frame.** The design's frame is `srcdoc` with `sandbox="allow-scripts allow-popups allow-forms"` and no `allow-same-origin`, so its scripts can't reach the app page or the host bridge. The shell addresses it by window (`postMessage(…, '*')`, `event.source` checked) instead of by origin.
+- **App-only tools are listed only to MCP Apps hosts.** Those hosts keep `visibility: ["app"]` tools away from the model; a host without the extension would show them to it, so the server leaves them out of its `tools/list` there. Calls still work if one arrives.
+- **CSP from what designs needed.** The resource declares Google Fonts plus the remote origins of every design `get_open_design_preview_state` packed in this process. A host that reads the resource before the first design is packed sees only Google Fonts.
+- **The page stays small in the tool result.** `show_open_design_artifact` returns only `{ view, entryPath | explorationId, title }` as structured content; the page fetches the design (up to 5 MiB) through `get_open_design_preview_state`, so the model's context never holds the HTML.
+- **SDK pin.** `@modelcontextprotocol/ext-apps` 1.7.5 (the 1.x line matches the server's `@modelcontextprotocol/sdk` 1.x; 2.x targets SDK 2). It is bundled into the page at build time, so the published server has no new runtime dependency.
+
 ## Risks
 
 - MCP Apps metadata names may still move; pin the ext-apps SDK and keep the resource declaration in one place.

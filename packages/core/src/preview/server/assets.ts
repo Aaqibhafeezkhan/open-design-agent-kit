@@ -8,6 +8,8 @@ import * as path from 'node:path';
 export interface PreviewAssets {
   shellJs: string;
   bridgeJs: string;
+  /** The preview MCP App page's script (openspec add-mcp-app-preview). */
+  mcpAppJs: string;
 }
 
 let cached: Promise<PreviewAssets> | undefined;
@@ -23,13 +25,14 @@ async function bundleInMemory(): Promise<PreviewAssets> {
     const file = (await fs.stat(ts).catch(() => undefined)) ? ts : path.join(src, `${entry}.js`);
     return (await esbuild.build({ entryPoints: [file], bundle: true, platform: 'browser', format: 'iife', target: 'es2020', write: false })).outputFiles[0].text;
   };
-  return { shellJs: await build(path.join('shell', 'main')), bridgeJs: await build('bridge') };
+  return { shellJs: await build(path.join('shell', 'main')), bridgeJs: await build('bridge'), mcpAppJs: await build(path.join('mcpApp', 'main')) };
 }
 
 export function loadPreviewAssets(dir = path.join(__dirname, 'preview')): Promise<PreviewAssets> {
   cached ??= (async () => {
     try {
-      return { shellJs: await fs.readFile(path.join(dir, 'shell.js'), 'utf8'), bridgeJs: await fs.readFile(path.join(dir, 'bridge.js'), 'utf8') };
+      const read = (file: string): Promise<string> => fs.readFile(path.join(dir, file), 'utf8');
+      return { shellJs: await read('shell.js'), bridgeJs: await read('bridge.js'), mcpAppJs: await read('mcp-app.js') };
     } catch (err) {
       try {
         return await bundleInMemory();

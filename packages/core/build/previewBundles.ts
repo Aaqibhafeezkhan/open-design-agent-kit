@@ -1,5 +1,6 @@
 // Builds the browser preview's browser code (openspec add-browser-preview):
-// the shell (shell.js) and the in-page bridge (bridge.js), into
+// the shell (shell.js), the in-page bridge (bridge.js) and the MCP App page's
+// script (mcp-app.js, openspec add-mcp-app-preview), into
 // <outDir>/preview/. Shared by the MCP server's and the CLI's esbuild
 // configs; loadPreviewAssets() reads them back at runtime.
 import * as path from 'node:path';
@@ -12,6 +13,7 @@ export async function buildPreviewBundles(outDir: string, options: { minify?: bo
     entryPoints: [
       { in: path.join(SRC, 'shell', 'main.ts'), out: 'shell' },
       { in: path.join(SRC, 'bridge.ts'), out: 'bridge' },
+      { in: path.join(SRC, 'mcpApp', 'main.ts'), out: 'mcp-app' },
     ],
     bundle: true,
     platform: 'browser',

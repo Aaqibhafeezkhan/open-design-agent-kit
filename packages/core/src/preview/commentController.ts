@@ -12,7 +12,7 @@ export interface CommentControllerOptions {
   /** The shell's floating panel; the controller fills it for the comment input and pin details. */
   panel: HTMLElement;
   iframe: HTMLIFrameElement;
-  host: 'vscode' | 'browser';
+  host: NonNullable<ArtifactComment['host']>;
   /** Persists changed comments and deletions (merged by id on the host side). */
   persist(changed: ArtifactComment[], deletedIds: string[]): void;
   /** Hides the panel and clears the selection (the shell owns both). */
@@ -48,7 +48,7 @@ function newCommentId(): string {
 }
 
 /** A new comment for the clicked element: the robust selector, text excerpt, document rect and viewport; never an invented id. */
-export function commentFromSnapshot(target: ElementSnapshot, note: string, host: 'vscode' | 'browser', now = new Date().toISOString()): ArtifactComment {
+export function commentFromSnapshot(target: ElementSnapshot, note: string, host: NonNullable<ArtifactComment['host']>, now = new Date().toISOString()): ArtifactComment {
   return {
     id: newCommentId(),
     ...(target.sourceElementId ? { elementId: target.sourceElementId } : {}),
