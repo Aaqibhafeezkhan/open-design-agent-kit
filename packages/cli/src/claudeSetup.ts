@@ -62,7 +62,7 @@ export const LAUNCH_PREVIEW_PORT = 5317;
 /**
  * The browser preview as a Claude Desktop launch configuration, so the Code
  * tab can open it in its Browser pane (openspec add-claude-desktop-guide).
- * Field names follow the `od-preview` entry the MCP App spike ran there.
+ * Uses the launch.json configuration shape (name, runtimeExecutable, runtimeArgs, port).
  */
 export const OPEN_DESIGN_LAUNCH_ENTRY = {
   name: 'open-design-preview',
