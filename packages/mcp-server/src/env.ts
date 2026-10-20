@@ -1,3 +1,5 @@
+import { readFileSync, statSync } from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -44,14 +46,65 @@ export function getOutputDirectory(): string {
 }
 
 /**
- * A Figma personal access token (Figma → Settings → Personal access tokens),
- * read from this server's own process env — the same mechanism a host's MCP
- * config already uses to pass through OPEN_DESIGN_WORKSPACE_ROOT-style vars.
- * Undefined means pull_open_design_figma_frame degrades to a clear
- * instructional error rather than throwing.
+ * A Figma personal access token (Figma → Settings → Personal access tokens):
+ * OPEN_DESIGN_FIGMA_TOKEN from this server's own env, else the token file
+ * (figmaTokenFilePath). Read on every call, so a token saved while the server
+ * runs is picked up without a restart. Undefined means
+ * pull_open_design_figma_frame degrades to a clear instructional error rather
+ * than throwing.
+ *
+ * Not taken from a Claude plugin setting: Claude Desktop refuses to start a
+ * plugin server whose .mcp.json refers to ${user_config.*}.
  */
-export function getFigmaToken(): string | undefined {
-  return process.env.OPEN_DESIGN_FIGMA_TOKEN?.trim() || undefined;
+export function getFigmaToken(env: NodeJS.ProcessEnv = process.env): string | undefined {
+  const fromEnv = env.OPEN_DESIGN_FIGMA_TOKEN?.trim();
+  if (fromEnv) return fromEnv;
+  try {
+    return readFileSync(figmaTokenFilePath(env), 'utf8').trim() || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Where the Figma token can be saved: $XDG_CONFIG_HOME/open-design/figma-token, defaulting to ~/.config. */
+export function figmaTokenFilePath(env: NodeJS.ProcessEnv = process.env): string {
+  const configHome = env.XDG_CONFIG_HOME?.trim() || path.join(os.homedir(), '.config');
+  return path.join(configHome, 'open-design', 'figma-token');
+}
+
+/**
+ * True when the server would otherwise work straight in the user's home
+ * folder. That's how Claude Desktop starts plugin servers (no MCP roots, cwd
+ * = home), and writing `.open-design/` there is never what the user meant, so
+ * tools ask the agent to name the folder first.
+ */
+export function isHomeFolder(root: string, home: string = os.homedir()): boolean {
+  return path.resolve(root) === path.resolve(home);
+}
+
+/**
+ * Validates a workspace folder the agent names through
+ * set_open_design_workspace: hosts like Claude Desktop start the server in the
+ * user's home folder and report no MCP roots, so the agent has to say which
+ * folder the user connected. Returns the resolved path; throws a message the
+ * agent can act on.
+ */
+export function workspaceRootFromArg(value: unknown): string {
+  if (typeof value !== 'string' || !value.trim()) throw new Error('path is required: the absolute path of the folder on the machine this server runs on');
+  const root = value.trim();
+  if (!path.isAbsolute(root)) throw new Error(`"${root}" is not an absolute path`);
+  let isDir = false;
+  try {
+    isDir = statSync(root).isDirectory();
+  } catch {
+    // Reported below.
+  }
+  if (!isDir) {
+    throw new Error(
+      `"${root}" is not a folder this server can see. It runs on the user's machine, so pass that machine's path for the folder (in Claude Desktop, the one get_device_info lists under connectedFolders), not the path your own file tools use.`,
+    );
+  }
+  return path.resolve(root);
 }
 
 /**

@@ -5,7 +5,7 @@ Every tool the agent can call. In VS Code these are language-model tools (refere
 Two rules apply to every tool:
 
 - **Tools never write your design.** The generation tools return *instructions*; the agent writes the HTML with its own file-editing tools and then calls [`register_open_design_artifact`](#register_open_design_artifact). The only files these tools write themselves are manifests, copied examples ([`remix_open_design_example`](#remix_open_design_example)) and export outputs ([`export_open_design_artifact`](#export_open_design_artifact), [`publish_open_design_artifact`](#publish_open_design_artifact)). No tool deploys anything or talks to a hosting service.
-- **Paths are workspace-relative**, e.g. `.open-design/coffee-landing/coffee-landing.html`. The workspace is the open VS Code folder, or for MCP the server's working directory (see [`OPEN_DESIGN_WORKSPACE_ROOT`](settings-and-env.md#open_design_workspace_root)).
+- **Paths are workspace-relative**, e.g. `.open-design/coffee-landing/coffee-landing.html`. The workspace is the open VS Code folder, or for MCP the server's working directory (see [`OPEN_DESIGN_WORKSPACE_ROOT`](settings-and-env.md#open_design_workspace_root)) unless the agent sets it with [`set_open_design_workspace`](#set_open_design_workspace).
 
 | Tool | VS Code ref | MCP | What it does |
 |---|---|---|---|
@@ -34,6 +34,19 @@ Two rules apply to every tool:
 | [`publish_open_design_artifact`](#publish_open_design_artifact) | `#od-publish` | yes | Package for hosting and get instructions to publish a link |
 | [`find_open_design_3d_assets`](#find_open_design_3d_assets) | `#od-3d-assets` | yes | Find free CC0 HDRIs, textures and models on Poly Haven for a 3D design |
 | [`list_open_design_integrations`](#list_open_design_integrations) | `#od-integrations` | yes | Find trusted integrations (Canva, Figma, Notion, Drive, Slack, social posting) and setup steps for this agent |
+| [`set_open_design_workspace`](#set_open_design_workspace) | none | yes (MCP only) | Tell the server which folder to work in, for hosts that start it elsewhere (Claude Desktop) |
+
+## Workspace
+
+### set_open_design_workspace
+
+MCP only. Sets the folder the server works in for the rest of the session: where designs, manifests and `.open-design/config.json` go, and what every workspace-relative path is relative to. It wins over MCP roots and the working directory.
+
+Claude Code, Codex and VS Code start the server in your project, so they never need it. Claude Desktop is different: in a chat with a connected folder, the server starts in your home folder, the app reports no MCP roots, and Claude's own file tools see the folder under a different path from the one on your machine. The skills tell Claude to call this tool first with the folder's path on your machine (what `get_device_info` lists under `connectedFolders`), then join the relative paths other tools return onto its own path for the folder.
+
+| Argument | Required | Description |
+|---|---|---|
+| `path` | yes | Absolute path of the folder on the machine the server runs on. It must exist. |
 
 ## Catalog
 
