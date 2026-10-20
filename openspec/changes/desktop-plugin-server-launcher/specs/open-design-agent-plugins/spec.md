@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Plugin Server Launcher
-The Claude Code plugin SHALL start its MCP server through a launcher script in the plugin (`bin/open-design-mcp.mjs`) that has no dependencies of its own. When the pinned server package is installed in the plugin's `node_modules`, the launcher SHALL run it with the current Node. Otherwise it SHALL run `npx -y @feimacode/open-design-agent-kit-mcp@<pin>`, where `<pin>` is the version the plugin's `package.json` depends on. It SHALL pass stdio through, exit with the server's exit code, forward SIGINT and SIGTERM, and print an error naming the command when it can't be started.
+The Claude Code plugin SHALL start its MCP server through a launcher script in the plugin (`scripts/open-design-mcp.mjs`) that has no dependencies of its own. The plugin SHALL NOT ship a top-level `bin/` directory, which claude.ai refuses to sync. When the pinned server package is installed in the plugin's `node_modules`, the launcher SHALL run it with the current Node. Otherwise it SHALL run `npx -y @feimacode/open-design-agent-kit-mcp@<pin>`, where `<pin>` is the version the plugin's `package.json` depends on. It SHALL pass stdio through, exit with the server's exit code, forward SIGINT and SIGTERM, and print an error naming the command when it can't be started.
 
 #### Scenario: Claude Code install
 - **WHEN** the plugin is installed by Claude Code, which installs its locked dependencies

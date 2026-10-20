@@ -2,7 +2,7 @@
 
 ## 1. Launcher
 
-- [x] 1.1 `bin/open-design-mcp.mjs`: installed copy in `node_modules` if present, else `npx -y <package>@<pin>` read from `package.json`
+- [x] 1.1 `scripts/open-design-mcp.mjs`: installed copy in `node_modules` if present, else `npx -y <package>@<pin>` read from `package.json`
 - [x] 1.2 Windows: `npx.cmd` through a shell
 - [x] 1.3 Forward stdio, exit code and signals; clear error when the command can't start
 
@@ -15,6 +15,7 @@
 
 - [x] 3.1 Both launcher paths run the built server in a simulated Desktop session (no `node_modules`) and in a Claude Code-style install
 - [x] 3.2 Releasing docs mention the pin
+- [x] 3.3 Move the launcher out of `bin/` (claude.ai refuses to sync plugins with a top-level `bin/`); lock check rejects `bin/`; plugin 0.1.1 (PR #4)
 
 ## 4. Release
 
