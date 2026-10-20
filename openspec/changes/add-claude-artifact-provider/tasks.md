@@ -26,5 +26,5 @@
 
 ## 5. Verification
 
-- [ ] 5.1 Publish the Swiss deck example and a poster through the provider from Claude Code; republish updates the same URL
+- [ ] 5.1 Publish the Swiss deck example and a poster through the provider from Claude Code; republish updates the same URL (Swiss deck done from a Claude Code cloud session on 20 Oct 2026: published, recorded, republished as version 2 at the same URL; the page's `<title>` names the artifact, so the instructions say so. Poster not yet tried)
 - [ ] 5.2 Confirm whether Claude Desktop Chat with a folder can publish (the spike saw a private publish there; repeat with the real tool)

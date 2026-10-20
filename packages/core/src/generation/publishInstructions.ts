@@ -178,8 +178,8 @@ export function composeArtifactPublishInstructions(input: ComposeArtifactPublish
   parts.push(
     `\n\n## Stage 2 — publish\n\nCall your Artifact tool with the file's path, \`${input.filePath}\`. Publish the file as it is: don't read it into the conversation, rewrite it or paste its contents (it is already the finished page).${
       targetUrl
-        ? ` This design already has an artifact, so publish to it: pass \`${targetUrl}\` as the artifact URL to update. It becomes a new version of the same artifact, at the same link. Don't create a new one.`
-        : ` This is a new artifact: name it ${input.title ? `"${input.title}"` : 'after the design'} and give it a plain one-word icon (such as \`design\`, \`slides\` or \`poster\`).`
+        ? ` This design already has an artifact, so publish to it: pass \`${targetUrl}\` as the artifact URL to update. It becomes a new version of the same artifact, at the same link. Don't create a new one. If your Artifact tool first wants you to read that artifact (a new conversation), read it, then publish this file to the same URL: the file is the whole new version, so nothing needs merging.`
+        : ` This is a new artifact: give it a plain one-word icon (such as \`design\`, \`slides\` or \`poster\`). The page's own \`<title>\` names it.`
     }\n\nIf the Artifact tool refuses the page, show the user its actual error and stop.`,
   );
   parts.push(
