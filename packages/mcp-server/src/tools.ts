@@ -38,6 +38,7 @@ import {
   formatFound3dAssets,
   type Find3dAssetsInput,
   publishArtifact as publishArtifactCore,
+  restoreArtifact as restoreArtifactCore,
   exportsForKind,
   formatExportResult,
   loadLocalPrompts,
@@ -701,9 +702,16 @@ export async function publishArtifact(
     badge?: boolean;
     includeFiles?: string[];
     published?: { provider: string; url: string; claimUrl?: string; expiresAt?: string; siteRef?: string };
+    sync?: boolean;
   },
 ): Promise<string> {
-  const result = await publishArtifactCore({ ...input, workspaceRoot: ctx.workspaceRoot });
+  const result = await publishArtifactCore({ ...input, workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir });
+  return result.text;
+}
+
+/** restore_open_design_artifact: writes a synced artifact's working files back (openspec add-artifact-sync). */
+export async function restoreArtifact(ctx: ToolContext, input: { pagePath: string; artifactUrl: string; overwrite?: boolean }): Promise<string> {
+  const result = await restoreArtifactCore({ ...input, workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir });
   return result.text;
 }
 

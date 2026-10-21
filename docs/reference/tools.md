@@ -32,6 +32,7 @@ Two rules apply to every tool:
 | [`adapt_open_design_artifact`](#adapt_open_design_artifact) | `#od-adapt` | yes | Instructions to re-compose a design for other sizes |
 | [`create_open_design_qr_code`](#create_open_design_qr_code) | `#od-qr-code` | yes | Make a real QR code for a design |
 | [`publish_open_design_artifact`](#publish_open_design_artifact) | `#od-publish` | yes | Package for hosting and get instructions to publish a link |
+| [`restore_open_design_artifact`](#restore_open_design_artifact) | none | yes (MCP only) | Pick a design back up from a synced Claude artifact |
 | [`find_open_design_3d_assets`](#find_open_design_3d_assets) | `#od-3d-assets` | yes | Find free CC0 HDRIs, textures and models on Poly Haven for a 3D design |
 | [`list_open_design_integrations`](#list_open_design_integrations) | `#od-integrations` | yes | Find trusted integrations (Canva, Figma, Notion, Drive, Slack, social posting) and setup steps for this agent |
 | [`set_open_design_workspace`](#set_open_design_workspace) | none | yes (MCP only) | Tell the server which folder to work in, for hosts that start it elsewhere (Claude Desktop) |
@@ -612,16 +613,44 @@ With `provider: "claude-artifact"`, it writes the `standalone` file (`exports/<n
 | `provider` | `netlify-temporary` · `cloudflare-temporary` · `netlify` · `vercel` · `cloudflare-pages` · `github-pages` · `claude-artifact` | no | Where to publish. Omitted: the instructions list the choices for the user to pick. |
 | `includeFiles` | string[] | no | Up to 10 files from this artifact's own `exports/` folder (e.g. an exported PDF) to host alongside the page, at `files/<name>` in the bundle and publicly downloadable at `<site URL>/files/<name>`. They're listed among the files going out at the confirmation stage. A path outside the artifact's `exports/`, a missing file or a duplicate name is an error, and nothing is built. The Canva flow uses this to give Canva a URL to import. |
 | `badge` | boolean | no | Add the closeable "Made with Open Design" footer badge. Default `true`, unless [`openDesign.share.badge`](settings-and-env.md#opendesignsharebadge) is off or [`OPEN_DESIGN_SHARE_BADGE`](settings-and-env.md#open_design_share_badge) is `0`. |
+| `sync` | boolean | no | `claude-artifact` only (any other provider is an `invalid-args` error): carry the design's working files in the page, so [`restore_open_design_artifact`](#restore_open_design_artifact) can pick it up elsewhere. Stored as [`metadata.sync`](artifact-manifest.md#metadatasync); omitted, the stored setting is used, and `false` turns it off. See [Continue on another device](../guides/share-and-publish.md#continue-on-another-device). MCP only. |
 | `published` | object | no | Record mode, after a successful deploy or publish: `{ provider, url, claimUrl?, expiresAt?, siteRef? }`. `url` and `claimUrl` must be `https:`; for `claude-artifact`, `url` is the `https://claude.ai/…` link and is also used as `siteRef`. Nothing is rebuilt. |
 
 **Result (text):**
 - Without `published`: the bundle's file list and preflight findings, then either the provider choices or the instructions for the chosen provider (check, confirm, deploy, report and record). For `claude-artifact`: the file's path and size, what won't load in the artifact, and the publish-and-record steps.
 - With `published`: a confirmation. The link is stored in the manifest's [`metadata.shares`](artifact-manifest.md#metadatashares), replacing an earlier record for the same provider and site.
 
+With sync on, the page to publish is `exports/<name>.sync.html`: the standalone page plus one `<script type="application/od-sync+json" id="od-sync">` block. The plain `exports/<name>.html` never carries it. The block counts toward the 16 MB budget: when page plus block would go over, the page is prepared without the block and the instructions say so (`artifact-sync-dropped`), so sync never stops the preview. The first time sync is on, the instructions tell the agent to say that anyone the artifact is shared with can read the files, and that earlier versions keep their copy.
+
 **Example (MCP arguments):**
 
 ```json
 { "entryPath": ".open-design/launch/launch.html", "provider": "netlify-temporary" }
+```
+
+### restore_open_design_artifact
+
+Writes a synced Claude artifact's working files back into the workspace, so the design can be edited and republished here: on another device, in a new Claude Code cloud session, or after editing it in a chat without the kit. The agent first reads the artifact with its own Artifact tool, which saves the page to a file, and passes that file's path. **It makes no network request.** MCP only.
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `pagePath` | string | yes | The page the Artifact tool saved: absolute, or relative to the workspace. In Claude Desktop with a folder, a path in the connected folder. |
+| `artifactUrl` | string | yes | The artifact's `https://claude.ai/…` link. Recorded as the design's `claude-artifact` share, so the next preview publish updates the same artifact. |
+| `overwrite` | boolean | no | Replace local files whose content differs from the artifact's. Default `false`. |
+
+What it checks, all before writing anything:
+- **The bundle.** One `application/od-sync+json` block, a known version, and every file's SHA-256. A file with `sha256: null` was edited outside the kit: it's written and reported. A mismatched hash fails the restore.
+- **Paths.** Every file goes under the [output directory](settings-and-env.md#open_design_output_dir) at its recorded path. A path that is absolute, has a `..` segment or resolves outside it refuses the whole restore.
+- **Local work.** A file that exists with different content stops the restore, and the result lists it, unless `overwrite` is `true`. Identical files are left untouched. The manifest counts as identical when only its share records and `updatedAt` differ.
+
+**Result (text):** the files written, those already identical, those edited outside the kit, and the [`sources`](artifact-manifest.md#manifest-fields) the design was built from that aren't present here (the bundle lists them but doesn't carry them).
+
+**Errors:** a page without a sync block ("published without sync"), a damaged bundle, an unsafe path, differing files without `overwrite`, and an `artifactUrl` that isn't a claude.ai link. Nothing is written in any of these cases.
+
+**Example (MCP arguments):**
+
+```json
+{ "pagePath": "/tmp/artifact-abc.html", "artifactUrl": "https://claude.ai/artifact/abc" }
 ```
 
 ## Assets

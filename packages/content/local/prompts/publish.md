@@ -24,7 +24,7 @@ If the request names a design, find its entry file (`get_open_design_artifact`, 
 Call `publish_open_design_artifact` with the `entryPath`. Pass `provider` only if the user already said where:
 
 <!-- claude-only -->
-- `claude-artifact`: only if you have an Artifact tool (Claude Code or Claude Desktop). A private Claude artifact the user can open, and share from claude.ai when they want to. Offer it first when you have one.
+- `claude-artifact`: only if you have an Artifact tool (Claude Code or Claude Desktop). A private Claude artifact the user can open, and share from claude.ai when they want to. Offer it first when you have one. Add `sync: true` only if the user agreed to carry the design's working files in it, to continue on another device or session; it's stored, so later publishes keep it until `sync: false`.
 <!-- /claude-only -->
 - `netlify-temporary` or `cloudflare-temporary`: no account, the link lasts about an hour unless claimed
 - `netlify`, `vercel`, `cloudflare-pages` or `github-pages`: the user's own account, a link that lasts
@@ -44,5 +44,5 @@ They check the host's CLI, then **stop for the user's explicit yes** before anyt
 Give the user the link. For a temporary link, also give the claim URL and when it expires, for them only. Then record it by calling `publish_open_design_artifact` again with `published`, as the instructions show, so a later publish updates the same site.
 
 <!-- claude-only -->
-For an artifact, also say it's private until they share it from claude.ai.
+For an artifact, also say it's private until they share it from claude.ai. With sync on, also say what the instructions name: anyone it's shared with can read the design's working files, and earlier versions keep their copy. To pick a synced design up elsewhere, read the artifact with your Artifact tool and pass the saved page's path and the link to `restore_open_design_artifact`.
 <!-- /claude-only -->
