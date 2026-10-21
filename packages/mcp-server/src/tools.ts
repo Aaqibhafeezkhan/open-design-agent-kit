@@ -87,6 +87,7 @@ import {
   type LocalPrompt,
 } from '@feimacode/open-design-agent-kit-core';
 import { figmaTokenFilePath } from './env';
+import { writeManagedFile } from './managedWorkspace';
 
 export interface ToolContext {
   contentIndex: ContentIndex;
@@ -99,6 +100,8 @@ export interface ToolContext {
   clientName?: string;
   /** True when the client renders MCP Apps (it lists the io.modelcontextprotocol/ui extension). */
   rendersMcpApps?: boolean;
+  /** True in a folder opened by use_open_design_managed_workspace, for a chat with no folder of its own. */
+  managedWorkspace?: boolean;
 }
 
 function slugify(input: string): string {
@@ -362,6 +365,8 @@ export function isClaudeClient(clientName: string | undefined): boolean {
 
 /** One line suggesting the private artifact preview, for Claude clients on a design that has none yet (openspec add-artifact-preview). */
 function artifactPreviewHint(ctx: ToolContext, manifest: JsonRecord): string {
+  // A managed workspace (a chat with no folder) shows designs inline with show_open_design_artifact; each artifact publish would resend the page.
+  if (ctx.managedWorkspace) return '';
   if (!isClaudeClient(ctx.clientName) || latestShareFor(readShareRecords(manifest), CLAUDE_ARTIFACT_PROVIDER)) return '';
   return '\n\nArtifact preview: if you have an Artifact tool, show the user this design as a private Claude artifact: call publish_open_design_artifact with provider "claude-artifact" and follow its instructions (later rounds update the same artifact).';
 }
@@ -641,6 +646,8 @@ export async function exportArtifact(
 /** A tool result with images: the text always carries the complete result, so clients that ignore images lose nothing. */
 export interface ToolOutput {
   text: string;
+  /** Further text items after `text`, e.g. a page for the agent to publish. */
+  texts?: string[];
   images?: Array<{ data: Buffer; mime: string }>;
   /** For an MCP App: the data its page reads from the tool result. */
   structuredContent?: Record<string, unknown>;
@@ -649,7 +656,7 @@ export interface ToolOutput {
 /** MCP `content` for a handler's result: one text item, then one image item per image. */
 export function toCallToolContent(out: string | ToolOutput): Array<{ type: 'text'; text: string } | { type: 'image'; data: string; mimeType: string }> {
   if (typeof out === 'string') return [{ type: 'text', text: out }];
-  return [{ type: 'text', text: out.text }, ...(out.images ?? []).map((i) => ({ type: 'image' as const, data: i.data.toString('base64'), mimeType: i.mime }))];
+  return [{ type: 'text', text: out.text }, ...(out.texts ?? []).map((text) => ({ type: 'text' as const, text })), ...(out.images ?? []).map((i) => ({ type: 'image' as const, data: i.data.toString('base64'), mimeType: i.mime }))];
 }
 
 /** add_open_design_diagram_runtime: inserts or updates the inline diagram runtime in the entry file. */
@@ -702,9 +709,16 @@ export async function publishArtifact(
     includeFiles?: string[];
     published?: { provider: string; url: string; claimUrl?: string; expiresAt?: string; siteRef?: string };
   },
-): Promise<string> {
-  const result = await publishArtifactCore({ ...input, workspaceRoot: ctx.workspaceRoot });
-  return result.text;
+): Promise<ToolOutput> {
+  // A managed workspace's files are on this machine, out of reach of the agent's Artifact tool: hand it the page itself.
+  const result = await publishArtifactCore({ ...input, workspaceRoot: ctx.workspaceRoot, inlinePage: ctx.managedWorkspace === true });
+  return { text: result.text, ...(result.page !== undefined ? { texts: [result.page] } : {}) };
+}
+
+/** write_open_design_file: saves the agent's file unchanged in a managed workspace (index.ts refuses it anywhere else). */
+export async function writeDesignFile(ctx: ToolContext, input: Record<string, unknown>): Promise<string> {
+  const written = await writeManagedFile({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, path: input.path, content: input.content, encoding: input.encoding });
+  return `Wrote ${written.path} (${written.bytes} bytes, sha256 ${written.sha256}) at ${written.absolutePath}. The file holds exactly the content you sent.`;
 }
 
 /** publish_open_design_artifact_to_canva: instructions to get an artifact into Canva (connector-aware); writes nothing. */

@@ -21,6 +21,54 @@ export function getWorkspaceRootOverride(): string | undefined {
 }
 
 /**
+ * An env value, trimmed, or undefined when it is empty or still a literal
+ * `${user_config.<key>}` placeholder: a Claude Desktop extension may pass an
+ * optional setting the user left empty either way.
+ */
+export function settingFromEnv(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  if (!trimmed || /^\$\{user_config\.[^}]*\}$/.test(trimmed)) return undefined;
+  return trimmed;
+}
+
+/**
+ * OPEN_DESIGN_DEFAULT_WORKSPACE (the desktop extension's "Default design
+ * folder"), when it names an existing folder: the last fallback before the
+ * working directory, below an agent-set folder, OPEN_DESIGN_WORKSPACE_ROOT and
+ * MCP roots. Unlike OPEN_DESIGN_WORKSPACE_ROOT it keeps the home-folder guard
+ * on, so a chat with a connected folder can't write into it by accident.
+ */
+export function getDefaultWorkspace(env: NodeJS.ProcessEnv = process.env): string | undefined {
+  const value = settingFromEnv(env.OPEN_DESIGN_DEFAULT_WORKSPACE);
+  if (!value || !path.isAbsolute(value)) return undefined;
+  try {
+    return statSync(value).isDirectory() ? path.resolve(value) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Set by the desktop extension's manifest, so the server knows Desktop started it from the .mcpb. */
+export const DESKTOP_EXTENSION_HOST = 'claude-desktop-extension';
+
+/** Set by the Claude plugin's launcher (scripts/open-design-mcp.mjs) for the server it starts. */
+export const PLUGIN_LAUNCHER = 'claude-plugin';
+
+export function isDesktopExtension(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.OPEN_DESIGN_HOST?.trim() === DESKTOP_EXTENSION_HOST;
+}
+
+export function isPluginLaunched(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.OPEN_DESIGN_LAUNCHER?.trim() === PLUGIN_LAUNCHER;
+}
+
+/** $XDG_CONFIG_HOME/open-design, defaulting to ~/.config/open-design: the token file and the extension lock live here. */
+export function configDirectory(env: NodeJS.ProcessEnv = process.env): string {
+  const configHome = env.XDG_CONFIG_HOME?.trim() || path.join(os.homedir(), '.config');
+  return path.join(configHome, 'open-design');
+}
+
+/**
  * The workspace a client reports through MCP roots: the first file:// root.
  * Hosts that install servers from a registry gallery (VS Code's @mcp view)
  * don't necessarily start them in the open folder, so the cwd alone isn't
@@ -54,10 +102,12 @@ export function getOutputDirectory(): string {
  * than throwing.
  *
  * Not taken from a Claude plugin setting: Claude Desktop refuses to start a
- * plugin server whose .mcp.json refers to ${user_config.*}.
+ * plugin server whose .mcp.json refers to ${user_config.*}. The desktop
+ * extension's settings form does fill OPEN_DESIGN_FIGMA_TOKEN; an empty field
+ * (or its unexpanded placeholder) falls through to the file.
  */
 export function getFigmaToken(env: NodeJS.ProcessEnv = process.env): string | undefined {
-  const fromEnv = env.OPEN_DESIGN_FIGMA_TOKEN?.trim();
+  const fromEnv = settingFromEnv(env.OPEN_DESIGN_FIGMA_TOKEN);
   if (fromEnv) return fromEnv;
   try {
     return readFileSync(figmaTokenFilePath(env), 'utf8').trim() || undefined;
@@ -68,8 +118,7 @@ export function getFigmaToken(env: NodeJS.ProcessEnv = process.env): string | un
 
 /** Where the Figma token can be saved: $XDG_CONFIG_HOME/open-design/figma-token, defaulting to ~/.config. */
 export function figmaTokenFilePath(env: NodeJS.ProcessEnv = process.env): string {
-  const configHome = env.XDG_CONFIG_HOME?.trim() || path.join(os.homedir(), '.config');
-  return path.join(configHome, 'open-design', 'figma-token');
+  return path.join(configDirectory(env), 'figma-token');
 }
 
 /**

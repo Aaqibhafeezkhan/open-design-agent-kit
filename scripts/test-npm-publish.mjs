@@ -261,7 +261,10 @@ async function testMcpServerResolution(scratchDir) {
     // Expected names come from the server's own TOOL_DEFS source, so adding a
     // tool needs no change here; a published bundle missing one still fails.
     const source = await fs.readFile(path.join(repoRoot, 'packages', 'mcp-server', 'src', 'index.ts'), 'utf8');
-    const expected = [...source.matchAll(/^ {6}name: '([a-z_]+)',$/gm)].map((m) => m[1]).sort();
+    // The managed-workspace tools are listed only in a chat with no folder (home
+    // folder, no roots); this test starts the server in a scratch project folder.
+    const folderlessOnly = ['use_open_design_managed_workspace', 'write_open_design_file'];
+    const expected = [...source.matchAll(/^ {6}name: '([a-z_]+)',$/gm)].map((m) => m[1]).filter((n) => !folderlessOnly.includes(n)).sort();
     const actual = (list?.result?.tools ?? []).map((t) => t.name).sort();
     assert(expected.length > 0, 'found no tool names in packages/mcp-server/src/index.ts');
     assert(

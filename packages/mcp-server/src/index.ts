@@ -31,16 +31,31 @@ import {
   previewAppToolMeta,
   type ListSkillsInput,
 } from '@feimacode/open-design-agent-kit-core';
-import { getAssetsRoot, getFigmaToken, getOutputDirectory, getWorkspaceRoot, getWorkspaceRootOverride, isHomeFolder, workspaceRootFromArg, workspaceRootFromClientRoots } from './env';
+import { getAssetsRoot, getDefaultWorkspace, getFigmaToken, getOutputDirectory, getWorkspaceRootOverride, isDesktopExtension, isPluginLaunched, workspaceRootFromArg, workspaceRootFromClientRoots } from './env';
+import { DEFERRED_TO_EXTENSION_MESSAGE, extensionLockPath, holdExtensionLock, readLiveExtensionLock, shouldDeferToExtension, watchExtensionLock } from './extensionLock';
+import { getManagedRoot, openManagedWorkspace } from './managedWorkspace';
 import { createFileActiveDesignSystemStore } from './store';
 import * as tools from './tools';
 import type { ToolContext } from './tools';
+import {
+  hasNoFolderOfItsOwn,
+  initialWorkspace,
+  MANAGED_WORKSPACE_TOOL,
+  needsFolderFromAgent,
+  rootsMayReplace,
+  SET_WORKSPACE_TOOL,
+  workspaceGuardMessage,
+  WRITE_FILE_TOOL,
+  type WorkspaceSource,
+} from './workspace';
 
 interface ToolDef {
   tool: Tool;
   handler: (ctx: ToolContext, args: Record<string, unknown>) => Promise<string | tools.ToolOutput>;
   /** Called only by the preview MCP App's page: listed only to clients that render MCP Apps, which keep it from the model. */
   appOnly?: boolean;
+  /** Writes on the agent's behalf: refused outside a managed workspace (openspec add-folderless-chat-support). */
+  managedOnly?: boolean;
 }
 
 const TOOL_DEFS: ToolDef[] = [
@@ -1028,40 +1043,111 @@ const TOOL_DEFS: ToolDef[] = [
       throw new Error('handled by the server itself');
     },
   },
+  {
+    // main() handles this one too, and lists it only in a chat with no folder.
+    tool: {
+      name: 'use_open_design_managed_workspace',
+      description:
+        "For a Claude Desktop chat with NO connected folder only, where your own file tools (if any) can't reach this server's files: creates, or reopens, a folder this server keeps for the design (under ~/Open Design/ unless configured otherwise) and makes it the workspace for the rest of the session. Call it once, before other Open Design tools, then save every design file with write_open_design_file instead of your own file tools. Tell the user the folder's absolute path from the result, so they can open it. Pass the same name in a later chat to continue the same design. If the chat has a connected folder, call set_open_design_workspace instead.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'A short name for the design or project, e.g. "Coffee poster". The folder is named after it.' },
+        },
+        required: ['name'],
+      },
+    },
+    handler: async () => {
+      throw new Error('handled by the server itself');
+    },
+  },
+  {
+    tool: {
+      name: 'write_open_design_file',
+      description:
+        "Saves one design file you wrote into the folder use_open_design_managed_workspace opened, exactly as given, and returns its path, size and SHA-256. Only works in that folder: anywhere else, write files with your own file-editing tools. Pass the whole file each time (to edit, send the full new version). path is workspace-relative and must be under the output directory, e.g. \".open-design/coffee-poster/coffee-poster.html\". Allowed: .html .htm .css .js .mjs .json .svg .md .txt .csv as text, and .png .jpg .jpeg .webp .gif .woff .woff2 as base64 with encoding \"base64\"; at most 5 MiB. Manifests, comments, config.json, exports/ and check screenshots belong to other tools and are refused. Never deletes or moves anything. After writing an entry file, call register_open_design_artifact as usual.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: 'Workspace-relative path under the output directory, e.g. ".open-design/coffee-poster/coffee-poster.html".' },
+          content: { type: 'string', description: 'The whole file: text, or base64 for images and fonts.' },
+          encoding: { type: 'string', enum: ['base64'], description: 'Set to "base64" for images and fonts. Leave out for text.' },
+        },
+        required: ['path', 'content'],
+      },
+    },
+    handler: (ctx, args) => tools.writeDesignFile(ctx, args),
+    managedOnly: true,
+  },
 ];
 
-const SET_WORKSPACE_TOOL = 'set_open_design_workspace';
+// Read at build time: esbuild inlines the JSON, so serverInfo carries the release version.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const SERVER_VERSION: string = require('../package.json').version;
 
-function buildContext(workspaceRoot: string = getWorkspaceRoot()): ToolContext {
+const FOLDERLESS_TOOLS = new Set([MANAGED_WORKSPACE_TOOL, WRITE_FILE_TOOL]);
+
+function buildContext(workspaceRoot: string, managed = false): ToolContext {
   const outputDir = getOutputDirectory();
   const assetsRoot = getAssetsRoot();
   const contentIndex = new ContentIndex(assetsRoot, () => `${workspaceRoot}/${outputDir}/design-systems`);
   const store = createFileActiveDesignSystemStore(workspaceRoot);
-  return { contentIndex, store, workspaceRoot, outputDir, assetsRoot, figmaToken: getFigmaToken() };
+  return { contentIndex, store, workspaceRoot, outputDir, assetsRoot, figmaToken: getFigmaToken(), managedWorkspace: managed };
+}
+
+function textResult(text: string, isError = false) {
+  return { content: [{ type: 'text' as const, text }], ...(isError ? { isError: true } : {}) };
 }
 
 async function main(): Promise<void> {
-  let ctx = buildContext();
-  const server = new Server({ name: 'open-design', version: '0.1.0' }, { capabilities: { tools: {}, prompts: {}, resources: {} } });
-  const rendersMcpApps = (): boolean => clientSupportsMcpApps(server.getClientCapabilities());
+  const desktopExtension = isDesktopExtension();
+  const pluginLaunched = isPluginLaunched();
+  const lockPath = extensionLockPath();
+  if (desktopExtension) holdExtensionLock(lockPath, SERVER_VERSION);
 
-  // Workspace root precedence: OPEN_DESIGN_WORKSPACE_ROOT, then the client's
-  // MCP roots, then the cwd (already in ctx). Requests wait for the first
-  // roots lookup so nothing is written to the cwd before it's known.
-  // A folder set through set_open_design_workspace beats later roots too.
-  let workspaceSetByAgent = false;
+  const initial = initialWorkspace({ override: getWorkspaceRootOverride(), defaultWorkspace: getDefaultWorkspace(), cwd: process.cwd() });
+  let ctx = buildContext(initial.root);
+  let source: WorkspaceSource = initial.source;
+  let hadRoots = false;
+
+  const server = new Server(
+    { name: 'open-design', version: SERVER_VERSION },
+    { capabilities: { tools: { listChanged: true }, prompts: {}, resources: {} } },
+  );
+  const rendersMcpApps = (): boolean => clientSupportsMcpApps(server.getClientCapabilities());
+  const deferred = (): boolean =>
+    shouldDeferToExtension({ pluginLaunched, clientName: server.getClientVersion()?.name, lockIsLive: pluginLaunched && readLiveExtensionLock(lockPath) !== undefined });
+  // The managed-workspace tools are for a Claude Desktop chat with no folder (openspec add-folderless-chat-support).
+  const folderless = (): boolean => hasNoFolderOfItsOwn({ override: getWorkspaceRootOverride(), hadRoots, cwd: process.cwd(), desktopExtension });
+
+  // Workspace root precedence (workspace.ts): an agent-set folder, then
+  // OPEN_DESIGN_WORKSPACE_ROOT, then the client's MCP roots, then
+  // OPEN_DESIGN_DEFAULT_WORKSPACE, then the cwd. Requests wait for the first
+  // roots lookup so nothing is written before it's known.
   const syncRootsFromClient = async (): Promise<void> => {
-    if (workspaceSetByAgent || getWorkspaceRootOverride() || !server.getClientCapabilities()?.roots) return;
+    if (!rootsMayReplace(source) || !server.getClientCapabilities()?.roots) return;
     try {
       const root = workspaceRootFromClientRoots((await server.listRoots()).roots);
-      if (root && root !== ctx.workspaceRoot) ctx = buildContext(root);
+      if (!root) return;
+      hadRoots = true;
+      if (root !== ctx.workspaceRoot || source !== 'roots') {
+        ctx = buildContext(root);
+        source = 'roots';
+      }
     } catch {
-      // A client that advertises roots but fails the request keeps the cwd.
+      // A client that advertises roots but fails the request keeps the current root.
     }
   };
   let rootsReady: Promise<void> = Promise.resolve();
   server.oninitialized = () => {
     rootsReady = syncRootsFromClient();
+    // Hand the tools to the desktop extension while it runs, and take them back when it stops.
+    if (pluginLaunched) {
+      watchExtensionLock(lockPath, () => {
+        if (server.getClientVersion()?.name === 'claude-code') return;
+        server.sendToolListChanged().catch(() => undefined);
+      });
+    }
   };
   server.setNotificationHandler(RootsListChangedNotificationSchema, async () => {
     rootsReady = syncRootsFromClient();
@@ -1069,7 +1155,14 @@ async function main(): Promise<void> {
 
   // App-only tools go only to hosts that render MCP Apps: those keep them out of
   // the model's list by their `visibility`; any other host would show them to it.
-  server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOL_DEFS.filter((d) => !d.appOnly || rendersMcpApps()).map((d) => d.tool) }));
+  server.setRequestHandler(ListToolsRequestSchema, async () => {
+    await rootsReady;
+    if (deferred()) return { tools: [] };
+    const showFolderless = folderless();
+    return {
+      tools: TOOL_DEFS.filter((d) => (!d.appOnly || rendersMcpApps()) && (showFolderless || !FOLDERLESS_TOOLS.has(d.tool.name))).map((d) => d.tool),
+    };
+  });
 
   // The preview MCP App's page (openspec add-mcp-app-preview).
   server.setRequestHandler(ListResourcesRequestSchema, async () => ({
@@ -1085,25 +1178,43 @@ async function main(): Promise<void> {
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     await rootsReady;
-    if (request.params.name === SET_WORKSPACE_TOOL) {
+    const name = request.params.name;
+    if (deferred()) return textResult(DEFERRED_TO_EXTENSION_MESSAGE, true);
+    if (name === SET_WORKSPACE_TOOL) {
       try {
         const root = workspaceRootFromArg(request.params.arguments?.path);
         ctx = buildContext(root);
-        workspaceSetByAgent = true;
-        const text = `Open Design now works in ${root}. Designs go under ${ctx.outputDir}/ there, and the paths other tools return are relative to that folder.`;
-        return { content: [{ type: 'text' as const, text }] };
+        source = 'agent';
+        return textResult(`Open Design now works in ${root}. Designs go under ${ctx.outputDir}/ there, and the paths other tools return are relative to that folder.`);
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        return { content: [{ type: 'text' as const, text: `Tool "${SET_WORKSPACE_TOOL}" failed: ${message}` }], isError: true };
+        return textResult(`Tool "${SET_WORKSPACE_TOOL}" failed: ${err instanceof Error ? err.message : String(err)}`, true);
       }
     }
-    const def = TOOL_DEFS.find((d) => d.tool.name === request.params.name);
-    if (!def) {
-      return { content: [{ type: 'text' as const, text: `Unknown tool: ${request.params.name}` }], isError: true };
+    if (name === MANAGED_WORKSPACE_TOOL) {
+      if (!folderless()) {
+        return textResult(`Tool "${MANAGED_WORKSPACE_TOOL}" is only for a chat with no folder. This server already has one (${ctx.workspaceRoot}); write design files with your own file tools there, or call ${SET_WORKSPACE_TOOL} for another folder.`, true);
+      }
+      try {
+        const { root, created } = await openManagedWorkspace(request.params.arguments?.name);
+        ctx = buildContext(root, true);
+        source = 'managed';
+        return textResult(
+          `Open Design now works in ${root} (${created ? 'a new folder' : 'reopened, with its existing files'}). Tell the user this path so they can open it. Save every design file with ${WRITE_FILE_TOOL}, using paths under ${ctx.outputDir}/ (for example ${ctx.outputDir}/<design>/<design>.html), then register, check, show and export it as usual. Show it with show_open_design_artifact; exports land in this folder too, so give the user their absolute paths.`,
+        );
+      } catch (err) {
+        return textResult(`Tool "${MANAGED_WORKSPACE_TOOL}" failed: ${err instanceof Error ? err.message : String(err)}`, true);
+      }
     }
-    if (!workspaceSetByAgent && !getWorkspaceRootOverride() && isHomeFolder(ctx.workspaceRoot)) {
-      const text = `Open Design would be working straight in the user's home folder (${ctx.workspaceRoot}), which usually means this host didn't say which folder to use. Call ${SET_WORKSPACE_TOOL} with the absolute path, on the machine this server runs on, of the folder the user connected (in Claude Desktop, the one get_device_info lists under connectedFolders), then call ${request.params.name} again. If the user really wants their home folder, pass that path.`;
-      return { content: [{ type: 'text' as const, text }], isError: true };
+    const def = TOOL_DEFS.find((d) => d.tool.name === name);
+    if (!def) return textResult(`Unknown tool: ${name}`, true);
+    if (def.managedOnly && source !== 'managed') {
+      return textResult(
+        `Tool "${name}" only writes into a folder opened with ${MANAGED_WORKSPACE_TOOL}, for chats with no folder. This workspace (${ctx.workspaceRoot}) is one your own file tools can reach: write the file with them, then call register_open_design_artifact. Nothing was written.`,
+        true,
+      );
+    }
+    if (needsFolderFromAgent({ root: ctx.workspaceRoot, source, desktopExtension })) {
+      return textResult(workspaceGuardMessage({ root: ctx.workspaceRoot, source, toolName: name, managedToolListed: folderless(), managedRoot: getManagedRoot() }), true);
     }
     try {
       const callCtx = { ...ctx, figmaToken: getFigmaToken(), clientName: server.getClientVersion()?.name, rendersMcpApps: rendersMcpApps() };
@@ -1111,8 +1222,7 @@ async function main(): Promise<void> {
       const structuredContent = typeof out === 'string' ? undefined : out.structuredContent;
       return { content: tools.toCallToolContent(out), ...(structuredContent ? { structuredContent } : {}) };
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      return { content: [{ type: 'text' as const, text: `Tool "${request.params.name}" failed: ${message}` }], isError: true };
+      return textResult(`Tool "${name}" failed: ${err instanceof Error ? err.message : String(err)}`, true);
     }
   });
 

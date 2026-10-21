@@ -422,12 +422,12 @@ describe('mcp-server publishing', () => {
   it('publishArtifact builds the bundle and returns staged instructions, then records the link', async () => {
     const ctx = await makeContext();
     const entryPath = await registered(ctx);
-    const text = await tools.publishArtifact(ctx, { entryPath, provider: 'netlify-temporary' });
+    const { text } = await tools.publishArtifact(ctx, { entryPath, provider: 'netlify-temporary' });
     assert.match(text, /## Stage 2 — confirm before anything goes online/);
     assert.match(text, /--allow-anonymous/);
     await fs.access(path.join(ctx.workspaceRoot, '.open-design', 'p', 'exports', 'site', 'index.html'));
 
-    const recorded = await tools.publishArtifact(ctx, {
+    const { text: recorded } = await tools.publishArtifact(ctx, {
       entryPath,
       published: { provider: 'netlify-temporary', url: 'https://x.netlify.app', claimUrl: 'https://app.netlify.com/drop/x', expiresAt: '2030-01-01T00:00:00Z' },
     });
