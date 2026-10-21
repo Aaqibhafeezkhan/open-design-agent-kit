@@ -13,7 +13,9 @@ import { workspaceAssetReader } from '../../export/workspaceAssets';
 import { isUnaddressed, type ArtifactComment, type ArtifactCommentStatus } from '../../workspace/artifactCommentTypes';
 import { mergeArtifactComments, readArtifactComments } from '../../workspace/artifactComments';
 import { directionArtifactMap, findExplorationArtifacts, readExplorationPlan } from '../../workspace/explorationStore';
+import { isStyleTileSkill } from '../../generation/styleTiles';
 import { PREVIEW_CHROME_CSS } from '../chromeCss';
+import { campaignShowText } from './mcpAppPickers';
 import { MCP_APP_CSS } from '../mcpApp/appCss';
 import {
   PREVIEW_APP_BASE_DOMAINS,
@@ -170,7 +172,7 @@ export async function buildExplorationPreviewState(input: { workspaceRoot: strin
   );
   return {
     ok: true,
-    state: { view: 'exploration', explorationId: plan.explorationId, title: plan.title, chosenDirectionId: plan.chosen?.directionId, directions },
+    state: { view: 'exploration', explorationId: plan.explorationId, title: plan.title, chosenDirectionId: plan.chosen?.directionId, ...(isStyleTileSkill(plan.skillId) ? { styleTiles: true } : {}), directions },
     externalDependencies: [...external],
   };
 }
@@ -178,19 +180,30 @@ export async function buildExplorationPreviewState(input: { workspaceRoot: strin
 export type ShowResult = { ok: true; target: ShowTarget; text: string } | { ok: false; text: string };
 
 /** show_open_design_artifact's target and the text every host gets (title, path, open comments; the browser-preview hint when the host can't render the app). */
-export async function prepareShow(input: { workspaceRoot: string; outputDir: string; entryPath?: string; explorationId?: string; hostRendersApp: boolean }): Promise<ShowResult> {
+export async function prepareShow(input: { workspaceRoot: string; outputDir: string; entryPath?: string; explorationId?: string; campaign?: boolean; hostRendersApp: boolean }): Promise<ShowResult> {
   const hint = input.hostRendersApp ? '' : '\n\nThis host doesn\'t show MCP Apps inline. Call open_open_design_preview to show it in a live browser preview instead.';
   if (input.explorationId) {
     const plan = await readExplorationPlan(input.workspaceRoot, input.outputDir, input.explorationId);
     if (!plan) return { ok: false, text: `No exploration "${input.explorationId}" found.` };
     const lines = [`Showing the exploration "${plan.title}" (${plan.explorationId}): ${plan.directions.map((d) => `${d.label} (${d.id})`).join(', ')}.`];
-    if (input.hostRendersApp) lines.push('The user can pick a direction with "Take this one"; confirm the next step with them before calling choose_open_design_direction.');
+    if (input.hostRendersApp) {
+      lines.push(
+        isStyleTileSkill(plan.skillId)
+          ? 'The user can pick a tile with "Take this one" (confirm the next step with them before calling choose_open_design_direction) or "Use as design system", which asks for choose_open_design_direction with next: "save-design-system" directly.'
+          : 'The user can pick a direction with "Take this one"; confirm the next step with them before calling choose_open_design_direction.',
+      );
+    }
     return { ok: true, target: { view: 'exploration', explorationId: plan.explorationId, title: plan.title }, text: lines.join('\n') + hint };
   }
   if (!input.entryPath) return { ok: false, text: 'Pass entryPath (a registered artifact) or explorationId.' };
   const registered = await checkRegistered(input.workspaceRoot, input.entryPath);
   if (!registered.ok) return { ok: false, text: registered.message };
   const title = manifestString(registered.manifest, 'title') ?? input.entryPath;
+  if (input.campaign) {
+    const lines = [await campaignShowText(input.workspaceRoot, input.entryPath, title)];
+    if (input.hostRendersApp) lines.push('On the sheet the user can open a page-type piece, or click "Fix this piece", which posts the tile and its errors here.');
+    return { ok: true, target: { view: 'campaign', entryPath: input.entryPath, title }, text: lines.join('\n') + hint };
+  }
   const open = (await readArtifactComments(input.workspaceRoot, input.entryPath)).filter(isUnaddressed);
   const lines = [`Showing "${title}" (${input.entryPath}).`];
   if (open.length) {

@@ -236,23 +236,57 @@ MCP hosts only (Claude Code, Codex, Cursor and others). Shows a registered artif
 
 ### show_open_design_artifact
 
-MCP hosts only. Shows a registered artifact, or an exploration's directions side by side, [inline in the conversation](../guides/inline-preview.md) in hosts that render MCP Apps (Claude Desktop Chat). There the user can comment on elements and click **Ask Claude to apply**, which posts a message naming the entry and the comment ids; the export buttons post a request for `export_open_design_artifact`, since the host doesn't allow downloads. For an exploration, **Take this one** posts the user's pick, and the agent confirms the next step before calling `choose_open_design_direction`.
+MCP hosts only. Shows a registered artifact, an exploration's directions side by side, or a fluid master's campaign sheet, [inline in the conversation](../guides/inline-preview.md) in hosts that render MCP Apps (Claude Desktop Chat). There the user can comment on elements and click **Ask Claude to apply**, which posts a message naming the entry and the comment ids; the export buttons post a request for `export_open_design_artifact`, since the host doesn't allow downloads. For an exploration, **Take this one** posts the user's pick, and the agent confirms the next step before calling `choose_open_design_direction`; a [style-tile](../guides/explore-directions.md) exploration also offers **Use as design system**, which asks for `next: "save-design-system"` directly. With `campaign: true` the page shows each tile of the master's last campaign sheet with its errors: a page-type piece opens in the artifact view, and **Fix this piece** posts the tile and its errors.
 
 | Argument | Type | Required | Meaning |
 |---|---|---|---|
 | `entryPath` | string | no | Workspace-relative path to a registered entry file. |
 | `explorationId` | string | no | An [exploration](#exploring-directions) to show instead: its directions side by side. |
+| `campaign` | boolean | no | With a fluid master's `entryPath`: show its last campaign sheet (from `exports/campaign-sheet.json`) instead of the design. Without a sidecar the page shows `campaign-sheet.png`, or asks for an export with `campaignSheet: true`. |
 
-**Result:** text for every host: the title, entry path and open comments. A host without MCP Apps (the Claude Code terminal, Codex) gets only this text, plus a hint to use [`open_open_design_preview`](#open_open_design_preview). An unregistered entry returns a not-registered result. The tool declares the `ui://open-design/preview` resource as its UI and returns the target as structured content for it.
+**Result:** text for every host: the title, entry path and open comments (with `campaign`, each tile and its errors). A host without MCP Apps (the Claude Code terminal, Codex) gets only this text, plus a hint to use [`open_open_design_preview`](#open_open_design_preview). An unregistered entry returns a not-registered result. The tool declares the `ui://open-design/preview` resource as its UI and returns the target as structured content for it.
 
-### get_open_design_preview_state
+### show_open_design_examples
 
-Called only by the inline preview page, never by the model: hosts that render MCP Apps keep it out of the model's tool list, and the server lists it only to those hosts. It returns the design as one self-contained page (local fonts and images inlined, the preview bridge injected), its comments, its latest check screenshots and the export formats offered. Over 5 MiB, or for a kind that isn't HTML, the page shows the latest check screenshot instead.
+MCP hosts that render MCP Apps only: the server lists it to no other host, where [`list_open_design_skills`](#list_open_design_skills) with `remixableOnly: true` does the same job. Shows the remixable examples [inline](../guides/inline-preview.md#pick-an-example) as a gallery: 24 cards a page, each with a live, view-only preview loaded when it scrolls into sight, and mode chips to filter. **Remix this** posts a message naming the example's skill id; the agent then calls [`remix_open_design_example`](#remix_open_design_example) (asking what to make first if the user hasn't said). The page copies no files itself.
 
 | Argument | Type | Required | Meaning |
 |---|---|---|---|
-| `entryPath` | string | no | The registered entry to show. |
+| `query` | string | no | Free-text filter on name, description and triggers. |
+| `mode` | string | no | Exact mode, as `list_open_design_skills` takes. |
+| `surface` | string | no | A surface id (`slides`, `poster`, …): only that surface's examples. |
+
+**Result:** structured content with only the view, the filters and a title; the page reads the examples through `get_open_design_preview_state`. Called anyway by a host without MCP Apps, it returns a short text list of matching ids and names `list_open_design_skills`.
+
+### show_open_design_design_systems
+
+MCP hosts that render MCP Apps only, like `show_open_design_examples`; elsewhere use [`list_open_design_design_systems`](#list_open_design_design_systems). Shows design systems [inline](../guides/inline-preview.md#pick-a-design-system) as tiles: name, category, the active mark, five palette swatches and the display and body fonts, from each system's `tokens.css` (or its DESIGN.md colors without one). Opening a tile shows its Visualize page, the same script-free page VS Code shows; **Use this design system** posts a message naming the id, and the agent calls [`set_active_design_system`](#set_active_design_system).
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `query` | string | no | Free-text filter on id, name, summary and category. |
+| `category` | string | no | Exact category. |
+| `ids` | string[] | no | A shortlist, shown in this order; `query` and `category` are ignored. |
+
+**Result:** as for `show_open_design_examples`: only the view, filters and a title, or a short text list for a host without MCP Apps.
+
+### get_open_design_preview_state
+
+Called only by the inline preview page, never by the model: hosts that render MCP Apps keep it out of the model's tool list, and the server lists it only to those hosts. For an artifact it returns the design as one self-contained page (local fonts and images inlined, the preview bridge injected), its comments, its latest check screenshots and the export formats offered. Over 5 MiB, or for a kind that isn't HTML, the page shows the latest check screenshot instead. For the pickers it returns one page of examples, the design-system tiles, a campaign sheet's tiles, or one example's or design system's preview, so none of it passes through the model's context.
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `entryPath` | string | no | The registered entry to show (or, with `view: "campaign"`, the master). |
 | `explorationId` | string | no | The exploration to show instead. |
+| `view` | string | no | `examples`, `design-systems` or `campaign`. |
+| `query` | string | no | The examples' or design systems' filter. |
+| `mode` | string | no | The examples' mode filter. |
+| `surface` | string | no | The examples' surface filter. |
+| `category` | string | no | The design systems' category filter. |
+| `ids` | string[] | no | The design systems' shortlist. |
+| `cursor` | string | no | The next page of examples, as the previous page returned it. |
+| `exampleId` | string | no | One example's view-only preview (text instead over 5 MiB). |
+| `designSystemId` | string | no | One design system's Visualize page. |
 
 ### save_open_design_comment
 
@@ -536,7 +570,7 @@ Renders a registered artifact in a headless browser (an installed Chrome, Edge o
 | `duration` | number 0.5–60 | no | `mp4`/`webm`/`gif` only: length in seconds. Default: the sum of the frames' `data-duration`, else the longest CSS or Web animation, else 6. |
 | `loop` | boolean | no | `gif` only: loop forever. Default true. |
 | `transparent` | boolean | no | `png` only: capture without the page background, so whatever the design doesn't paint is transparent (cut-outs such as a [3D product shot](../guides/3d-objects.md)). The page, and a 3D scene's renderer, must have a transparent background; a warning says when every pixel came out opaque. Not re-encoded to fit `maxBytes`. |
-| `campaignSheet` | boolean | no | Fluid designs only: also write `exports/campaign-sheet.png`: the design at every shape in `presets`, plus the first screen of every other piece registered in the same collection (landing page, email…), each marked when it has errors. See [Run a campaign](../guides/campaigns.md). |
+| `campaignSheet` | boolean | no | Fluid designs only: also write `exports/campaign-sheet.png`: the design at every shape in `presets`, plus the first screen of every other piece registered in the same collection (landing page, email…), each marked when it has errors. Next to it, `exports/campaign-sheet.json` lists each tile in order (label, shape preset or member entry path, exported file, image, error findings) and `exports/campaign-sheet-tiles/` holds each tile's image. See [Run a campaign](../guides/campaigns.md). |
 
 **Result (text):** each written file with its pixel size, file size and format; for decks, the slide count and the stage size and scale used; where the size came from; for print PDFs, the trim size, bleed and a note that the PDF is RGB; for page exports, the **preflight** findings, errors first ([the checks](../guides/posters.md#preflight-checks)); and any warnings (failed requests, blank slides, budget re-encoding). Details in [Export images](../guides/export-images.md), [Export decks and PDFs](../guides/export-decks.md) and [Posters and print](../guides/posters.md).
 

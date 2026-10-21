@@ -56,6 +56,7 @@ export * from './export/browserDiscovery';
 export * from './export/exportArtifact';
 export * from './export/checkArtifact';
 export * from './export/checkHistory';
+export * from './export/campaignSheet';
 export * from './export/webgl';
 export * from './export/sceneReview';
 export * from './assets/polyHaven';
@@ -90,3 +91,4 @@ export { loadPreviewAssets, type PreviewAssets } from './preview/server/assets';
 // The preview MCP App (openspec add-mcp-app-preview).
 export * from './preview/mcpApp/protocol';
 export * from './preview/server/mcpApp';
+export * from './preview/server/mcpAppPickers';

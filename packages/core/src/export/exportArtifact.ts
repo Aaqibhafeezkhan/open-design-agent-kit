@@ -9,6 +9,7 @@ import type { Page } from 'puppeteer-core';
 import { readArtifact, writeArtifactManifest } from '../vendored/artifactCreate';
 import type { JsonRecord } from '../vendored/artifactManifest';
 import { openArtifactPage, type ArtifactPageSession } from './artifactPage';
+import { campaignSheetPaths, tileErrors, writeCampaignSheetSidecar, type CampaignSheetTile } from './campaignSheet';
 import { checkArtifact } from './checkArtifact';
 import { findCollectionArtifacts } from '../workspace/collectionScan';
 import { findBrowser } from './browserDiscovery';
@@ -585,6 +586,8 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
       }
       const tagShapes = multiShape || wantSheet;
       const thumbnails: ShapeThumbnail[] = [];
+      // The campaign sidecar's facts for each thumbnail, in the same order.
+      const sheetTiles: Omit<CampaignSheetTile, 'image'>[] = [];
       const rows: Array<Record<string, string> | undefined> = table ? table.rows : [undefined];
       const qrFields = scanBoundFields(artifact.entryContent).qrFields;
       const bind = async (row: Record<string, string>): Promise<void> => {
@@ -617,6 +620,8 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
         const passRows = pass.exported ? rows : [table ? table.rows[0] : undefined];
         const pdfs: Buffer[] = [];
         const passFindingsStart = findings.length;
+        const passFilesStart = files.length;
+        const passTilesStart = sheetTiles.length;
 
         for (const [i, row] of passRows.entries()) {
           const rowNo = row && pass.exported ? i + 1 : undefined;
@@ -627,7 +632,10 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
           if (fluid && p.shape && i === 0) findings.push(...(await checkFixedSize(page, cardSelector, p.shape, { shape: shapeId })));
           if (wantSheet && i === 0) {
             const handle = await page.$(cardSelector);
-            if (handle) thumbnails.push({ label: p.canvas?.label ?? 'Default', png: Buffer.from(await handle.screenshot({ type: 'png' })), errors: 0 });
+            if (handle) {
+              thumbnails.push({ label: p.canvas?.label ?? 'Default', png: Buffer.from(await handle.screenshot({ type: 'png' })), errors: 0 });
+              sheetTiles.push({ label: p.canvas?.label ?? 'Default', shape: p.canvas?.id, errors: [] });
+            }
           }
           if (options.checkOnly || !pass.exported) continue;
           const nameParts = [row ? rowSuffixes[i] : undefined, multiShape ? p.canvas!.id : undefined].filter((x): x is string => !!x);
@@ -692,6 +700,11 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
         if (wantSheet) {
           const last = thumbnails[thumbnails.length - 1];
           if (last) last.errors = findings.slice(passFindingsStart).filter((f) => f.severity === 'error').length;
+          const tile = sheetTiles[sheetTiles.length - 1];
+          if (tile && sheetTiles.length > passTilesStart) {
+            tile.errors = tileErrors(findings.slice(passFindingsStart));
+            if (files[passFilesStart]) tile.file = files[passFilesStart].path;
+          }
         }
 
         if (passMode !== 'image' && pass.exported && !options.checkOnly) {
@@ -742,9 +755,12 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
           }
           const label = member.title || member.screenRole || path.posix.basename(member.entryPath);
           tiles.push({ label, png: checked.images[0].data, mime: checked.images[0].mime, errors: checked.findings.filter((f) => f.severity === 'error').length });
+          sheetTiles.push({ label, entryPath: member.entryPath, errors: tileErrors(checked.findings) });
         }
-        campaignSheetPath = path.posix.join(path.posix.dirname(relEntry.split(path.sep).join('/')), 'exports', 'campaign-sheet.png');
+        const master = relEntry.split(path.sep).join('/');
+        campaignSheetPath = campaignSheetPaths(master).sheet;
         await writeOut(campaignSheetPath, await composeShapeSheet(instance, tiles, title, `${title ?? 'Campaign'} — every piece`));
+        await writeCampaignSheetSidecar({ workspaceRoot: options.workspaceRoot, master, title, tiles: sheetTiles, images: tiles.map((t) => ({ data: t.png, mime: t.mime })), createdAt: exportedAt });
       }
       // Failed loads are reported as findings too, so the agent sees them with everything else to fix.
       for (const w of warnings) if (w.startsWith('Failed to load: ')) findings.push({ check: 'broken-asset', severity: 'warning', message: w.slice('Failed to load: '.length) });
@@ -876,7 +892,9 @@ export function formatExportResult(result: AnyExportResult): string {
         ),
       ];
   if (result.slideCount !== undefined) lines.push(`Deck: ${result.slideCount} slide(s) found.`);
-  if (result.campaignSheet) lines.push(`Campaign sheet: ${result.campaignSheet} — every shape and every other piece in the collection; a red dot marks pieces with errors.`);
+  if (result.campaignSheet) {
+    lines.push(`Campaign sheet: ${result.campaignSheet} — every shape and every other piece in the collection; a red dot marks pieces with errors. Its tiles, with their errors, are listed in ${result.campaignSheet.replace(/\.png$/, '.json')}.`);
+  }
   if (result.shapeSheet) lines.push(`Shape sheet: ${result.shapeSheet} — the design at every shape; a red dot marks shapes with preflight errors.`);
   if (result.prints) {
     for (const p of result.prints) {
