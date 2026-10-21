@@ -923,7 +923,7 @@ const TOOL_DEFS: ToolDef[] = [
     tool: {
       name: 'publish_open_design_artifact',
       description:
-        "Publishes a registered Open Design artifact as a live web page, so the user can share a link with teammates or stakeholders. Use when the user asks to share, publish, deploy, host or \"get a link\" for a design. (For a single file to attach or send, use export_open_design_artifact with format \"standalone\" instead.) It builds a deploy-ready folder (exports/site/) locally, then returns step-by-step instructions for publishing it with the host's own CLI from your terminal, under the user's own login or a temporary no-account link: netlify-temporary or cloudflare-temporary (no account, about 60 minutes unless claimed), or netlify, vercel, cloudflare-pages or github-pages (the user's own account). It never deploys anything itself and never handles tokens. Without provider, the instructions ask the user to choose. The instructions require the user's explicit yes before anything goes online. With provider claude-artifact (only if you have an Artifact tool: Claude Code or Claude Desktop), it writes the standalone file instead, checks it against the artifact viewer's limits, and returns instructions to publish that file by path with your Artifact tool; the artifact stays private until the user shares it, so there is no confirmation step. After a successful deploy or publish, call this tool again with published: { provider, url, claimUrl?, expiresAt?, siteRef? } to record the link, so the next publish updates the same site or artifact.",
+        "Publishes a registered Open Design artifact as a live web page, so the user can share a link with teammates or stakeholders. Use when the user asks to share, publish, deploy, host or \"get a link\" for a design. (For a single file to attach or send, use export_open_design_artifact with format \"standalone\" instead.) It builds a deploy-ready folder (exports/site/) locally, then returns step-by-step instructions for publishing it with the host's own CLI from your terminal, under the user's own login or a temporary no-account link: netlify-temporary or cloudflare-temporary (no account, about 60 minutes unless claimed), or netlify, vercel, cloudflare-pages or github-pages (the user's own account). It never deploys anything itself and never handles tokens. Without provider, the instructions ask the user to choose. The instructions require the user's explicit yes before anything goes online. With provider claude-artifact (only if you have an Artifact tool: Claude Code or Claude Desktop), it writes the standalone file instead, checks it against the artifact viewer's limits, and returns instructions to publish that file by path with your Artifact tool; the artifact stays private until the user shares it, so there is no confirmation step. After a successful deploy or publish, call this tool again with published: { provider, url, claimUrl?, expiresAt?, siteRef? } to record the link, so the next publish updates the same site or artifact. With claude-artifact, sync: true also carries the design's working files in the page, so it can be restored elsewhere with restore_open_design_artifact; turn it on only after the user agrees.",
       inputSchema: {
         type: 'object',
         properties: {
@@ -945,6 +945,10 @@ const TOOL_DEFS: ToolDef[] = [
             items: { type: 'string' },
             maxItems: 10,
             description: "Workspace paths of files in this artifact's own exports/ folder (e.g. an exported PDF) to host alongside the page, at files/<name> in the bundle, publicly downloadable at <site URL>/files/<name>. Used by the Canva flow to give Canva a URL to import. Export the files first.",
+          },
+          sync: {
+            type: 'boolean',
+            description: "claude-artifact only: carry the design's working files (entry, manifest, comments, supporting files, a custom design system's DESIGN.md) in the page, so restore_open_design_artifact can pick the design up on another device or session. Anyone the artifact is shared with can read them. Stored in the manifest: omit it to keep the stored setting, false turns it off. Only with the user's agreement.",
           },
           published: {
             type: 'object',
@@ -971,8 +975,35 @@ const TOOL_DEFS: ToolDef[] = [
           badge?: boolean;
           includeFiles?: string[];
           published?: { provider: string; url: string; claimUrl?: string; expiresAt?: string; siteRef?: string };
+          sync?: boolean;
         },
       ),
+  },
+  {
+    tool: {
+      name: 'restore_open_design_artifact',
+      description:
+        "Restores an Open Design design from a synced Claude artifact (one published with publish_open_design_artifact, provider claude-artifact and sync: true) into this workspace, so it can be edited and republished here. Use when the user gives a Claude artifact link to pick a design back up on another device or in a new session. First read the artifact with your Artifact tool, which saves the page to a file; pass that file's path (in Claude Desktop with a folder, a path in the connected folder) and the artifact link. It writes the design's files under the output directory, all or nothing, refuses paths that leave it, and doesn't overwrite local files that differ unless overwrite is true. It records the link, so the next preview publish updates the same artifact. Never makes a network request.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          pagePath: {
+            type: 'string',
+            description: 'Path of the page your Artifact tool saved when reading the artifact: absolute, or relative to the workspace.',
+          },
+          artifactUrl: {
+            type: 'string',
+            description: "The artifact's https://claude.ai/... link.",
+          },
+          overwrite: {
+            type: 'boolean',
+            description: "Replace local files whose content differs from the artifact's. Default false: the restore then writes nothing and lists them. Only after the user chooses the artifact's version.",
+          },
+        },
+        required: ['pagePath', 'artifactUrl'],
+      },
+    },
+    handler: (ctx, args) => tools.restoreArtifact(ctx, args as { pagePath: string; artifactUrl: string; overwrite?: boolean }),
   },
   {
     tool: {

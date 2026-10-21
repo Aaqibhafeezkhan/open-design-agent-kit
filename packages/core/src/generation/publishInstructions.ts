@@ -135,6 +135,57 @@ export function composePublishInstructions(input: ComposePublishInstructionsInpu
   return parts.join('');
 }
 
+export const RESTORE_TOOL_NAME = 'restore_open_design_artifact';
+
+/** What happened to the sync bundle on this publish (openspec add-artifact-sync). */
+export interface ArtifactSyncSummary {
+  /** on: the page carries it; dropped: over budget; skipped: couldn't be collected; off: just turned off. */
+  state: 'on' | 'dropped' | 'skipped' | 'off';
+  /** Sync was turned on with this publish. */
+  first: boolean;
+  /** The page's size without the bundle. */
+  pageBytes: number;
+  bundleBytes?: number;
+  /** Bundle paths, relative to the output directory. */
+  files?: string[];
+  notes?: string[];
+  reason?: string;
+}
+
+function syncSection(sync: ArtifactSyncSummary): string {
+  const kb = (n: number) => `${(n / 1024).toFixed(0)} KB`;
+  const mb = (n: number) => `${(n / 1_000_000).toFixed(1)} MB`;
+  const lines: string[] = [];
+  if (sync.state === 'off') {
+    return `\n\n## Sync is off\n\nThis version carries none of the design's working files. Tell the user that earlier versions of the artifact still hold their copy of them.`;
+  }
+  if (sync.state === 'on') {
+    lines.push(`The page carries the design's working files (${sync.files?.length ?? 0} file(s), ${kb(sync.bundleBytes ?? 0)}), so it can be picked up on another device or in another session: ${(sync.files ?? []).map((f) => `\`${f}\``).join(', ')}.`);
+  } else if (sync.state === 'dropped') {
+    lines.push(
+      `[artifact-sync-dropped] With the working files the page would be ${mb(sync.pageBytes + (sync.bundleBytes ?? 0))} (page ${mb(sync.pageBytes)}, sync bundle ${mb(sync.bundleBytes ?? 0)}), over the 16.0 MB artifact limit, so this version was prepared without them. The preview publishes as usual. Tell the user this version can't be restored elsewhere; smaller supporting images would make room.`,
+    );
+  } else {
+    lines.push(`Sync is on, but the working files couldn't be collected, so this version carries none: ${sync.reason ?? 'unknown error'}`);
+  }
+  if (sync.notes?.length) lines.push('', ...sync.notes.map((n) => `- ${n}`));
+  if (sync.first) {
+    lines.push(
+      '',
+      'Sync was just turned on. Tell the user, in plain words:',
+      "- the artifact now carries the design's working files and its comments;",
+      '- anyone they share the artifact with can read them;',
+      `- earlier versions keep their copy even after sync is turned off (\`sync: false\`).`,
+      '',
+      'Later preview publishes keep the files up to date without asking again.',
+    );
+  }
+  if (sync.state === 'on') {
+    lines.push('', `To pick the design up elsewhere: read the artifact with the Artifact tool (it saves the page to a file), then call \`${RESTORE_TOOL_NAME}\` with that file's path and the artifact link.`);
+  }
+  return `\n\n## Sync\n\n${lines.join('\n')}`;
+}
+
 export interface ComposeArtifactPublishInstructionsInput {
   entryPath: string;
   title?: string;
@@ -149,6 +200,7 @@ export interface ComposeArtifactPublishInstructionsInput {
   /** Assets embedded in the page (embedAssets), with their sizes. */
   embedded?: Array<{ url: string; bytes: number }>;
   warnings?: string[];
+  sync?: ArtifactSyncSummary;
 }
 
 /** Instructions for `claude-artifact`: publish the standalone file by path with the model's own Artifact tool. */
@@ -172,6 +224,7 @@ export function composeArtifactPublishInstructions(input: ComposeArtifactPublish
       ].join('\n')}`,
     );
   }
+  if (input.sync) parts.push(syncSection(input.sync));
   parts.push(
     `\n\n## Stage 1 — check you can publish an artifact\n\nThis needs your own Artifact tool: Claude Code or the Claude desktop app, signed in to claude.ai on a Pro, Max, Team or Enterprise plan. If you don't have one, tell the user, offer another provider (call \`${PUBLISH_TOOL_NAME}\` without \`provider\` to list them), and stop.`,
   );
