@@ -86,7 +86,8 @@ export function integrationStatus(
 /** Whether an entry can be added on this agent by configuration (otherwise its manual setup applies). */
 export function installableOn(entry: IntegrationEntry, agent: IntegrationAgent): boolean {
   if (!entry.installable || !entry.server || !entry.auth) return false;
-  if (entry.auth.kind === 'claude-ai-only') return agent === 'claude-code';
+  if (entry.auth.kind === 'claude-ai-only') return agent === 'claude-code' || agent === 'claude-desktop';
+  if (agent === 'claude-desktop') return !!entry.claudeAiConnector || entry.auth.kind !== 'api-key-header';
   return true;
 }
 

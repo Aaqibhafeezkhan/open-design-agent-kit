@@ -6,17 +6,17 @@
 
 ## 2. Core
 
-- [ ] 2.1 Add `claude-desktop` to `INTEGRATION_AGENTS`; `agentFromClientName` maps `claude-code` first, then any name containing `claude` to `claude-desktop`
-- [ ] 2.2 `toolNameHints` and `RELOAD` entries for `claude-desktop`
-- [ ] 2.3 `renderInstall` branch for `claude-desktop`: connector step for entries with `claudeAiConnector`; custom connector step with the Team/Enterprise Owner note for other browser sign-in servers; manual-only text for API-key header servers
-- [ ] 2.4 `installableOn`: `claude-ai-only` installable on `claude-desktop`; `api-key-header` manual there
-- [ ] 2.5 Unit tests: `claude-ai`, `Claude Desktop`, `claude-code` and an unrelated name; Canva on `claude-desktop` names Settings > Connectors and contains no `claude mcp add` or `mcpServers`; Buffer on `claude-desktop` is manual only and has no key
+- [x] 2.1 Add `claude-desktop` to `INTEGRATION_AGENTS`; `agentFromClientName` maps `claude-code` first, then any name containing `claude` to `claude-desktop`
+- [x] 2.2 `toolNameHints` and `RELOAD` entries for `claude-desktop`
+- [x] 2.3 `renderInstall` branch for `claude-desktop`: connector step for entries with `claudeAiConnector`; custom connector step with the Team/Enterprise Owner note for other browser sign-in servers; manual-only text for API-key header servers
+- [x] 2.4 `installableOn`: `claude-ai-only` installable on `claude-desktop`; `api-key-header` manual there
+- [x] 2.5 Unit tests: `claude-ai`, `Claude Desktop`, `claude-code` and an unrelated name; Canva on `claude-desktop` names Settings > Connectors and contains no `claude mcp add` or `mcpServers`; Buffer on `claude-desktop` is manual only and has no key
 
 ## 3. Server and docs
 
-- [ ] 3.1 Add `claude-desktop` to the `agent` enum of `list_open_design_integrations`
+- [x] 3.1 Add `claude-desktop` to the `agent` enum of `list_open_design_integrations`
 - [ ] 3.2 Update the `isClaudeClient` comment to the captured name
-- [ ] 3.3 "In Claude Desktop" note in `docs/guides/integrations.md`; agent values in `docs/reference/tools.md` if listed
+- [x] 3.3 "In Claude Desktop" note in `docs/guides/integrations.md`; agent values in `docs/reference/tools.md` if listed
 
 ## 4. Verification
 

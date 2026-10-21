@@ -3,6 +3,7 @@ import { promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { findBrowser } from '../../export/browserDiscovery';
+import { readCampaignSheetSidecar } from '../../export/campaignSheet';
 import { exportArtifact } from '../../export/exportArtifact';
 import { DEFAULT_SHEET_FORMAT_IDS, FORMAT_IDS, formatCatalogSummary, getFormat } from '../../poster/formats';
 import { writeArtifactManifest } from '../../vendored/artifactCreate';
@@ -119,5 +120,16 @@ describe('campaign export (real browser; skipped when none is installed)', funct
     const sheet = await fs.readFile(path.join(root, result.campaignSheet!));
     assert.ok(pngSize(sheet).width > 600 && sheet.length > 10_000);
     assert.deepStrictEqual(result.files, [], 'checkOnly writes only the sheet');
+
+    // The sidecar lists the same tiles in the same order, each with its image and error findings.
+    const sidecar = await readCampaignSheetSidecar(root, ENTRY);
+    assert.ok(sidecar);
+    assert.strictEqual(sidecar.sheet, result.campaignSheet);
+    assert.deepStrictEqual(sidecar.tiles.slice(0, 3).map((t) => t.shape), ['ig-portrait', 'og-image', 'banner-mrec']);
+    assert.deepStrictEqual(sidecar.tiles.slice(3).map((t) => t.entryPath).sort(), ['.open-design/campaign/email.html', '.open-design/campaign/landing.html']);
+    assert.ok(sidecar.tiles.every((t) => t.file === undefined), 'checkOnly exported no files');
+    for (const t of sidecar.tiles) assert.ok((await fs.stat(path.join(root, t.image!))).size > 0, t.label);
+    const email = sidecar.tiles.find((t) => t.entryPath?.endsWith('email.html'))!;
+    assert.ok(email.errors.length > 0 && email.errors.every((e) => e.check && e.message), JSON.stringify(email));
   });
 });

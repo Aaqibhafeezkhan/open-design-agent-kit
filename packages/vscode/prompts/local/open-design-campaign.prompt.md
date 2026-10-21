@@ -56,4 +56,4 @@ If the user wants a landing page or an email, build each with its own skill (`od
 
 1. Export the master: `export_open_design_artifact` with the same `presets`, `data` and `nameField: "locale"`, plus `campaignSheet: true`. This writes one image (or print PDF) per shape per row, named `<name>-<locale>-<format>`, and `exports/campaign-sheet.png`, which shows every shape and every other piece, with a red dot on any that still has errors. If the export says the outputs are over the limit, export one batch of locales at a time.
 2. If there's an email, export it with `format: "email"` (and `baseUrl` once its images are hosted).
-3. Show the user the campaign sheet, list the files per channel, and mention anything still flagged.
+3. Show the user the campaign sheet, list the files per channel, and mention anything still flagged. The export also writes `exports/campaign-sheet.json`, which lists each tile in sheet order with its errors.

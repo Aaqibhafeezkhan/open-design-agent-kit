@@ -66,6 +66,8 @@ Some services, Buffer for example, use an API key instead of a browser sign-in. 
 
 > **In Claude Code:** if you sign in with a claude.ai account, the agent suggests connecting Canva, Figma, Notion, Google Drive, Slack or Metricool at [claude.ai/customize/connectors](https://claude.ai/customize/connectors). A connector added there works in every Claude app, and Claude Code picks it up in its next session. Built-in claude.ai features that aren't MCP servers, such as the GitHub integration, don't appear in Claude Code.
 
+> **In Claude Desktop** (Chat with a folder, Cowork, claude.ai): servers come only from your claude.ai account's connectors, so the agent asks you to connect Canva, Figma, Notion, Google Drive, Slack or Metricool under **Settings > Connectors** (or at [claude.ai/customize/connectors](https://claude.ai/customize/connectors)), then start a new chat so its tools load. Another service with a browser sign-in is added as a custom connector by URL; on Team and Enterprise plans only an Owner can add one. Services that need an API key, such as Buffer, can't be added in Desktop, so the workflow's manual path applies.
+
 > **In VS Code:** the agent adds a server with `code --add-mcp`, or asks you to use **MCP: Add Server** (choose Global). VS Code asks you to sign in the first time the server starts.
 
 > **In Codex:** the agent runs `codex mcp add <name> --url <url>`, then `codex mcp login <name>` for services with a browser sign-in.

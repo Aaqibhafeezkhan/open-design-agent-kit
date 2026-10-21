@@ -47,6 +47,8 @@ export interface ArtifactPreflightInput {
   embeddedUrls?: string[];
   /** Remote URLs the bundler left in place, added as kind `other` when the scan didn't place them. */
   externalDependencies?: string[];
+  /** Bytes of the page taken by the sync bundle (openspec add-artifact-sync), named in the size findings. */
+  syncBytes?: number;
 }
 
 const BREAKS: Record<RemoteRefKind, string> = {
@@ -272,15 +274,16 @@ export function artifactPreflight(input: ArtifactPreflightInput): ArtifactPrefli
   const bytes = input.bytes ?? Buffer.byteLength(input.html, 'utf8');
   const findings: ArtifactPreflightFinding[] = [];
   const mb = (n: number) => `${(n / 1_000_000).toFixed(1)} MB`;
+  const syncShare = input.syncBytes ? ` The sync bundle (the design's working files) takes ${mb(input.syncBytes)} of it.` : '';
   if (bytes > ARTIFACT_MAX_BYTES) {
     findings.push({
       code: 'artifact-too-large',
-      message: `The page is ${mb(bytes)}; a Claude artifact can be at most ${mb(ARTIFACT_MAX_BYTES)}. Use smaller images or fewer embedded assets, or publish it as a site instead.`,
+      message: `The page is ${mb(bytes)}; a Claude artifact can be at most ${mb(ARTIFACT_MAX_BYTES)}. Use smaller images or fewer embedded assets, or publish it as a site instead.${syncShare}`,
     });
   } else if (bytes >= ARTIFACT_NEAR_LIMIT_BYTES) {
     findings.push({
       code: 'artifact-near-limit',
-      message: `The page is ${mb(bytes)}, close to the ${mb(ARTIFACT_MAX_BYTES)} artifact limit: a few more images or assets will push it over.`,
+      message: `The page is ${mb(bytes)}, close to the ${mb(ARTIFACT_MAX_BYTES)} artifact limit: a few more images or assets will push it over.${syncShare}`,
     });
   }
 

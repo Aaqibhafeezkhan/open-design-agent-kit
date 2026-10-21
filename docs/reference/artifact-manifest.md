@@ -49,7 +49,7 @@ Sidecars are named after the entry file (`<entry>.artifact.json`, and so on), so
 | `collectionId`, `collectionName`, `screenRole`, `screenIndex` | string / number | Collection membership. See [Collections](../guides/generate-a-design.md#collections). |
 | `sources` | `{ path, sha256 }[]` | The documents the design was [built from](../guides/deck-from-a-document.md), with their hashes at registration, so [`get_open_design_artifact`](tools.md#get_open_design_artifact) can report sources that changed since. At most 10. |
 | `explorationId`, `directionId` | string | Exploration membership: a sketch carries both; a built-out or merged version carries only `explorationId`. See [Explore design directions](../guides/explore-directions.md). |
-| `metadata` | object | Free-form, at most 16 KB. Uses so far: `metadata.exports`, `metadata.format`, `metadata.fluid` and `metadata.shares` (below), `metadata.remixedFrom` (the example a remix came from) and `metadata.description` (used for link previews when present). |
+| `metadata` | object | Free-form, at most 16 KB. Uses so far: `metadata.exports`, `metadata.format`, `metadata.fluid`, `metadata.shares` and `metadata.sync` (below), `metadata.remixedFrom` (the example a remix came from) and `metadata.description` (used for link previews when present). |
 
 ### metadata.exports
 
@@ -97,6 +97,14 @@ Where the artifact has been published, recorded by [`publish_open_design_artifac
 | `claimUrl`, `expiresAt` | Temporary providers: where the user claims the site, and when the link stops working otherwise. The claim URL is private to the user. |
 | `siteRef` | The site id, project name or `owner/repo/folder` that the next publish redeploys to. For `claude-artifact`, the artifact's URL. |
 | `publishedAt` | When it was recorded. |
+
+### metadata.sync
+
+`true` when the design's [Claude artifact](../guides/share-and-publish.md#continue-on-another-device) carries its working files. Set by [`publish_open_design_artifact`](tools.md#publish_open_design_artifact) with `sync`, and used by later `claude-artifact` publishes that don't pass it. `false` turns it off: the next version carries no files, while earlier versions keep theirs. [`restore_open_design_artifact`](tools.md#restore_open_design_artifact) restores the manifest with it.
+
+```json
+"metadata": { "sync": true }
+```
 
 Expired temporary entries are kept, but they're no longer offered as links.
 

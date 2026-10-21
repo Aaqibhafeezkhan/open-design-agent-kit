@@ -10,6 +10,10 @@ The agent finds remixable entries with [`list_open_design_skills`](../reference/
 
 > **In Claude Code / Codex:** the overview skill ships `references/remixable-examples.md`, a list of every example grouped by mode, which the agent can read without a tool call. Each example is also an MCP prompt named `od-<mode>-<id>` (in Claude Code, `/mcp__open-design__od-…`). Selecting one prefills a remix request for you to edit and send.
 
+## Browse the gallery in Claude Desktop Chat
+
+Where the inline preview shows (see [Inline preview](inline-preview.md#pick-an-example)), ask Claude to show you the examples. A gallery of live previews appears in the conversation, filterable by mode; **Remix this** sends your pick to Claude, which remixes it.
+
 ## Browse the gallery (VS Code)
 
 Three ways into the same examples:

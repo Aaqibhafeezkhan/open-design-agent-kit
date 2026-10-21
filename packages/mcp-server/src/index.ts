@@ -41,7 +41,11 @@ interface ToolDef {
   handler: (ctx: ToolContext, args: Record<string, unknown>) => Promise<string | tools.ToolOutput>;
   /** Called only by the preview MCP App's page: listed only to clients that render MCP Apps, which keep it from the model. */
   appOnly?: boolean;
+  /** A model-visible picker (openspec add-mcp-app-pickers): listed only to clients that render MCP Apps, since elsewhere a list_* tool says the same. */
+  appsHostOnly?: boolean;
 }
+
+const SKILL_MODES = ['prototype', 'deck', 'design-system', 'image', 'video', 'template', 'utility', 'audio', 'other'];
 
 const TOOL_DEFS: ToolDef[] = [
   {
@@ -369,29 +373,79 @@ const TOOL_DEFS: ToolDef[] = [
     tool: {
       name: 'show_open_design_artifact',
       description:
-        "Shows a registered Open Design artifact, or an exploration's directions side by side, to the user inline in the conversation, in hosts that render MCP Apps (Claude Desktop Chat). There the user can switch to Comment mode, click an element and leave a comment, then click \"Ask Claude to apply\", which posts a message here naming the comment ids; export buttons post a request for export_open_design_artifact (the page never downloads). For an exploration, \"Take this one\" posts the user's pick; confirm the next step with them before calling choose_open_design_direction. Every host also gets a text result (title, path, open comments); hosts without MCP Apps are told to use open_open_design_preview. In Claude Desktop Chat call it after register_open_design_artifact and after applying comments. Pass entryPath, or explorationId for an exploration.",
+        "Shows a registered Open Design artifact, or an exploration's directions side by side, or a fluid master's campaign sheet, to the user inline in the conversation, in hosts that render MCP Apps (Claude Desktop Chat). There the user can switch to Comment mode, click an element and leave a comment, then click \"Ask Claude to apply\", which posts a message here naming the comment ids; export buttons post a request for export_open_design_artifact (the page never downloads). For an exploration, \"Take this one\" posts the user's pick; confirm the next step with them before calling choose_open_design_direction. A style-tile exploration also offers \"Use as design system\", which asks directly for next: \"save-design-system\". With campaign: true (after export_open_design_artifact with campaignSheet: true) it shows every tile of the master's campaign sheet with its errors; \"Fix this piece\" posts the tile and its errors here. Every host also gets a text result (title, path, open comments, or the campaign tiles); hosts without MCP Apps are told to use open_open_design_preview. In Claude Desktop Chat call it after register_open_design_artifact and after applying comments. Pass entryPath, or explorationId for an exploration.",
       inputSchema: {
         type: 'object',
         properties: {
           entryPath: { type: 'string', description: "Workspace-relative path to the registered artifact's entry file." },
           explorationId: { type: 'string', description: 'An exploration id from prepare_open_design_exploration, to show its directions instead.' },
+          campaign: { type: 'boolean', description: "With a fluid master's entryPath: show its last campaign sheet, tile by tile, instead of the design." },
         },
       },
       _meta: previewAppToolMeta(),
     },
-    handler: (ctx, args) => tools.showArtifact(ctx, args as { entryPath?: string; explorationId?: string }),
+    handler: (ctx, args) => tools.showArtifact(ctx, args as { entryPath?: string; explorationId?: string; campaign?: boolean }),
+  },
+  {
+    tool: {
+      name: 'show_open_design_examples',
+      description:
+        "Shows the remixable Open Design examples to the user inline as a gallery of live previews, in hosts that render MCP Apps (Claude Desktop Chat), so they can pick a starting point by eye. \"Remix this\" posts a message here naming the example's skillId; then call remix_open_design_example with it (ask what to make first if the user hasn't said). The page copies nothing itself. Filter with query, mode or surface (a surface id, as list_open_design_skills takes). Only listed to hosts that render MCP Apps; elsewhere use list_open_design_skills with remixableOnly: true.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Free-text filter, matched against name, description and triggers.' },
+          mode: { type: 'string', enum: SKILL_MODES, description: 'Exact mode filter.' },
+          surface: { type: 'string', description: 'A surface id (prototype, slides, poster, …): only that surface\'s examples.' },
+        },
+      },
+      _meta: previewAppToolMeta(),
+    },
+    handler: (ctx, args) => tools.showExamples(ctx, args as tools.ShowExamplesInput),
+    appsHostOnly: true,
+  },
+  {
+    tool: {
+      name: 'show_open_design_design_systems',
+      description:
+        "Shows Open Design design systems to the user inline as tiles (palette swatches, fonts, active mark), in hosts that render MCP Apps (Claude Desktop Chat); opening a tile shows its Visualize page. \"Use this design system\" posts a message here naming the id; then call set_active_design_system with it. Pass ids for a shortlist (shown in that order), or query and category to filter. Only listed to hosts that render MCP Apps; elsewhere use list_open_design_design_systems.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Free-text filter on id, name, summary and category.' },
+          category: { type: 'string', description: 'Exact category filter.' },
+          ids: { type: 'array', items: { type: 'string' }, description: 'A shortlist of design system ids; query and category are ignored.' },
+        },
+      },
+      _meta: previewAppToolMeta(),
+    },
+    handler: (ctx, args) => tools.showDesignSystems(ctx, args as tools.ShowDesignSystemsInput),
+    appsHostOnly: true,
   },
   {
     tool: {
       name: 'get_open_design_preview_state',
-      description: "Used by the Open Design preview page only: the design as one self-contained page, its comments and its latest check screenshots.",
+      description:
+        'Used by the Open Design preview page only: a view\'s data (the design with its comments and check screenshots, an exploration, a page of examples, design-system tiles, a campaign sheet), or one example\'s or design system\'s preview.',
       inputSchema: {
         type: 'object',
-        properties: { entryPath: { type: 'string' }, explorationId: { type: 'string' } },
+        properties: {
+          entryPath: { type: 'string' },
+          explorationId: { type: 'string' },
+          view: { type: 'string', enum: ['examples', 'design-systems', 'campaign'] },
+          query: { type: 'string' },
+          mode: { type: 'string' },
+          surface: { type: 'string' },
+          category: { type: 'string' },
+          ids: { type: 'array', items: { type: 'string' } },
+          cursor: { type: 'string' },
+          exampleId: { type: 'string' },
+          designSystemId: { type: 'string' },
+        },
       },
       _meta: appOnlyToolMeta(),
     },
-    handler: (ctx, args) => tools.previewAppState(ctx, args as { entryPath?: string; explorationId?: string }),
+    handler: (ctx, args) => tools.previewAppState(ctx, args as tools.PreviewStateInput),
     appOnly: true,
   },
   {
@@ -785,7 +839,7 @@ const TOOL_DEFS: ToolDef[] = [
           },
           agent: {
             type: 'string',
-            enum: ['claude-code', 'codex', 'vscode', 'cursor', 'generic'],
+            enum: ['claude-code', 'claude-desktop', 'codex', 'vscode', 'cursor', 'generic'],
             description: 'Which agent the setup steps are for. Defaults to the agent this server is connected to.',
           },
         },
@@ -923,7 +977,7 @@ const TOOL_DEFS: ToolDef[] = [
     tool: {
       name: 'publish_open_design_artifact',
       description:
-        "Publishes a registered Open Design artifact as a live web page, so the user can share a link with teammates or stakeholders. Use when the user asks to share, publish, deploy, host or \"get a link\" for a design. (For a single file to attach or send, use export_open_design_artifact with format \"standalone\" instead.) It builds a deploy-ready folder (exports/site/) locally, then returns step-by-step instructions for publishing it with the host's own CLI from your terminal, under the user's own login or a temporary no-account link: netlify-temporary or cloudflare-temporary (no account, about 60 minutes unless claimed), or netlify, vercel, cloudflare-pages or github-pages (the user's own account). It never deploys anything itself and never handles tokens. Without provider, the instructions ask the user to choose. The instructions require the user's explicit yes before anything goes online. With provider claude-artifact (only if you have an Artifact tool: Claude Code or Claude Desktop), it writes the standalone file instead, checks it against the artifact viewer's limits, and returns instructions to publish that file by path with your Artifact tool; the artifact stays private until the user shares it, so there is no confirmation step. After a successful deploy or publish, call this tool again with published: { provider, url, claimUrl?, expiresAt?, siteRef? } to record the link, so the next publish updates the same site or artifact.",
+        "Publishes a registered Open Design artifact as a live web page, so the user can share a link with teammates or stakeholders. Use when the user asks to share, publish, deploy, host or \"get a link\" for a design. (For a single file to attach or send, use export_open_design_artifact with format \"standalone\" instead.) It builds a deploy-ready folder (exports/site/) locally, then returns step-by-step instructions for publishing it with the host's own CLI from your terminal, under the user's own login or a temporary no-account link: netlify-temporary or cloudflare-temporary (no account, about 60 minutes unless claimed), or netlify, vercel, cloudflare-pages or github-pages (the user's own account). It never deploys anything itself and never handles tokens. Without provider, the instructions ask the user to choose. The instructions require the user's explicit yes before anything goes online. With provider claude-artifact (only if you have an Artifact tool: Claude Code or Claude Desktop), it writes the standalone file instead, checks it against the artifact viewer's limits, and returns instructions to publish that file by path with your Artifact tool; the artifact stays private until the user shares it, so there is no confirmation step. After a successful deploy or publish, call this tool again with published: { provider, url, claimUrl?, expiresAt?, siteRef? } to record the link, so the next publish updates the same site or artifact. With claude-artifact, sync: true also carries the design's working files in the page, so it can be restored elsewhere with restore_open_design_artifact; turn it on only after the user agrees.",
       inputSchema: {
         type: 'object',
         properties: {
@@ -945,6 +999,10 @@ const TOOL_DEFS: ToolDef[] = [
             items: { type: 'string' },
             maxItems: 10,
             description: "Workspace paths of files in this artifact's own exports/ folder (e.g. an exported PDF) to host alongside the page, at files/<name> in the bundle, publicly downloadable at <site URL>/files/<name>. Used by the Canva flow to give Canva a URL to import. Export the files first.",
+          },
+          sync: {
+            type: 'boolean',
+            description: "claude-artifact only: carry the design's working files (entry, manifest, comments, supporting files, a custom design system's DESIGN.md) in the page, so restore_open_design_artifact can pick the design up on another device or session. Anyone the artifact is shared with can read them. Stored in the manifest: omit it to keep the stored setting, false turns it off. Only with the user's agreement.",
           },
           published: {
             type: 'object',
@@ -971,8 +1029,35 @@ const TOOL_DEFS: ToolDef[] = [
           badge?: boolean;
           includeFiles?: string[];
           published?: { provider: string; url: string; claimUrl?: string; expiresAt?: string; siteRef?: string };
+          sync?: boolean;
         },
       ),
+  },
+  {
+    tool: {
+      name: 'restore_open_design_artifact',
+      description:
+        "Restores an Open Design design from a synced Claude artifact (one published with publish_open_design_artifact, provider claude-artifact and sync: true) into this workspace, so it can be edited and republished here. Use when the user gives a Claude artifact link to pick a design back up on another device or in a new session. First read the artifact with your Artifact tool, which saves the page to a file; pass that file's path (in Claude Desktop with a folder, a path in the connected folder) and the artifact link. It writes the design's files under the output directory, all or nothing, refuses paths that leave it, and doesn't overwrite local files that differ unless overwrite is true. It records the link, so the next preview publish updates the same artifact. Never makes a network request.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          pagePath: {
+            type: 'string',
+            description: 'Path of the page your Artifact tool saved when reading the artifact: absolute, or relative to the workspace.',
+          },
+          artifactUrl: {
+            type: 'string',
+            description: "The artifact's https://claude.ai/... link.",
+          },
+          overwrite: {
+            type: 'boolean',
+            description: "Replace local files whose content differs from the artifact's. Default false: the restore then writes nothing and lists them. Only after the user chooses the artifact's version.",
+          },
+        },
+        required: ['pagePath', 'artifactUrl'],
+      },
+    },
+    handler: (ctx, args) => tools.restoreArtifact(ctx, args as { pagePath: string; artifactUrl: string; overwrite?: boolean }),
   },
   {
     tool: {
@@ -1121,15 +1206,16 @@ async function main(): Promise<void> {
 
   // App-only tools go only to hosts that render MCP Apps: those keep them out of
   // the model's list by their `visibility`; any other host would show them to it.
-  server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOL_DEFS.filter((d) => !d.appOnly || rendersMcpApps()).map((d) => d.tool) }));
+  // The picker tools likewise: elsewhere list_open_design_skills and list_open_design_design_systems cover them.
+  server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOL_DEFS.filter((d) => !(d.appOnly || d.appsHostOnly) || rendersMcpApps()).map((d) => d.tool) }));
 
   // The preview MCP App's page (openspec add-mcp-app-preview).
   server.setRequestHandler(ListResourcesRequestSchema, async () => ({
-    resources: [{ uri: PREVIEW_APP_URI, name: 'Open Design preview', description: 'Shows an Open Design artifact inline, with comments.', mimeType: MCP_APP_MIME_TYPE }],
+    resources: [{ uri: PREVIEW_APP_URI, name: 'Open Design preview', description: 'Shows an Open Design artifact inline, with comments, and the example, design-system and campaign pickers.', mimeType: MCP_APP_MIME_TYPE }],
   }));
   server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
     if (request.params.uri !== PREVIEW_APP_URI) throw new Error(`Unknown resource: ${request.params.uri}`);
-    const { html, resourceDomains } = await tools.previewAppResource();
+    const { html, resourceDomains } = await tools.previewAppResource(ctx);
     return {
       contents: [{ uri: PREVIEW_APP_URI, mimeType: MCP_APP_MIME_TYPE, text: html, _meta: { ui: { csp: { resourceDomains, connectDomains: [] }, prefersBorder: true } } }],
     };

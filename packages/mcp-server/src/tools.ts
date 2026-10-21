@@ -38,6 +38,7 @@ import {
   formatFound3dAssets,
   type Find3dAssetsInput,
   publishArtifact as publishArtifactCore,
+  restoreArtifact as restoreArtifactCore,
   exportsForKind,
   formatExportResult,
   loadLocalPrompts,
@@ -53,6 +54,16 @@ import {
   loadPreviewAssets,
   buildArtifactPreviewState,
   buildExplorationPreviewState,
+  buildCampaignState,
+  buildDesignSystemPreview,
+  buildDesignSystemsState,
+  buildExamplePreview,
+  buildExamplesState,
+  designSystemsFallbackText,
+  exampleRemoteUrls,
+  examplesFallbackText,
+  matchingExamples,
+  type ExamplePreviewResult,
   prepareShow,
   previewAppResourceDomains,
   remoteOrigins,
@@ -440,21 +451,139 @@ function notePreviewAppOrigins(urls: string[]): void {
   remoteOrigins(urls).forEach((o) => previewAppOrigins.add(o));
 }
 
-/** The `ui://open-design/preview` page and the remote domains it may load from. */
-export async function previewAppResource(): Promise<{ html: string; resourceDomains: string[] }> {
+// The bundled examples are fixed, so the URLs they load are read once per assets root.
+const exampleUrlsByAssetsRoot = new Map<string, Promise<string[]>>();
+
+/** The `ui://open-design/preview` page and the remote domains it may load from: shown designs' origins, plus every bundled example's when a context is given. */
+export async function previewAppResource(ctx?: ToolContext): Promise<{ html: string; resourceDomains: string[] }> {
   const assets = await loadPreviewAssets();
-  return { html: renderPreviewAppPage(assets.mcpAppJs), resourceDomains: previewAppResourceDomains(previewAppOrigins) };
+  const seen = new Set(previewAppOrigins);
+  if (ctx) {
+    let urls = exampleUrlsByAssetsRoot.get(ctx.assetsRoot);
+    if (!urls) {
+      urls = exampleRemoteUrls(ctx.contentIndex, ctx.assetsRoot).catch(() => []);
+      exampleUrlsByAssetsRoot.set(ctx.assetsRoot, urls);
+    }
+    remoteOrigins(await urls).forEach((o) => seen.add(o));
+  }
+  return { html: renderPreviewAppPage(assets.mcpAppJs), resourceDomains: previewAppResourceDomains(seen) };
+}
+
+// A few bundled example previews, newest last: a gallery page asks for each visible card.
+const examplePreviewCache = new Map<string, ExamplePreviewResult>();
+const EXAMPLE_PREVIEW_CACHE_SIZE = 24;
+
+async function cachedExamplePreview(ctx: ToolContext, exampleId: string): Promise<ExamplePreviewResult> {
+  const key = `${ctx.assetsRoot}\0${exampleId}`;
+  const hit = examplePreviewCache.get(key);
+  if (hit) {
+    examplePreviewCache.delete(key);
+    examplePreviewCache.set(key, hit);
+    return hit;
+  }
+  const result = await buildExamplePreview(ctx.contentIndex, ctx.assetsRoot, exampleId);
+  if (result.ok) {
+    examplePreviewCache.set(key, result);
+    while (examplePreviewCache.size > EXAMPLE_PREVIEW_CACHE_SIZE) examplePreviewCache.delete(examplePreviewCache.keys().next().value as string);
+  }
+  return result;
 }
 
 /** show_open_design_artifact: the text every host gets, plus the target the preview app renders. */
-export async function showArtifact(ctx: ToolContext, input: { entryPath?: string; explorationId?: string }): Promise<ToolOutput> {
+export async function showArtifact(ctx: ToolContext, input: { entryPath?: string; explorationId?: string; campaign?: boolean }): Promise<ToolOutput> {
   const shown = await prepareShow({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, ...input, hostRendersApp: ctx.rendersMcpApps === true });
   if (!shown.ok) return { text: shown.text };
-  return { text: shown.text, structuredContent: shown.target };
+  return { text: shown.text, structuredContent: { ...shown.target } };
 }
 
-/** get_open_design_preview_state (app only): the design as a standalone page with the bridge, its comments and check screenshots. */
-export async function previewAppState(ctx: ToolContext, input: { entryPath?: string; explorationId?: string }): Promise<ToolOutput> {
+export interface ShowExamplesInput {
+  query?: string;
+  mode?: string;
+  surface?: string;
+}
+
+/** show_open_design_examples: the gallery's target (filters and a title only); a host without MCP Apps gets a short text list. */
+export async function showExamples(ctx: ToolContext, input: ShowExamplesInput): Promise<ToolOutput> {
+  const filters: ShowExamplesInput = {};
+  for (const key of ['query', 'mode', 'surface'] as const) if (typeof input[key] === 'string' && input[key]!.trim()) filters[key] = input[key]!.trim();
+  const matched = await matchingExamples(ctx.contentIndex, filters);
+  if (!matched.ok) return { text: matched.message };
+  const examples = filters.mode ? matched.examples.filter((s) => s.mode === filters.mode!.toLowerCase()) : matched.examples;
+  if (!ctx.rendersMcpApps) return { text: examplesFallbackText(examples) };
+  const title = filters.surface ? `Examples: ${filters.surface}` : filters.query ? `Examples: ${filters.query}` : 'Examples to remix';
+  return {
+    text: `Showing ${examples.length} remixable examples inline. The user picks one with "Remix this", which posts a message here naming its skillId; then call remix_open_design_example (ask what to make first if they haven't said).`,
+    structuredContent: { view: 'examples', title, ...filters },
+  };
+}
+
+export interface ShowDesignSystemsInput {
+  query?: string;
+  category?: string;
+  ids?: string[];
+}
+
+/** show_open_design_design_systems: the tiles' target; a host without MCP Apps gets a short text list. */
+export async function showDesignSystems(ctx: ToolContext, input: ShowDesignSystemsInput): Promise<ToolOutput> {
+  const filters: ShowDesignSystemsInput = {};
+  if (Array.isArray(input.ids) && input.ids.length) filters.ids = input.ids.filter((id) => typeof id === 'string' && id.trim()).map((id) => id.trim());
+  else {
+    if (typeof input.query === 'string' && input.query.trim()) filters.query = input.query.trim();
+    if (typeof input.category === 'string' && input.category.trim()) filters.category = input.category.trim();
+  }
+  const state = await buildDesignSystemsState(ctx.contentIndex, await ctx.store.get(), filters);
+  if (!ctx.rendersMcpApps) return { text: designSystemsFallbackText(state) };
+  const missing = state.unknownIds?.length ? ` Unknown ids, not shown: ${state.unknownIds.join(', ')}.` : '';
+  const title = filters.ids ? 'Shortlisted design systems' : filters.category ? `Design systems: ${filters.category}` : filters.query ? `Design systems: ${filters.query}` : 'Design systems';
+  return {
+    text: `Showing ${state.systems.length} design systems inline.${missing} The user opens one to see it and picks with "Use this design system", which posts a message here; then call set_active_design_system with that id.`,
+    structuredContent: { view: 'design-systems', title, ...filters },
+  };
+}
+
+export interface PreviewStateInput {
+  entryPath?: string;
+  explorationId?: string;
+  view?: string;
+  query?: string;
+  mode?: string;
+  surface?: string;
+  category?: string;
+  ids?: string[];
+  cursor?: string;
+  exampleId?: string;
+  designSystemId?: string;
+}
+
+/** get_open_design_preview_state (app only): the data behind each view, one page or one preview per call. */
+export async function previewAppState(ctx: ToolContext, input: PreviewStateInput): Promise<ToolOutput> {
+  if (input.exampleId) {
+    const result = await cachedExamplePreview(ctx, input.exampleId);
+    if (!result.ok) throw new Error(result.message);
+    notePreviewAppOrigins(result.externalDependencies);
+    return { text: `Example ${input.exampleId}${result.preview.html ? '' : ': no inline preview'}.`, structuredContent: { ...result.preview } };
+  }
+  if (input.designSystemId) {
+    const result = await buildDesignSystemPreview(ctx.contentIndex, input.designSystemId);
+    if (!result.ok) throw new Error(result.message);
+    return { text: `Design system ${input.designSystemId}.`, structuredContent: { ...result.preview } };
+  }
+  if (input.view === 'examples') {
+    const result = await buildExamplesState(ctx.contentIndex, input);
+    if (!result.ok) throw new Error(result.message);
+    return { text: `${result.state.examples.length} of ${result.state.total} examples.`, structuredContent: { ...result.state } };
+  }
+  if (input.view === 'design-systems') {
+    const state = await buildDesignSystemsState(ctx.contentIndex, await ctx.store.get(), input);
+    return { text: `${state.systems.length} design systems.`, structuredContent: { ...state } };
+  }
+  if (input.view === 'campaign') {
+    if (!input.entryPath) throw new Error('Pass entryPath for the campaign view.');
+    const shown = await prepareShow({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, entryPath: input.entryPath, campaign: true, hostRendersApp: true });
+    if (!shown.ok) throw new Error(shown.text);
+    const state = await buildCampaignState({ workspaceRoot: ctx.workspaceRoot, entryPath: input.entryPath, title: shown.target.title });
+    return { text: `Campaign sheet of ${input.entryPath}: ${state.tiles.length} tiles.`, structuredContent: { ...state } };
+  }
   if (input.explorationId) {
     const result = await buildExplorationPreviewState({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, explorationId: input.explorationId });
     if (!result.ok) throw new Error(result.message);
@@ -706,9 +835,16 @@ export async function publishArtifact(
     badge?: boolean;
     includeFiles?: string[];
     published?: { provider: string; url: string; claimUrl?: string; expiresAt?: string; siteRef?: string };
+    sync?: boolean;
   },
 ): Promise<string> {
-  const result = await publishArtifactCore({ ...input, workspaceRoot: ctx.workspaceRoot });
+  const result = await publishArtifactCore({ ...input, workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir });
+  return result.text;
+}
+
+/** restore_open_design_artifact: writes a synced artifact's working files back (openspec add-artifact-sync). */
+export async function restoreArtifact(ctx: ToolContext, input: { pagePath: string; artifactUrl: string; overwrite?: boolean }): Promise<string> {
+  const result = await restoreArtifactCore({ ...input, workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir });
   return result.text;
 }
 

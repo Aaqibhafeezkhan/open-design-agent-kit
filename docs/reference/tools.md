@@ -32,6 +32,7 @@ Two rules apply to every tool:
 | [`adapt_open_design_artifact`](#adapt_open_design_artifact) | `#od-adapt` | yes | Instructions to re-compose a design for other sizes |
 | [`create_open_design_qr_code`](#create_open_design_qr_code) | `#od-qr-code` | yes | Make a real QR code for a design |
 | [`publish_open_design_artifact`](#publish_open_design_artifact) | `#od-publish` | yes | Package for hosting and get instructions to publish a link |
+| [`restore_open_design_artifact`](#restore_open_design_artifact) | none | yes (MCP only) | Pick a design back up from a synced Claude artifact |
 | [`find_open_design_3d_assets`](#find_open_design_3d_assets) | `#od-3d-assets` | yes | Find free CC0 HDRIs, textures and models on Poly Haven for a 3D design |
 | [`list_open_design_integrations`](#list_open_design_integrations) | `#od-integrations` | yes | Find trusted integrations (Canva, Figma, Notion, Drive, Slack, social posting) and setup steps for this agent |
 | [`start_open_design_job_run`](#start_open_design_job_run) | none | yes (MCP only) | Start one run of a [recurring job](../guides/recurring-jobs.md): skip or the steps to follow |
@@ -238,23 +239,57 @@ MCP hosts only (Claude Code, Codex, Cursor and others). Shows a registered artif
 
 ### show_open_design_artifact
 
-MCP hosts only. Shows a registered artifact, or an exploration's directions side by side, [inline in the conversation](../guides/inline-preview.md) in hosts that render MCP Apps (Claude Desktop Chat). There the user can comment on elements and click **Ask Claude to apply**, which posts a message naming the entry and the comment ids; the export buttons post a request for `export_open_design_artifact`, since the host doesn't allow downloads. For an exploration, **Take this one** posts the user's pick, and the agent confirms the next step before calling `choose_open_design_direction`.
+MCP hosts only. Shows a registered artifact, an exploration's directions side by side, or a fluid master's campaign sheet, [inline in the conversation](../guides/inline-preview.md) in hosts that render MCP Apps (Claude Desktop Chat). There the user can comment on elements and click **Ask Claude to apply**, which posts a message naming the entry and the comment ids; the export buttons post a request for `export_open_design_artifact`, since the host doesn't allow downloads. For an exploration, **Take this one** posts the user's pick, and the agent confirms the next step before calling `choose_open_design_direction`; a [style-tile](../guides/explore-directions.md) exploration also offers **Use as design system**, which asks for `next: "save-design-system"` directly. With `campaign: true` the page shows each tile of the master's last campaign sheet with its errors: a page-type piece opens in the artifact view, and **Fix this piece** posts the tile and its errors.
 
 | Argument | Type | Required | Meaning |
 |---|---|---|---|
 | `entryPath` | string | no | Workspace-relative path to a registered entry file. |
 | `explorationId` | string | no | An [exploration](#exploring-directions) to show instead: its directions side by side. |
+| `campaign` | boolean | no | With a fluid master's `entryPath`: show its last campaign sheet (from `exports/campaign-sheet.json`) instead of the design. Without a sidecar the page shows `campaign-sheet.png`, or asks for an export with `campaignSheet: true`. |
 
-**Result:** text for every host: the title, entry path and open comments. A host without MCP Apps (the Claude Code terminal, Codex) gets only this text, plus a hint to use [`open_open_design_preview`](#open_open_design_preview). An unregistered entry returns a not-registered result. The tool declares the `ui://open-design/preview` resource as its UI and returns the target as structured content for it.
+**Result:** text for every host: the title, entry path and open comments (with `campaign`, each tile and its errors). A host without MCP Apps (the Claude Code terminal, Codex) gets only this text, plus a hint to use [`open_open_design_preview`](#open_open_design_preview). An unregistered entry returns a not-registered result. The tool declares the `ui://open-design/preview` resource as its UI and returns the target as structured content for it.
 
-### get_open_design_preview_state
+### show_open_design_examples
 
-Called only by the inline preview page, never by the model: hosts that render MCP Apps keep it out of the model's tool list, and the server lists it only to those hosts. It returns the design as one self-contained page (local fonts and images inlined, the preview bridge injected), its comments, its latest check screenshots and the export formats offered. Over 5 MiB, or for a kind that isn't HTML, the page shows the latest check screenshot instead.
+MCP hosts that render MCP Apps only: the server lists it to no other host, where [`list_open_design_skills`](#list_open_design_skills) with `remixableOnly: true` does the same job. Shows the remixable examples [inline](../guides/inline-preview.md#pick-an-example) as a gallery: 24 cards a page, each with a live, view-only preview loaded when it scrolls into sight, and mode chips to filter. **Remix this** posts a message naming the example's skill id; the agent then calls [`remix_open_design_example`](#remix_open_design_example) (asking what to make first if the user hasn't said). The page copies no files itself.
 
 | Argument | Type | Required | Meaning |
 |---|---|---|---|
-| `entryPath` | string | no | The registered entry to show. |
+| `query` | string | no | Free-text filter on name, description and triggers. |
+| `mode` | string | no | Exact mode, as `list_open_design_skills` takes. |
+| `surface` | string | no | A surface id (`slides`, `poster`, …): only that surface's examples. |
+
+**Result:** structured content with only the view, the filters and a title; the page reads the examples through `get_open_design_preview_state`. Called anyway by a host without MCP Apps, it returns a short text list of matching ids and names `list_open_design_skills`.
+
+### show_open_design_design_systems
+
+MCP hosts that render MCP Apps only, like `show_open_design_examples`; elsewhere use [`list_open_design_design_systems`](#list_open_design_design_systems). Shows design systems [inline](../guides/inline-preview.md#pick-a-design-system) as tiles: name, category, the active mark, five palette swatches and the display and body fonts, from each system's `tokens.css` (or its DESIGN.md colors without one). Opening a tile shows its Visualize page, the same script-free page VS Code shows; **Use this design system** posts a message naming the id, and the agent calls [`set_active_design_system`](#set_active_design_system).
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `query` | string | no | Free-text filter on id, name, summary and category. |
+| `category` | string | no | Exact category. |
+| `ids` | string[] | no | A shortlist, shown in this order; `query` and `category` are ignored. |
+
+**Result:** as for `show_open_design_examples`: only the view, filters and a title, or a short text list for a host without MCP Apps.
+
+### get_open_design_preview_state
+
+Called only by the inline preview page, never by the model: hosts that render MCP Apps keep it out of the model's tool list, and the server lists it only to those hosts. For an artifact it returns the design as one self-contained page (local fonts and images inlined, the preview bridge injected), its comments, its latest check screenshots and the export formats offered. Over 5 MiB, or for a kind that isn't HTML, the page shows the latest check screenshot instead. For the pickers it returns one page of examples, the design-system tiles, a campaign sheet's tiles, or one example's or design system's preview, so none of it passes through the model's context.
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `entryPath` | string | no | The registered entry to show (or, with `view: "campaign"`, the master). |
 | `explorationId` | string | no | The exploration to show instead. |
+| `view` | string | no | `examples`, `design-systems` or `campaign`. |
+| `query` | string | no | The examples' or design systems' filter. |
+| `mode` | string | no | The examples' mode filter. |
+| `surface` | string | no | The examples' surface filter. |
+| `category` | string | no | The design systems' category filter. |
+| `ids` | string[] | no | The design systems' shortlist. |
+| `cursor` | string | no | The next page of examples, as the previous page returned it. |
+| `exampleId` | string | no | One example's view-only preview (text instead over 5 MiB). |
+| `designSystemId` | string | no | One design system's Visualize page. |
 
 ### save_open_design_comment
 
@@ -538,7 +573,7 @@ Renders a registered artifact in a headless browser (an installed Chrome, Edge o
 | `duration` | number 0.5–60 | no | `mp4`/`webm`/`gif` only: length in seconds. Default: the sum of the frames' `data-duration`, else the longest CSS or Web animation, else 6. |
 | `loop` | boolean | no | `gif` only: loop forever. Default true. |
 | `transparent` | boolean | no | `png` only: capture without the page background, so whatever the design doesn't paint is transparent (cut-outs such as a [3D product shot](../guides/3d-objects.md)). The page, and a 3D scene's renderer, must have a transparent background; a warning says when every pixel came out opaque. Not re-encoded to fit `maxBytes`. |
-| `campaignSheet` | boolean | no | Fluid designs only: also write `exports/campaign-sheet.png`: the design at every shape in `presets`, plus the first screen of every other piece registered in the same collection (landing page, email…), each marked when it has errors. See [Run a campaign](../guides/campaigns.md). |
+| `campaignSheet` | boolean | no | Fluid designs only: also write `exports/campaign-sheet.png`: the design at every shape in `presets`, plus the first screen of every other piece registered in the same collection (landing page, email…), each marked when it has errors. Next to it, `exports/campaign-sheet.json` lists each tile in order (label, shape preset or member entry path, exported file, image, error findings) and `exports/campaign-sheet-tiles/` holds each tile's image. See [Run a campaign](../guides/campaigns.md). |
 
 **Result (text):** each written file with its pixel size, file size and format; for decks, the slide count and the stage size and scale used; where the size came from; for print PDFs, the trim size, bleed and a note that the PDF is RGB; for page exports, the **preflight** findings, errors first ([the checks](../guides/posters.md#preflight-checks)); and any warnings (failed requests, blank slides, budget re-encoding). Details in [Export images](../guides/export-images.md), [Export decks and PDFs](../guides/export-decks.md) and [Posters and print](../guides/posters.md).
 
@@ -614,16 +649,44 @@ With `provider: "claude-artifact"`, it writes the `standalone` file (`exports/<n
 | `provider` | `netlify-temporary` · `cloudflare-temporary` · `netlify` · `vercel` · `cloudflare-pages` · `github-pages` · `claude-artifact` | no | Where to publish. Omitted: the instructions list the choices for the user to pick. |
 | `includeFiles` | string[] | no | Up to 10 files from this artifact's own `exports/` folder (e.g. an exported PDF) to host alongside the page, at `files/<name>` in the bundle and publicly downloadable at `<site URL>/files/<name>`. They're listed among the files going out at the confirmation stage. A path outside the artifact's `exports/`, a missing file or a duplicate name is an error, and nothing is built. The Canva flow uses this to give Canva a URL to import. |
 | `badge` | boolean | no | Add the closeable "Made with Open Design" footer badge. Default `true`, unless [`openDesign.share.badge`](settings-and-env.md#opendesignsharebadge) is off or [`OPEN_DESIGN_SHARE_BADGE`](settings-and-env.md#open_design_share_badge) is `0`. |
+| `sync` | boolean | no | `claude-artifact` only (any other provider is an `invalid-args` error): carry the design's working files in the page, so [`restore_open_design_artifact`](#restore_open_design_artifact) can pick it up elsewhere. Stored as [`metadata.sync`](artifact-manifest.md#metadatasync); omitted, the stored setting is used, and `false` turns it off. See [Continue on another device](../guides/share-and-publish.md#continue-on-another-device). MCP only. |
 | `published` | object | no | Record mode, after a successful deploy or publish: `{ provider, url, claimUrl?, expiresAt?, siteRef? }`. `url` and `claimUrl` must be `https:`; for `claude-artifact`, `url` is the `https://claude.ai/…` link and is also used as `siteRef`. Nothing is rebuilt. |
 
 **Result (text):**
 - Without `published`: the bundle's file list and preflight findings, then either the provider choices or the instructions for the chosen provider (check, confirm, deploy, report and record). For `claude-artifact`: the file's path and size, what won't load in the artifact, and the publish-and-record steps.
 - With `published`: a confirmation. The link is stored in the manifest's [`metadata.shares`](artifact-manifest.md#metadatashares), replacing an earlier record for the same provider and site.
 
+With sync on, the page to publish is `exports/<name>.sync.html`: the standalone page plus one `<script type="application/od-sync+json" id="od-sync">` block. The plain `exports/<name>.html` never carries it. The block counts toward the 16 MB budget: when page plus block would go over, the page is prepared without the block and the instructions say so (`artifact-sync-dropped`), so sync never stops the preview. The first time sync is on, the instructions tell the agent to say that anyone the artifact is shared with can read the files, and that earlier versions keep their copy.
+
 **Example (MCP arguments):**
 
 ```json
 { "entryPath": ".open-design/launch/launch.html", "provider": "netlify-temporary" }
+```
+
+### restore_open_design_artifact
+
+Writes a synced Claude artifact's working files back into the workspace, so the design can be edited and republished here: on another device, in a new Claude Code cloud session, or after editing it in a chat without the kit. The agent first reads the artifact with its own Artifact tool, which saves the page to a file, and passes that file's path. **It makes no network request.** MCP only.
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `pagePath` | string | yes | The page the Artifact tool saved: absolute, or relative to the workspace. In Claude Desktop with a folder, a path in the connected folder. |
+| `artifactUrl` | string | yes | The artifact's `https://claude.ai/…` link. Recorded as the design's `claude-artifact` share, so the next preview publish updates the same artifact. |
+| `overwrite` | boolean | no | Replace local files whose content differs from the artifact's. Default `false`. |
+
+What it checks, all before writing anything:
+- **The bundle.** One `application/od-sync+json` block, a known version, and every file's SHA-256. A file with `sha256: null` was edited outside the kit: it's written and reported. A mismatched hash fails the restore.
+- **Paths.** Every file goes under the [output directory](settings-and-env.md#open_design_output_dir) at its recorded path. A path that is absolute, has a `..` segment or resolves outside it refuses the whole restore.
+- **Local work.** A file that exists with different content stops the restore, and the result lists it, unless `overwrite` is `true`. Identical files are left untouched. The manifest counts as identical when only its share records and `updatedAt` differ.
+
+**Result (text):** the files written, those already identical, those edited outside the kit, and the [`sources`](artifact-manifest.md#manifest-fields) the design was built from that aren't present here (the bundle lists them but doesn't carry them).
+
+**Errors:** a page without a sync block ("published without sync"), a damaged bundle, an unsafe path, differing files without `overwrite`, and an `artifactUrl` that isn't a claude.ai link. Nothing is written in any of these cases.
+
+**Example (MCP arguments):**
+
+```json
+{ "pagePath": "/tmp/artifact-abc.html", "artifactUrl": "https://claude.ai/artifact/abc" }
 ```
 
 ## Recurring jobs
@@ -703,7 +766,7 @@ Looks up the trusted third-party MCP servers a workflow step can use instead of 
 | `capability` | string | no | What the step needs: `design.import`, `design.upload`, `design.export`, `design.read`, `design.write`, `brand.kits`, `docs.read`, `docs.write`, `storage.read`, `storage.search`, `storage.upload`, `team.share`, `social.post`, `social.schedule`. |
 | `integration` | string | no | One integration by id: `canva`, `figma`, `notion`, `google-drive`, `slack`, `buffer`, `metricool`, `x`. |
 | `platform` | string | no | A social network, for `social.*`: `x`, `linkedin`, `instagram`, `facebook`, `threads`, `tiktok`, `youtube`, `pinterest`, `bluesky`, `mastodon`. |
-| `agent` | `claude-code` · `codex` · `vscode` · `cursor` · `generic` | no | Which agent the setup steps are for. VS Code defaults to `vscode`; the MCP server infers it from the connecting client, falling back to `generic`. |
+| `agent` | `claude-code` · `claude-desktop` · `codex` · `vscode` · `cursor` · `generic` | no | Which agent the setup steps are for. VS Code defaults to `vscode`; the MCP server infers it from the connecting client (any Claude client other than Claude Code is `claude-desktop`), falling back to `generic`. `claude-desktop` covers Claude Desktop Chat, Cowork and claude.ai, where servers are added as claude.ai connectors. |
 
 **Result (text):**
 - With no arguments: the capability vocabulary and the list of integrations.

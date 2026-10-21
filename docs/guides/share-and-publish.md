@@ -74,6 +74,26 @@ The artifact viewer has its own rules, which the agent checks before publishing 
 - **Scripts only from** cdnjs, jsDelivr (`/npm/`), unpkg, the Tailwind CDN and the jQuery CDN, **stylesheets only from** Google Fonts. Images, data and other files from any other site are blocked, and each one is named with what will break (`artifact-blocked-host`).
 - **No downloads or print dialog** from the page.
 
+### Continue on another device
+
+A design's files live in your workspace, but its Claude artifact lives in your claude.ai account. With **sync**, the artifact also carries the design's working files, so you can pick it up on another computer, in a new Claude Code cloud session, or edit it in a chat that has no folder. Say where you'll continue:
+
+> I'll pick this poster up on my laptop later.
+
+The agent offers sync once and turns it on only if you agree (`sync: true` on [`publish_open_design_artifact`](../reference/tools.md#publish_open_design_artifact)). Later preview publishes keep the files up to date, until you ask to turn it off.
+
+- **What's carried:** the entry file, its manifest, its preview comments, the supporting files the manifest lists and a custom design system's `DESIGN.md`. Exports aren't (they can be made again), claim URLs of temporary links are removed, and the documents a deck was built from are listed but not copied.
+- **Who can read it:** anyone you share the artifact with can read these files. Each version keeps its own copy, so turning sync off later (`sync: false`) leaves earlier versions as they were.
+- **Size:** the files count toward the 16 MB limit. If page plus files would go over, that version goes out without them (`artifact-sync-dropped`) and the preview still publishes.
+
+To pick it back up, give the agent the artifact link in the new session:
+
+> Continue the gig poster: https://claude.ai/artifact/…
+
+The agent reads the artifact with its Artifact tool and calls [`restore_open_design_artifact`](../reference/tools.md#restore_open_design_artifact), which writes the files into your workspace and records the link, so the next preview updates the same artifact. If a file here differs from the artifact's copy, nothing is written until you say which to keep.
+
+In a Claude chat without Open Design's tools, the agent can still change a synced design: it edits the entry inside the artifact's sync block and republishes to the same link. A later restore lists that file as edited outside the kit.
+
 ## The "Made with Open Design" badge
 
 Published pages get a small "Made with Open Design · Remix this" note in the bottom corner. Viewers can close it. It's inline HTML: it loads nothing from the internet and doesn't track anyone. Standalone HTML files don't get it unless you ask.
