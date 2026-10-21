@@ -51,6 +51,20 @@ git commit -am "chore(claude-plugin): pin MCP server 0.2.0"
 
 `update-lock` resolves the plugin's standalone lockfile against the npm registry, so it only works after the version is published. The plugin's `lint` (`update-plugin-lock.mjs --check`) fails if the pin, the lockfile and `.mcp.json` disagree. It does not catch a pin that is still on the previous release, so don't skip this step.
 
+## Test before the stable release
+
+Release a prerelease first, test it, then release the same code as the stable version. Nobody gets a prerelease unless they ask for it by version or tag:
+
+1. `node scripts/bump-version.mjs 0.3.0-beta.1` and push the tag. The release workflow builds everything and creates a GitHub **pre-release**, which the docs' "latest release" links skip.
+2. Run **Publish npm Packages** with `0.3.0-beta.1`. A prerelease is published under the npm dist-tag `next`, not `latest`, so `npx @feimacode/open-design-agent-kit-mcp` and every `.mcp.json` that `init` wrote keep resolving the stable version. The MCP registry job is skipped for prereleases. Skip **Publish to Marketplace**: it only takes stable versions.
+3. Test against it:
+   - Claude Code: `"args": ["-y", "@feimacode/open-design-agent-kit-mcp@next"]` in a test project's `.mcp.json`, and `npx -y @feimacode/open-design-agent-kit@next init` or `preview`.
+   - Claude Desktop extension: install the `.mcpb` from the pre-release.
+   - Plugin: on a local branch, pin the plugin to `0.3.0-beta.1` (step 4 below, without pushing), then in Claude Code add your checkout as a marketplace with `/plugin marketplace add <path to checkout>` and install Open Design from it. The public marketplace keeps the stable pin.
+4. Fix and repeat with `-beta.2` as needed. When it passes, `node scripts/bump-version.mjs 0.3.0`, release, publish (it goes to `latest` and the MCP registry), and pin the plugin to `0.3.0`.
+
+npm keeps every published version, so a prerelease stays downloadable by its exact version. It's public, just never picked by default.
+
 ## Checklist before tagging
 
 - [ ] `npm run lint` and `npm run test:unit` pass locally.

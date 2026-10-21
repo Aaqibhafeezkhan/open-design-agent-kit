@@ -31,6 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.validate.outputs.version }}
+      dist_tag: ${{ steps.validate.outputs.dist_tag }}
 
     steps:
       - name: Validate confirmation
@@ -52,8 +53,17 @@ jobs:
             echo "❌ Invalid version format: $VERSION"
             exit 1
           fi
+          # A prerelease goes out under the `next` dist-tag, so `npx <package>`,
+          # every unpinned .mcp.json that `init` wrote, and `npm install` keep
+          # resolving the last stable version. npm 10 (Node 20) would otherwise
+          # move `latest` to the prerelease.
+          DIST_TAG="latest"
+          if [[ "$VERSION" == *-* ]]; then
+            DIST_TAG="next"
+          fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "✅ Version validated: $VERSION"
+          echo "dist_tag=$DIST_TAG" >> "$GITHUB_OUTPUT"
+          echo "✅ Version validated: $VERSION (npm dist-tag: $DIST_TAG)"
 
   check-release:
     needs: validate
@@ -136,7 +146,7 @@ jobs:
         working-directory: release
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish "feimacode-open-design-agent-kit-content-${{ needs.validate.outputs.version }}.tgz"
+        run: npm publish "feimacode-open-design-agent-kit-content-${{ needs.validate.outputs.version }}.tgz" --tag "${{ needs.validate.outputs.dist_tag }}"
 
       - name: Publish mcp-server
         # After content, not before — mcp-server depends on it, and a
@@ -145,13 +155,13 @@ jobs:
         working-directory: release
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish "feimacode-open-design-agent-kit-mcp-${{ needs.validate.outputs.version }}.tgz"
+        run: npm publish "feimacode-open-design-agent-kit-mcp-${{ needs.validate.outputs.version }}.tgz" --tag "${{ needs.validate.outputs.dist_tag }}"
 
       - name: Publish cli
         working-directory: release
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish "feimacode-open-design-agent-kit-${{ needs.validate.outputs.version }}.tgz"
+        run: npm publish "feimacode-open-design-agent-kit-${{ needs.validate.outputs.version }}.tgz" --tag "${{ needs.validate.outputs.dist_tag }}"
 
       - name: Publish summary
         run: |
@@ -159,7 +169,7 @@ jobs:
           {
             echo "## npm Publish Summary"
             echo ""
-            echo "**Version**: $VERSION"
+            echo "**Version**: $VERSION (dist-tag \`${{ needs.validate.outputs.dist_tag }}\`)"
             echo "🔗 https://www.npmjs.com/package/@feimacode/open-design-agent-kit-content/v/$VERSION"
             echo "🔗 https://www.npmjs.com/package/@feimacode/open-design-agent-kit-mcp/v/$VERSION"
             echo "🔗 https://www.npmjs.com/package/@feimacode/open-design-agent-kit/v/$VERSION"
@@ -171,6 +181,9 @@ jobs:
     # registry hiccup can be re-run without touching npm. The registry
     # verifies ownership by reading mcpName from the version now on npm.
     needs: [validate, publish]
+    # Only stable versions: the registry lists every version it's given, and a
+    # prerelease is for testing before the stable release.
+    if: ${{ needs.validate.outputs.dist_tag == 'latest' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
