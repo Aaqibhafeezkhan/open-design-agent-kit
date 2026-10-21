@@ -73,6 +73,31 @@ async function pathExists(p) {
   }
 }
 
+/** Every skill and overview that names a tool in its host-prefixed `mcp__plugin_…` form. */
+async function prefixedToolNames(repoRoot) {
+  const roots = [
+    committedSkillsDir,
+    path.join(repoRoot, '.agents', 'skills'),
+    path.join(repoRoot, 'packages', 'cli', 'assets', 'claude-skills'),
+    path.join(repoRoot, 'packages', 'cli', 'assets', 'codex-skills'),
+    path.join(repoRoot, 'packages', 'content', 'local'),
+  ];
+  const problems = [];
+  const walk = async (dir) => {
+    for (const entry of await fs.readdir(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) await walk(full);
+      else if (entry.name.endsWith('.md') && (await fs.readFile(full, 'utf8')).includes('mcp__plugin_')) {
+        problems.push(`${path.relative(repoRoot, full)} names a tool with the mcp__plugin_ prefix; use the bare tool name so it works with the desktop extension too`);
+      }
+    }
+  };
+  for (const root of roots) if (await pathExists(root)) await walk(root);
+  return problems;
+}
+
+const repoRoot = path.resolve(pluginRoot, '..', '..');
+
 async function main() {
   const entries = await collectCuratedEntries(assetsRoot);
   const localPrompts = (await loadLocalPrompts(assetsRoot)).filter((p) => promptIsForHost(p, 'claude'));
@@ -130,7 +155,6 @@ async function main() {
 
   // Third-party MCP tools keep the agent's per-call approval, and every host's
   // overview carries the shared integration block (openspec add-integration-registry).
-  const repoRoot = path.resolve(pluginRoot, '..', '..');
   const integrationsFile = path.join(assetsRoot, 'integrations.json');
   if (await pathExists(integrationsFile)) {
     const registry = JSON.parse(await fs.readFile(integrationsFile, 'utf8'));
@@ -157,6 +181,10 @@ async function main() {
     }
     problems.push(...checkIntegrationUsage(registry, skills, overviews));
   }
+
+  // Skills name tools by their bare names, so they work with the plugin's server
+  // and with the desktop extension's (openspec add-desktop-extension-bundle).
+  problems.push(...(await prefixedToolNames(repoRoot)));
 
   if (problems.length > 0) {
     console.error(

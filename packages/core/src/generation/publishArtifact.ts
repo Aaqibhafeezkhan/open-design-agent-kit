@@ -58,9 +58,20 @@ export interface PublishArtifactOptions {
   now?: Date;
   /** Tests: the downloader for claude-artifact's embedded assets. */
   assetFetch?: BinaryFetch;
+  /**
+   * claude-artifact from a workspace the agent's Artifact tool can't read (the
+   * MCP server's managed workspace, for a chat with no folder): return the
+   * page itself in `page` instead of asking for a publish by path
+   * (openspec add-folderless-chat-support).
+   */
+  inlinePage?: boolean;
 }
 
-export type PublishArtifactResult = { ok: boolean; text: string };
+/** `page`: with inlinePage, the standalone page for the agent to publish, when it is small enough. */
+export type PublishArtifactResult = { ok: boolean; text: string; page?: string };
+
+/** The largest page handed to the agent as text (inlinePage). */
+export const MAX_INLINE_PAGE_BYTES = 2 * 1024 * 1024;
 
 export async function publishArtifact(options: PublishArtifactOptions): Promise<PublishArtifactResult> {
   const now = options.now ?? new Date();
@@ -234,7 +245,9 @@ async function prepareArtifact(
     const tooLarge = preflight.findings.find((f) => f.code === 'artifact-too-large');
     return { ok: false, text: `Can't publish as a Claude artifact (artifact-too-large): ${tooLarge?.message ?? ''}\n\nNothing was published. The file is at ${file.output}.` };
   }
+  const inline = options.inlinePage ? (file.totalBytes <= MAX_INLINE_PAGE_BYTES ? 'page' : 'too-large') : undefined;
   const text = composeArtifactPublishInstructions({
+    inline,
     entryPath: options.entryPath,
     title,
     filePath,
@@ -247,7 +260,8 @@ async function prepareArtifact(
     // The preflight covers remote references and size, so the export's own notes on them are left out.
     warnings: file.warnings.filter((w) => !w.startsWith('Still loads from another site') && !w.includes('for hosting, the "site" format') && !w.includes('close to the 16.0 MB artifact limit')),
   });
-  return { ok: true, text };
+  if (inline === 'too-large') return { ok: false, text };
+  return { ok: true, text, ...(inline === 'page' ? { page: html } : {}) };
 }
 
 interface IncludedFile {

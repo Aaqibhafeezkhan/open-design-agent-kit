@@ -188,6 +188,29 @@ describe('publishArtifact — claude-artifact', () => {
     assert.ok(!text.includes('cdn.jsdelivr.net/npm/chart.js@4.4.0 ('));
   });
 
+  it('hands over the page as text from a managed workspace', async () => {
+    const root = await workspace();
+    const { ok, text, page } = await publishArtifact({ workspaceRoot: root, entryPath: ENTRY, provider: 'claude-artifact', inlinePage: true });
+    assert.ok(ok, text);
+    assert.match(page ?? '', /<h1>Pitch<\/h1>/);
+    assert.match(text, /second text item/);
+    assert.ok(!text.includes("Call your Artifact tool with the file's path"));
+    const normal = await publishArtifact({ workspaceRoot: root, entryPath: ENTRY, provider: 'claude-artifact' });
+    assert.strictEqual(normal.page, undefined);
+    assert.ok(normal.text.includes("Call your Artifact tool with the file's path"));
+  });
+
+  it('gives the path instead of a page over 2 MiB from a managed workspace', async () => {
+    const root = await workspace();
+    await fs.writeFile(path.join(root, '.open-design/pitch/big.png'), Buffer.alloc(2_000_000));
+    await fs.writeFile(path.join(root, ENTRY), '<!doctype html><html><body><img src="big.png"></body></html>');
+    const { ok, text, page } = await publishArtifact({ workspaceRoot: root, entryPath: ENTRY, provider: 'claude-artifact', inlinePage: true });
+    assert.strictEqual(ok, false);
+    assert.strictEqual(page, undefined);
+    assert.match(text, /too large to publish from this chat/);
+    assert.ok(text.includes(path.join(root, '.open-design/pitch/exports/pitch.html')));
+  });
+
   it('refuses a page over 16 MB with no instructions', async () => {
     const root = await workspace();
     // 13 MB of image is about 17 MB once inlined as base64.

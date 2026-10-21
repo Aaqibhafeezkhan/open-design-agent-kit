@@ -19,8 +19,15 @@ Pushing a `vX.Y.Z` (or `-alpha.N` / `-beta.N`) tag runs [`.github/workflows/rele
 2. Runs `typecheck`, `lint` (every drift check and the docs check) and `test:unit`.
 3. Pins the npm packages' dependency on `content` to this version (in the CI checkout only).
 4. Builds the packages and runs `scripts/test-npm-publish.mjs`: a real publish to a throwaway local registry, then `npx` resolution, an MCP handshake and `init`.
-5. Packs the npm tarballs and the `.vsix` (with `--no-dependencies`; esbuild already bundles everything), and generates SHA-256 checksums.
-6. Creates a GitHub Release with all artifacts attached.
+5. Packs the npm tarballs and the `.vsix` (with `--no-dependencies`; esbuild already bundles everything).
+6. Builds the Claude Desktop extension `open-design-X.Y.Z.mcpb` (`packages/desktop-extension`): the server with its MCP SDK inlined, plus the content from this run's own tarball, validated and packed with the pinned `@anthropic-ai/mcpb` devDependency. `scripts/test-mcpb.mjs` then checks its manifest and size (40 MB at most), unzips it outside the checkout and completes an MCP handshake with plain Node.
+7. Generates SHA-256 checksums and creates a GitHub Release with all artifacts attached. The `.mcpb` needs no publish step: attaching it is the distribution.
+
+The extension doesn't update itself, so when a release changes the server, start its `CHANGELOG.md` section with:
+
+```markdown
+**Claude Desktop extension:** install `open-design-X.Y.Z.mcpb` from this release to update it.
+```
 
 ## 3. Publish (manual)
 

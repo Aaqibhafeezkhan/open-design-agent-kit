@@ -34,6 +34,7 @@ A token is only needed when Figma isn't connected to your agent. The easiest fix
 To use a token instead:
 
 - **VS Code:** run **Open Design: Set Figma Access Token**.
+- **Claude Desktop extension:** enter it under **Settings → Extensions → Open Design → Figma access token**.
 - **MCP:** save it in `~/.config/open-design/figma-token`, or set [`OPEN_DESIGN_FIGMA_TOKEN`](reference/settings-and-env.md#open_design_figma_token) in the server's `env` and restart the agent.
 
 Also use a frame link from **Copy link to selection** (it contains `node-id`), not a file link.
@@ -56,6 +57,27 @@ A tool refuses with "Open Design would be working straight in the user's home fo
 - Connect a folder to the Chat if there isn't one.
 - Ask Claude to "set the Open Design workspace to the connected folder", then repeat the request.
 - If Claude has no `set_open_design_workspace` tool, the plugin runs a server release from before it was added. Update the plugin once a newer one is out.
+- With the desktop extension and a default design folder, the message names that folder instead: Claude passes it when the chat has no folder, or calls `use_open_design_managed_workspace`.
+
+### Claude Desktop: every Open Design tool appears twice
+
+Claude lists the tools twice (once with a `plugin_open-design` prefix), or two servers seem to track different folders. That happens when both the plugin and the [desktop extension](getting-started/claude-desktop.md#plugin-and-extension-together) run and the plugin's server is from a release before the two learned to share. Update the plugin once a newer one is out. Until then, turn off the extension in **Settings → Extensions**, or keep it and start a new chat after Desktop has started (the extension starts with the app, so the plugin's server sees it).
+
+### Claude Desktop: the extension is out of date
+
+A tool the guide mentions is missing, or Claude says a tool doesn't exist. The extension doesn't update itself: download the newest `open-design-<version>.mcpb` from the [releases](https://github.com/feimacode/open-design-agent-kit/releases/latest) and install it again. Ask Claude which version the Open Design server reports to check which one runs.
+
+### Claude Desktop: the plugin's server failed, but the extension runs
+
+On Windows without Node.js, Desktop shows the plugin's `open-design` server as failed (`spawn node ENOENT`). With the desktop extension installed you can ignore it: the extension provides the tools and the plugin still provides the skills.
+
+### Claude Desktop: the token from the extension's settings isn't used
+
+`pull_open_design_figma_frame` says no token is configured although you entered one. Open **Settings → Extensions → Open Design**, check the field, save, and start a new chat (Desktop restarts the extension with the new value). If the plugin's server answers instead (Code tab), it reads `~/.config/open-design/figma-token`, not the extension's settings.
+
+### Claude Desktop: can't find designs from a chat with no folder
+
+They're in `~/Open Design/<name>/.open-design/`, or under the extension's **Default design folder** when you set one. Claude gives the folder's path when it opens it; ask it again ("where did you save the coffee poster?"). Files Claude made in its own sandbox before calling `use_open_design_managed_workspace` aren't on your disk: ask it to save them with `write_open_design_file`.
 
 ### Claude Desktop: Node not found on macOS
 

@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import * as esbuild from 'esbuild';
-import { cheerioLoadParsePlugin } from '../core/build/cheerioLoadParsePlugin';
 import { buildPreviewBundles } from '../core/build/previewBundles';
+import { CONTENT_PACKAGE, MCP_SDK_PACKAGE, serverBuildOptions } from './serverBuild';
 
 // Bundles @feimacode/open-design-agent-kit-core (raw TS source, no compiled
 // output of its own — same resolution strategy packages/vscode's esbuild
@@ -14,24 +14,11 @@ import { buildPreviewBundles } from '../core/build/previewBundles';
 // require call alone rather than trying to bundle a data package's assets
 // into the JS output. @modelcontextprotocol/sdk is also left external:
 // it's a normal, publishable npm dependency with no TS-source-resolution
-// problem, so there's no reason to inline it.
+// problem, so there's no reason to inline it. (The Claude Desktop extension
+// inlines it instead: a .mcpb has no npm install step.)
 async function main() {
   await fs.rm('out', { recursive: true, force: true });
-  await esbuild.build({
-    entryPoints: ['src/index.ts'],
-    bundle: true,
-    platform: 'node',
-    format: 'cjs',
-    target: 'node18',
-    outfile: 'out/index.js',
-    external: ['@feimacode/open-design-agent-kit-content', '@modelcontextprotocol/sdk'],
-    plugins: [cheerioLoadParsePlugin],
-    // No banner: src/index.ts already starts with its own shebang line, and
-    // esbuild preserves a leading shebang from the entry point automatically
-    // — adding another via `banner` would duplicate it and break as invalid
-    // JS (a second `#!` line past line 1 is a syntax error, not a comment).
-    logLevel: 'info',
-  });
+  await esbuild.build(serverBuildOptions({ outfile: 'out/index.js', external: [CONTENT_PACKAGE, MCP_SDK_PACKAGE] }));
   // The browser preview's shell and in-page bridge, read at runtime from out/preview/.
   await buildPreviewBundles('out');
 }

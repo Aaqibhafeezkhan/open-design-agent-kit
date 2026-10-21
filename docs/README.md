@@ -14,7 +14,7 @@ Pick the place you work ([all getting-started pages](getting-started/README.md))
 
 - [VS Code (GitHub Copilot Chat)](getting-started/vscode.md)
 - [Claude Code](getting-started/claude-code.md)
-- [Claude Desktop](getting-started/claude-desktop.md): the Code tab and Chat with a folder
+- [Claude Desktop](getting-started/claude-desktop.md): the Code tab, Chat with a folder, the desktop extension and Chat without a folder
 - [Codex CLI](getting-started/codex.md)
 - [Command line and scripts](getting-started/cli.md): `init`, and exporting or rendering without an agent
 

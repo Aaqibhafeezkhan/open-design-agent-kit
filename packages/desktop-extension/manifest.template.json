@@ -1,0 +1,50 @@
+{
+  "manifest_version": "0.3",
+  "name": "open-design",
+  "display_name": "Open Design",
+  "version": "${VERSION}",
+  "description": "Design landing pages, decks, posters and more with Open Design's skills and design systems.",
+  "long_description": "Open Design's MCP server for Claude Desktop, running on Desktop's own Node: no Node.js install, no npx, no download on first start. Install the Open Design plugin too for its skills. This extension does not update itself: install the newer .mcpb from the GitHub release to update.",
+  "author": { "name": "feimacode", "url": "https://github.com/feimacode" },
+  "repository": { "type": "git", "url": "https://github.com/feimacode/open-design-agent-kit" },
+  "homepage": "https://github.com/feimacode/open-design-agent-kit",
+  "documentation": "https://github.com/feimacode/open-design-agent-kit/blob/main/docs/getting-started/claude-desktop.md",
+  "support": "https://github.com/feimacode/open-design-agent-kit/issues",
+  "license": "MIT",
+  "icon": "icon.png",
+  "server": {
+    "type": "node",
+    "entry_point": "server/out/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server/out/index.js"],
+      "env": {
+        "OPEN_DESIGN_HOST": "claude-desktop-extension",
+        "OPEN_DESIGN_FIGMA_TOKEN": "${user_config.figma_token}",
+        "OPEN_DESIGN_DEFAULT_WORKSPACE": "${user_config.workspace}"
+      }
+    }
+  },
+  "tools_generated": true,
+  "prompts_generated": true,
+  "keywords": ["design", "landing page", "slides", "poster", "design systems"],
+  "user_config": {
+    "figma_token": {
+      "type": "string",
+      "title": "Figma access token",
+      "description": "Optional. Only needed to pull Figma frames when Figma's own connector isn't connected.",
+      "sensitive": true,
+      "required": false
+    },
+    "workspace": {
+      "type": "directory",
+      "title": "Default design folder",
+      "description": "Optional. Used when a chat has no connected folder: designs go in a folder per design under it.",
+      "required": false
+    }
+  },
+  "compatibility": {
+    "platforms": ["darwin", "win32"],
+    "runtimes": { "node": ">=18" }
+  }
+}

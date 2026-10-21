@@ -2,6 +2,14 @@
 
 One version covers the VS Code extension and the npm packages (`content`, `mcp-server`, `cli`). The release workflow uses the section for the tag being released as the GitHub Release notes (see [Releasing](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/contributing/releasing.md)).
 
+## [Unreleased]
+
+**Claude Desktop extension:** install `open-design-<version>.mcpb` from this release to update it.
+
+- **Claude Desktop extension.** Each release now carries `open-design-<version>.mcpb`: the MCP server for Claude Desktop on its own Node, with no Node.js install, no `npx` and no download on first start, a settings form for the Figma token (kept in the system keychain) and a default design folder. With the plugin installed too, Claude sees one set of tools. [Claude Desktop](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/getting-started/claude-desktop.md#install-the-desktop-extension)
+- **Chat without a folder.** With the extension, a Claude Desktop chat with no folder makes real designs: `use_open_design_managed_workspace` opens `~/Open Design/<name>/`, and `write_open_design_file` saves the files Claude writes there. With the plugin alone, Claude says what's missing and can make a single page as a Claude artifact.
+- **Server:** `OPEN_DESIGN_DEFAULT_WORKSPACE` and `OPEN_DESIGN_MANAGED_ROOT`; the server reports its real version.
+
 ## [0.2.0] - 2026-10-10
 
 Open Design Agent Kit now covers the whole path from idea to delivery: explore directions before committing, build from your own documents, check how a design renders, export it in any format (including print, video and email), share a link, and hand it to Canva, Figma or a posting service through the connectors your agent already has. The MCP server goes from 11 tools to 23.

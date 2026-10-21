@@ -184,10 +184,31 @@ jobs:
           npm pack --workspace=packages/mcp-server --pack-destination release
           npm pack --workspace=packages/cli --pack-destination release
 
-      - name: Generate SHA-256 checksums for npm packages
+      # --- Claude Desktop extension (openspec add-desktop-extension-bundle) ---
+      # Built from this run's own content tarball and the pinned
+      # @anthropic-ai/mcpb devDependency (installed by npm ci above); nothing
+      # is fetched with npx.
+
+      - name: Build Claude Desktop extension (.mcpb)
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          npm run build --workspace=packages/desktop-extension -- \
+            --content "release/feimacode-open-design-agent-kit-content-${VERSION}.tgz" \
+            --out "release/open-design-${VERSION}.mcpb"
+
+      - name: Inspect and smoke-test the .mcpb
+        # mcpb info prints the file, size and signature status; test-mcpb.mjs
+        # checks the manifest's name and version, the size limit, then starts the
+        # unzipped bundle outside the checkout and completes an MCP handshake.
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          node_modules/.bin/mcpb info "release/open-design-${VERSION}.mcpb"
+          node scripts/test-mcpb.mjs "release/open-design-${VERSION}.mcpb" --version "$VERSION"
+
+      - name: Generate SHA-256 checksums for npm packages and the .mcpb
         working-directory: release
         run: |
-          for f in *.tgz; do
+          for f in *.tgz *.mcpb; do
             sha256sum "$f" > "${f}.sha256"
           done
 
@@ -242,6 +263,7 @@ jobs:
           path: |
             release/*.vsix
             release/*.tgz
+            release/*.mcpb
             release/*.sha256
 
   release:
@@ -286,6 +308,7 @@ jobs:
           files: |
             release/*.vsix
             release/*.tgz
+            release/*.mcpb
             release/*.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -304,6 +327,7 @@ jobs:
             echo "- \`feimacode-open-design-agent-kit-content-${VERSION}.tgz\`"
             echo "- \`feimacode-open-design-agent-kit-mcp-${VERSION}.tgz\`"
             echo "- \`feimacode-open-design-agent-kit-${VERSION}.tgz\`"
+            echo "- \`open-design-${VERSION}.mcpb\` (Claude Desktop extension: attached to this release, nothing to publish)"
             echo ""
             echo "Next step: run the **Publish to Marketplace** and/or **Publish npm Packages** workflows with version \`$VERSION\` to actually publish them."
           } >> "$GITHUB_STEP_SUMMARY"

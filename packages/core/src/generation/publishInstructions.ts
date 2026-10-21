@@ -201,6 +201,11 @@ export interface ComposeArtifactPublishInstructionsInput {
   embedded?: Array<{ url: string; bytes: number }>;
   warnings?: string[];
   sync?: ArtifactSyncSummary;
+  /**
+   * The file is out of the agent's reach (a managed workspace): 'page' when the
+   * page follows these instructions as text, 'too-large' when it can't.
+   */
+  inline?: 'page' | 'too-large';
 }
 
 /** Instructions for `claude-artifact`: publish the standalone file by path with the model's own Artifact tool. */
@@ -210,6 +215,9 @@ export function composeArtifactPublishInstructions(input: ComposeArtifactPublish
   const target = latestShareFor(input.records, CLAUDE_ARTIFACT_PROVIDER);
   const targetUrl = target?.siteRef ?? target?.url;
   const parts: string[] = [];
+  if (input.inline === 'too-large') {
+    return `# ${name} is too large to publish from this chat\n\nThe self-contained page is ${kb(input.bytes)}. In this chat your Artifact tool can't read files on the user's machine, so the page would have to come to you as text, and above ${kb(2 * 1024 * 1024)} it doesn't. Nothing was published.\n\nTell the user the page is at \`${input.filePath}\`: they can open it in a browser, or publish it from a chat with that folder connected (or from Claude Code). Making it smaller (fewer or smaller embedded images) also works.`;
+  }
   parts.push(
     `# Publish ${name} as a Claude artifact\n\nThe design was exported as one self-contained page (a local export; nothing is online yet):\n\n- File: \`${input.filePath}\` (${kb(input.bytes)})\n- ${input.badge ? `Footer badge: **included**. To leave it out, call \`${PUBLISH_TOOL_NAME}\` again with \`badge: false\`.` : 'Footer badge: not included.'}\n\nA Claude artifact is private to the user until they share it from claude.ai, so there is no confirmation step: publish when ready.`,
   );
@@ -228,8 +236,12 @@ export function composeArtifactPublishInstructions(input: ComposeArtifactPublish
   parts.push(
     `\n\n## Stage 1 — check you can publish an artifact\n\nThis needs your own Artifact tool: Claude Code or the Claude desktop app, signed in to claude.ai on a Pro, Max, Team or Enterprise plan. If you don't have one, tell the user, offer another provider (call \`${PUBLISH_TOOL_NAME}\` without \`provider\` to list them), and stop.`,
   );
+  const how =
+    input.inline === 'page'
+      ? `The file is on the user's machine, where your Artifact tool can't read it, so the whole page follows these instructions as a second text item. Publish exactly that text as the artifact's HTML. If your Artifact tool takes a file, first save the text unchanged as one .html file with your own file tools (for example \`${input.filePath.split(/[\\/]/).pop()}\` in your scratch folder). Don't edit, shorten or reformat it (it is already the finished page).`
+      : `Call your Artifact tool with the file's path, \`${input.filePath}\`. Publish the file as it is: don't read it into the conversation, rewrite it or paste its contents (it is already the finished page).`;
   parts.push(
-    `\n\n## Stage 2 — publish\n\nCall your Artifact tool with the file's path, \`${input.filePath}\`. Publish the file as it is: don't read it into the conversation, rewrite it or paste its contents (it is already the finished page).${
+    `\n\n## Stage 2 — publish\n\n${how}${
       targetUrl
         ? ` This design already has an artifact, so publish to it: pass \`${targetUrl}\` as the artifact URL to update. It becomes a new version of the same artifact, at the same link. Don't create a new one. If your Artifact tool first wants you to read that artifact (a new conversation), read it, then publish this file to the same URL: the file is the whole new version, so nothing needs merging.`
         : ` This is a new artifact: give it a plain one-word icon (such as \`design\`, \`slides\` or \`poster\`). The page's own \`<title>\` names it.`

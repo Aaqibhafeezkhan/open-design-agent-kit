@@ -20,8 +20,12 @@ function command() {
 }
 
 const { cmd, args } = command();
+// OPEN_DESIGN_LAUNCHER tells the server it runs for the plugin, so in Claude
+// Desktop it can hand its tools to the Open Design desktop extension when that
+// is running too (openspec add-desktop-extension-bundle).
+const env = { ...process.env, OPEN_DESIGN_LAUNCHER: 'claude-plugin' };
 // Windows can only start npx.cmd through a shell.
-const child = spawn(cmd, args, { stdio: 'inherit', shell: process.platform === 'win32' });
+const child = spawn(cmd, args, { stdio: 'inherit', shell: process.platform === 'win32', env });
 child.on('error', (err) => {
   console.error(`open-design: could not start the MCP server with ${cmd} (${err.message}). Node.js 18 or later must be on PATH.`);
   process.exit(1);
