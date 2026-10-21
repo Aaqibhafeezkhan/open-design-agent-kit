@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
-import { ContentIndex, exportArtifact, formatExportResult, PASTE_TARGETS, type ExportArtifactOptions, type ExportFormat, type PasteTarget } from '@feimacode/open-design-agent-kit-core';
+import { ASSET_RESOLUTIONS, ContentIndex, exportArtifact, formatExportResult, PASTE_TARGETS, type AssetResolution, type ExportArtifactOptions, type ExportFormat, type PasteTarget } from '@feimacode/open-design-agent-kit-core';
 import { TROUBLESHOOTING_URL } from './docsLinks';
 import { getContentAssetsRoot } from './env';
 
@@ -36,6 +36,10 @@ export interface ExportCliOptions {
   target?: string;
   /** site, email, paste: where the files will be hosted. */
   baseUrl?: string;
+  /** standalone: embed the page's declared remote assets. */
+  embedAssets?: boolean;
+  /** With --embed-assets: 1k, 2k or 4k. */
+  maxResolution?: string;
   campaignSheet?: boolean;
   transparent?: boolean;
   fps?: string;
@@ -65,6 +69,13 @@ function parseTarget(value: string | undefined): PasteTarget | undefined {
   if (value === undefined) return undefined;
   if (!(PASTE_TARGETS as readonly string[]).includes(value)) throw new ExportArgsError(`--target must be ${PASTE_TARGETS.join(', ')} (got "${value}").`);
   return value as PasteTarget;
+}
+
+function parseResolution(value: string | undefined): AssetResolution | undefined {
+  if (value === undefined) return undefined;
+  const r = value.toLowerCase();
+  if (!(ASSET_RESOLUTIONS as readonly string[]).includes(r)) throw new ExportArgsError(`--max-resolution must be ${ASSET_RESOLUTIONS.join(', ')} (got "${value}").`);
+  return r as AssetResolution;
 }
 
 /** Maps CLI string flags onto exportArtifact options (range checks happen in core). */
@@ -108,6 +119,8 @@ export function parseExportFlags(flags: ExportCliOptions): Omit<ExportArtifactOp
     shapeSheet: flags.shapeSheet,
     target: parseTarget(flags.target),
     baseUrl: flags.baseUrl,
+    embedAssets: flags.embedAssets,
+    maxResolution: parseResolution(flags.maxResolution),
     campaignSheet: flags.campaignSheet,
     transparent: flags.transparent,
     fps: parseIntFlag('fps', flags.fps),

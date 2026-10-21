@@ -60,6 +60,10 @@ Call `register_open_design_artifact` with the entry path, kind `html`, a title, 
 
 Call `check_open_design_artifact` with the entry path. It returns the poster as an image plus preflight findings. Fix every **error** in its findings (text cut off, overlapping or in the bleed, a QR code that doesn't decode), and fix warnings where you reasonably can (sizes that don't scale with the poster, small type, low contrast, low-resolution images). Look at the image too: the headline should dominate and nothing important should be cramped or cut. Check again until there are no errors (at most two fix rounds; tell the user about anything left).
 
+<!-- claude-only -->
+**Artifact preview.** If you have an Artifact tool, publish this design as its private artifact preview once the check is clean: call `publish_open_design_artifact` with `provider: "claude-artifact"` and follow what it returns. Publish again after each round of feedback you apply; it goes to the same artifact. Give the link once, then just say the preview was updated.
+<!-- /claude-only -->
+
 ## 6. Other shapes
 
 When the user wants other sizes, or before the final export of a print piece, call `export_open_design_artifact` with `shapeSheet: true` and `checkOnly: true` (add `presets` with just the shapes they care about, or leave it out for every shape). It writes one image of the poster at each shape, marking shapes with errors; show it to the user. If you can view images, look at it too: the headline should dominate every shape and nothing important should be cropped.

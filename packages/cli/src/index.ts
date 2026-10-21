@@ -89,6 +89,8 @@ program
   .option('--format <png|jpeg|pdf|pptx|standalone|site|email|paste>', 'Output format (default png); pptx is for decks, pdf works for decks and pages, standalone is one self-contained .html, site is a deploy-ready folder, email is an inbox-ready HTML email, paste is HTML to paste into another editor (with --target)')
   .option('--target <wechat|notion|newsletter|generic>', 'paste: where it will be pasted')
   .option('--base-url <https-url>', 'site, email, paste: where the files will be hosted, so image and link URLs become absolute')
+  .option('--embed-assets', 'standalone: download the remote 3D assets the page declares (HDRIs, textures, models) and embed them, so it works offline and as a Claude artifact')
+  .option('--max-resolution <1k|2k|4k>', 'With --embed-assets: the highest Poly Haven texture and HDRI resolution to fetch (default 1k)')
   .option('--quality <1-100>', 'JPEG quality (default 90)')
   .option('--selector <css>', 'Export each matching element as its own numbered image, e.g. "[data-od-card]"')
   .option('--max-bytes <n>', 'Per-file byte budget; over-budget images are re-encoded as JPEG until they fit')

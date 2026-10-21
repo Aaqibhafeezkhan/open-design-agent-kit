@@ -8,7 +8,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { collectCuratedEntries } from '../../content/scripts/curatedEntries.mjs';
-import { loadLocalPrompts, promptIsForHost, renderPromptBody } from '../../content/scripts/localPrompts.mjs';
+import { forHost, loadLocalPrompts, promptIsForHost, renderPromptBody } from '../../content/scripts/localPrompts.mjs';
 import { buildRemixableExamplesReference } from '../../content/scripts/remixableExamplesReference.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -50,7 +50,7 @@ description: ${prompt.description}${prompt.modelTrigger ? ` — ${prompt.modelTr
 
 ${GENERATED_MARKER}
 
-${renderPromptBody(prompt, `the rest of the user's message (if there is none, ask the user: "${prompt.placeholder}")`)}
+${renderPromptBody(prompt, `the rest of the user's message (if there is none, ask the user: "${prompt.placeholder}")`, 'codex')}
 `;
 }
 
@@ -74,7 +74,7 @@ async function main() {
 
   const overviewSource = await fs.readFile(overviewSkillSource, 'utf8');
   const overviewParts = overviewSource.split(/^---\s*$/m);
-  const expectedOverview = `---${overviewParts[1]}---\n\n${GENERATED_MARKER}\n\n${overviewParts.slice(2).join('---').trimStart()}`;
+  const expectedOverview = `---${overviewParts[1]}---\n\n${GENERATED_MARKER}\n\n${forHost(overviewParts.slice(2).join('---').trimStart(), 'codex')}`;
   const overviewPath = path.join(skillsDir, 'open-design', 'SKILL.md');
   if (!(await pathExists(overviewPath))) {
     problems.push('missing .agents/skills/open-design/SKILL.md');

@@ -54,7 +54,7 @@ The scene also exposes `odScene.scene`, `camera` and `renderer`. The check uses 
 
 ## Limits
 
-- three.js comes from the CDN, including in `standalone` exports, so the scene needs a connection to display.
+- three.js comes from the CDN, including in `standalone` exports, so the scene needs a connection to display. A Poly Haven HDRI or texture the object uses is listed in the page's `application/od-assets+json` block, so a `standalone` export with `embedAssets`, and a [Claude artifact](share-and-publish.md#a-claude-artifact), carry it inside the file.
 - No text-to-3D generation: objects are built from shapes, logos or your own models.
 
 ## Related

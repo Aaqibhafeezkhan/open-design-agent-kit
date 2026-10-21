@@ -1,5 +1,10 @@
 import * as path from 'node:path';
 import {
+  type AssetResolution,
+  CLAUDE_ARTIFACT_PROVIDER,
+  latestShareFor,
+  readShareRecords,
+  type JsonRecord,
   findStaleSources,
   formatSourceRegistration,
   prepareSourceRegistration,
@@ -343,11 +348,22 @@ export async function registerArtifact(
       commentsNote = `\n\nMarked ${resolved.length} comment(s) resolved.${unknown.length ? ` No comment with id ${unknown.join(', ')}.` : ''}`;
     }
 
-    return `Artifact registered at ${input.entryPath}.artifact.json\n\n${JSON.stringify(manifest, null, 2)}\n\nWritten to ${path.join(ctx.workspaceRoot, input.entryPath)}.${await previewNoteAfterRegister(ctx, input.entryPath)}${commentsNote}${explorationNote}${sourceNote}`;
+    return `Artifact registered at ${input.entryPath}.artifact.json\n\n${JSON.stringify(manifest, null, 2)}\n\nWritten to ${path.join(ctx.workspaceRoot, input.entryPath)}.${await previewNoteAfterRegister(ctx, input.entryPath)}${artifactPreviewHint(ctx, manifest)}${commentsNote}${explorationNote}${sourceNote}`;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return `Failed to register artifact: ${message}`;
   }
+}
+
+/** Claude Code and Claude Desktop ("claude-ai") identify with a name containing "claude". */
+export function isClaudeClient(clientName: string | undefined): boolean {
+  return /claude/i.test(clientName ?? '');
+}
+
+/** One line suggesting the private artifact preview, for Claude clients on a design that has none yet (openspec add-artifact-preview). */
+function artifactPreviewHint(ctx: ToolContext, manifest: JsonRecord): string {
+  if (!isClaudeClient(ctx.clientName) || latestShareFor(readShareRecords(manifest), CLAUDE_ARTIFACT_PROVIDER)) return '';
+  return '\n\nArtifact preview: if you have an Artifact tool, show the user this design as a private Claude artifact: call publish_open_design_artifact with provider "claude-artifact" and follow its instructions (later rounds update the same artifact).';
 }
 
 /** get_open_design_artifact: the manifest, entry, supporting files and unaddressed comments, with up to 4 comment crops attached as images. */
@@ -365,6 +381,7 @@ export async function getArtifact(ctx: ToolContext, input: { entryPath: string }
     openComments,
     commentScreenshotsAttached: crops.length > 0 ? crops.map((c) => c.commentId) : undefined,
     staleSources: recorded.length > 0 ? await findStaleSources(ctx.workspaceRoot, ctx.outputDir, recorded) : undefined,
+    previewUrl: latestShareFor(readShareRecords(result.manifest), CLAUDE_ARTIFACT_PROVIDER)?.url,
   };
   return { text: JSON.stringify(payload, null, 2), images: crops.map((c) => ({ data: c.png, mime: 'image/png' })) };
 }
@@ -590,6 +607,8 @@ export async function exportArtifact(
     slides?: number[];
     badge?: boolean;
     baseUrl?: string;
+    embedAssets?: boolean;
+    maxResolution?: AssetResolution;
     preset?: string;
     bleed?: number;
     cropMarks?: boolean;

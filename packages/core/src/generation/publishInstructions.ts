@@ -3,9 +3,10 @@
 // already built (a local, reversible export); everything that reaches the
 // internet is done by the model with its own terminal, under the user's own
 // CLI login, and only after an explicit yes. openspec: add-artifact-sharing.
+import type { ArtifactPreflightFinding } from '../export/artifactPreflight';
 import type { PackageExportResult } from '../export/packageArtifact';
-import { PUBLISH_PROVIDERS, type PublishProvider, type ShareRecord } from '../workspace/shareRecords';
-import { PUBLISH_RECIPES, type RecipeContext } from './publishProviders';
+import { CLAUDE_ARTIFACT_PROVIDER, HOSTING_PROVIDERS, latestShareFor, type HostingProvider, type ShareRecord } from '../workspace/shareRecords';
+import { CLAUDE_ARTIFACT_CHOICE, PUBLISH_RECIPES, type RecipeContext } from './publishProviders';
 
 export const PUBLISH_TOOL_NAME = 'publish_open_design_artifact';
 
@@ -17,7 +18,7 @@ export interface ComposePublishInstructionsInput {
   bundle: PackagedSite;
   /** Absolute path of bundle.output. */
   bundleDir: string;
-  provider?: PublishProvider;
+  provider?: HostingProvider;
   /** Every share record for this artifact, oldest first. */
   records: ShareRecord[];
   siteName: string;
@@ -59,10 +60,10 @@ function bundleSummary(input: ComposePublishInstructionsInput): string {
 }
 
 function providerTable(): string {
-  const rows = PUBLISH_PROVIDERS.map((id) => {
-    const r = PUBLISH_RECIPES[id];
-    return `| \`${id}\` | ${r.label} | ${r.account} | ${r.lifetime} | ${r.visibility} |`;
-  });
+  const rows = [
+    ...HOSTING_PROVIDERS.map((id) => PUBLISH_RECIPES[id]),
+    { id: CLAUDE_ARTIFACT_PROVIDER, ...CLAUDE_ARTIFACT_CHOICE },
+  ].map((r) => `| \`${r.id}\` | ${r.label} | ${r.account} | ${r.lifetime} | ${r.visibility} |`);
   return ['| provider | host | account needed | link lasts | who can see it |', '|---|---|---|---|---|', ...rows].join('\n');
 }
 
@@ -86,7 +87,7 @@ export function composePublishInstructions(input: ComposePublishInstructionsInpu
 
   if (!input.provider) {
     parts.push(
-      `\n\n## Stage 1 — choose where to publish\n\nShow the user these options and ask which one they want. Don't pick for them.\n\n${providerTable()}\n\nA temporary link suits a quick look ("can you see this?"). For a review that lasts days, or a link to keep, recommend their own account. Once they choose, call \`${PUBLISH_TOOL_NAME}\` again with the same \`entryPath\` and \`provider\` set to their choice, and follow the instructions it returns. Stop here until then.`,
+      `\n\n## Stage 1 — choose where to publish\n\nShow the user these options and ask which one they want. Don't pick for them.\n\n${providerTable()}\n\nA temporary link suits a quick look ("can you see this?"). For a review that lasts days, or a link to keep, recommend their own account. \`${CLAUDE_ARTIFACT_PROVIDER}\` needs your own Artifact tool (Claude Code or Claude Desktop, signed in to claude.ai): if you have one, list it first, since it stays private until the user shares it; if you don't, leave it out of the options. Once they choose, call \`${PUBLISH_TOOL_NAME}\` again with the same \`entryPath\` and \`provider\` set to their choice, and follow the instructions it returns. Stop here until then.`,
     );
     return parts.join('');
   }
@@ -131,5 +132,58 @@ export function composePublishInstructions(input: ComposePublishInstructionsInpu
           : `\n\n## Link preview\n\nThere's no preview image yet. If the user wants one in Slack or X unfurls, export a PNG first (\`export_open_design_artifact\`), then publish again.`,
     );
   }
+  return parts.join('');
+}
+
+export interface ComposeArtifactPublishInstructionsInput {
+  entryPath: string;
+  title?: string;
+  /** Absolute path of the standalone .html file. */
+  filePath: string;
+  bytes: number;
+  badge: boolean;
+  /** Every share record for this artifact, oldest first. */
+  records: ShareRecord[];
+  /** Artifact preflight findings, none of them blocking. */
+  findings: ArtifactPreflightFinding[];
+  /** Assets embedded in the page (embedAssets), with their sizes. */
+  embedded?: Array<{ url: string; bytes: number }>;
+  warnings?: string[];
+}
+
+/** Instructions for `claude-artifact`: publish the standalone file by path with the model's own Artifact tool. */
+export function composeArtifactPublishInstructions(input: ComposeArtifactPublishInstructionsInput): string {
+  const kb = (n: number) => `${(n / 1024).toFixed(0)} KB`;
+  const name = input.title ? `"${input.title}" (\`${input.entryPath}\`)` : `\`${input.entryPath}\``;
+  const target = latestShareFor(input.records, CLAUDE_ARTIFACT_PROVIDER);
+  const targetUrl = target?.siteRef ?? target?.url;
+  const parts: string[] = [];
+  parts.push(
+    `# Publish ${name} as a Claude artifact\n\nThe design was exported as one self-contained page (a local export; nothing is online yet):\n\n- File: \`${input.filePath}\` (${kb(input.bytes)})\n- ${input.badge ? `Footer badge: **included**. To leave it out, call \`${PUBLISH_TOOL_NAME}\` again with \`badge: false\`.` : 'Footer badge: not included.'}\n\nA Claude artifact is private to the user until they share it from claude.ai, so there is no confirmation step: publish when ready.`,
+  );
+  if (input.embedded?.length) {
+    parts.push(`\n\nEmbedded in the page, so the artifact needs no other site for them:\n${input.embedded.map((a) => `- ${a.url} (${kb(a.bytes)})`).join('\n')}`);
+  }
+  if (input.findings.length > 0 || input.warnings?.length) {
+    parts.push(
+      `\n\n## What won't work in the artifact\n\nThe artifact viewer loads scripts only from a few CDNs and stylesheets only from Google Fonts, and blocks everything else from other sites. Tell the user about these before or with the link:\n${[
+        ...input.findings.map((f) => `- [${f.code}] ${f.message}`),
+        ...(input.warnings ?? []).map((w) => `- ${w}`),
+      ].join('\n')}`,
+    );
+  }
+  parts.push(
+    `\n\n## Stage 1 — check you can publish an artifact\n\nThis needs your own Artifact tool: Claude Code or the Claude desktop app, signed in to claude.ai on a Pro, Max, Team or Enterprise plan. If you don't have one, tell the user, offer another provider (call \`${PUBLISH_TOOL_NAME}\` without \`provider\` to list them), and stop.`,
+  );
+  parts.push(
+    `\n\n## Stage 2 — publish\n\nCall your Artifact tool with the file's path, \`${input.filePath}\`. Publish the file as it is: don't read it into the conversation, rewrite it or paste its contents (it is already the finished page).${
+      targetUrl
+        ? ` This design already has an artifact, so publish to it: pass \`${targetUrl}\` as the artifact URL to update. It becomes a new version of the same artifact, at the same link. Don't create a new one. If your Artifact tool first wants you to read that artifact (a new conversation), read it, then publish this file to the same URL: the file is the whole new version, so nothing needs merging.`
+        : ` This is a new artifact: give it a plain one-word icon (such as \`design\`, \`slides\` or \`poster\`). The page's own \`<title>\` names it.`
+    }\n\nIf the Artifact tool refuses the page, show the user its actual error and stop.`,
+  );
+  parts.push(
+    `\n\n## Stage 3 — report and record\n\nGive the user the link${targetUrl ? ' (the same one as before; an open tab shows the new version)' : ''}, and say it is private until they share it from claude.ai. Then record it by calling \`${PUBLISH_TOOL_NAME}\` with:\n\n\`\`\`json\n{ "entryPath": "${input.entryPath}", "published": { "provider": "${CLAUDE_ARTIFACT_PROVIDER}", "url": "<artifact url>" } }\n\`\`\`\n\nThis lets the next publish update the same artifact. PNG, PDF and PowerPoint exports stay files on disk: give the user their paths, don't publish them as artifacts.`,
+  );
   return parts.join('');
 }

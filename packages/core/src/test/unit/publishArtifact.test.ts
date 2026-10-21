@@ -6,6 +6,7 @@ import { publishArtifact } from '../../generation/publishArtifact';
 import { siteNameForShare, slugForShare } from '../../generation/publishInstructions';
 import { writeArtifactManifest } from '../../vendored/artifactCreate';
 import {
+  HOSTING_PROVIDERS,
   isExpired,
   liveShareRecords,
   MAX_SHARE_RECORDS,
@@ -48,9 +49,9 @@ describe('publishArtifact — prepare', () => {
     await fs.access(path.join(root, '.open-design/pitch/exports/site/index.html'));
   });
 
-  it('puts a stop-and-confirm stage before the first deploy command, for every provider', async () => {
+  it('puts a stop-and-confirm stage before the first deploy command, for every hosting provider', async () => {
     const root = await workspace();
-    for (const provider of PUBLISH_PROVIDERS) {
+    for (const provider of HOSTING_PROVIDERS) {
       const { ok, text } = await publishArtifact({ workspaceRoot: root, entryPath: ENTRY, provider });
       assert.ok(ok, `${provider}: ${text}`);
       const confirm = text.indexOf('## Stage 2 — confirm');
@@ -124,6 +125,84 @@ describe('publishArtifact — prepare', () => {
     assert.ok(!broken.ok);
     assert.match(broken.text, /missing-references/);
     assert.ok(!broken.text.includes('Stage'));
+  });
+});
+
+describe('publishArtifact — claude-artifact', () => {
+  const ARTIFACT = 'https://claude.ai/artifact/abc';
+
+  it('offers the provider with its requirement when none is chosen', async () => {
+    const { text } = await publishArtifact({ workspaceRoot: await workspace(), entryPath: ENTRY });
+    assert.match(text, /\| `claude-artifact` \| Claude artifact \(private\) \|[^\n]*Claude Code or Claude Desktop with an Artifact tool/);
+  });
+
+  it('writes the standalone file and asks the agent to publish it by path and record the link', async () => {
+    const root = await workspace();
+    const { ok, text } = await publishArtifact({ workspaceRoot: root, entryPath: ENTRY, provider: 'claude-artifact' });
+    assert.ok(ok, text);
+    const file = path.join(root, '.open-design/pitch/exports/pitch.html');
+    await fs.access(file);
+    await assert.rejects(fs.access(path.join(root, '.open-design/pitch/exports/site')));
+    assert.ok(text.includes(`Call your Artifact tool with the file's path, \`${file}\``));
+    assert.match(text, /don't read it into the conversation/);
+    assert.match(text, /This is a new artifact/);
+    assert.match(text, /"published": \{ "provider": "claude-artifact", "url": "<artifact url>" \}/);
+    assert.match(text, /Footer badge: not included/);
+  });
+
+  it('has no confirmation stage and says the artifact stays private until shared', async () => {
+    const { text } = await publishArtifact({ workspaceRoot: await workspace(), entryPath: ENTRY, provider: 'claude-artifact' });
+    assert.ok(!/confirm before anything goes online/.test(text));
+    assert.ok(!/Do NOT run any deploy command/.test(text));
+    assert.match(text, /private to the user until they share it from claude\.ai/);
+  });
+
+  it('republishes to the recorded artifact', async () => {
+    const root = await workspace();
+    const recorded = await publishArtifact({ workspaceRoot: root, entryPath: ENTRY, published: { provider: 'claude-artifact', url: ARTIFACT } });
+    assert.ok(recorded.ok, recorded.text);
+    const shares = readShareRecords(await manifestOf(root));
+    assert.strictEqual(shares.length, 1);
+    assert.strictEqual(shares[0]!.siteRef, ARTIFACT);
+    const again = await publishArtifact({ workspaceRoot: root, entryPath: ENTRY, provider: 'claude-artifact' });
+    assert.ok(again.text.includes(`pass \`${ARTIFACT}\` as the artifact URL to update`));
+    assert.ok(!again.text.includes('This is a new artifact'));
+    await publishArtifact({ workspaceRoot: root, entryPath: ENTRY, published: { provider: 'claude-artifact', url: ARTIFACT } });
+    assert.strictEqual(readShareRecords(await manifestOf(root)).length, 1);
+  });
+
+  it('accepts only claude.ai links as artifact URLs', async () => {
+    assert.ok(!validatePublished({ provider: 'claude-artifact', url: 'https://example.com/a' }).ok);
+    assert.ok(validatePublished({ provider: 'claude-artifact', url: 'https://claude.ai/code/artifact/123' }).ok);
+  });
+
+  it('lists what the viewer will block', async () => {
+    const root = await workspace();
+    await fs.writeFile(
+      path.join(root, ENTRY),
+      '<!doctype html><html><head><script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script></head><body><img src="https://images.unsplash.com/photo-1"></body></html>',
+    );
+    const { ok, text } = await publishArtifact({ workspaceRoot: root, entryPath: ENTRY, provider: 'claude-artifact' });
+    assert.ok(ok, text);
+    assert.match(text, /## What won't work in the artifact[\s\S]*\[artifact-blocked-host\] https:\/\/images\.unsplash\.com\/photo-1 \(an image from images\.unsplash\.com\)/);
+    assert.ok(!text.includes('cdn.jsdelivr.net/npm/chart.js@4.4.0 ('));
+  });
+
+  it('refuses a page over 16 MB with no instructions', async () => {
+    const root = await workspace();
+    // 13 MB of image is about 17 MB once inlined as base64.
+    await fs.writeFile(path.join(root, '.open-design/pitch/big.png'), Buffer.alloc(13_000_000));
+    await fs.writeFile(path.join(root, ENTRY), '<!doctype html><html><body><img src="big.png"></body></html>');
+    const { ok, text } = await publishArtifact({ workspaceRoot: root, entryPath: ENTRY, provider: 'claude-artifact' });
+    assert.strictEqual(ok, false);
+    assert.match(text, /artifact-too-large/);
+    assert.ok(!text.includes('Stage'));
+  });
+
+  it('refuses includeFiles, since an artifact is one page', async () => {
+    const { ok, text } = await publishArtifact({ workspaceRoot: await workspace(), entryPath: ENTRY, provider: 'claude-artifact', includeFiles: ['.open-design/pitch/exports/pitch.pdf'] });
+    assert.strictEqual(ok, false);
+    assert.match(text, /one page/);
   });
 });
 

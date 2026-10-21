@@ -74,6 +74,8 @@ npx @feimacode/open-design-agent-kit export <entryPath> [options]
 | `--shape-sheet` | Fluid designs: also write `<name>-shapes.png`, the design at every shape (all formats unless `--presets`). |
 | `--target <wechat\|notion\|newsletter\|generic>` | `--format paste` only: where it will be pasted. See [Paste into WeChat, Notion and newsletters](../guides/paste-html.md). |
 | `--base-url <https-url>` | `site`, `email` and `paste`: where the files will be hosted, so image and link URLs become absolute. |
+| `--embed-assets` | `standalone` only: download the remote 3D assets the page declares (HDRIs, textures, models) and embed them, so the file works offline and as a Claude artifact. Above 16 MB the export fails. |
+| `--max-resolution <1k\|2k\|4k>` | With `--embed-assets`: the highest Poly Haven texture and HDRI resolution to fetch. Default `1k`. |
 | `--badge`, `--no-badge` | `standalone`/`site` only: add or leave out the "Made with Open Design" footer badge. Default: on for `site`, off for `standalone`, unless [`OPEN_DESIGN_SHARE_BADGE`](settings-and-env.md#open_design_share_badge) says otherwise. |
 | `--browser <path>` | Browser executable. Default: [`OPEN_DESIGN_BROWSER_PATH`](settings-and-env.md#open_design_browser_path), then auto-detect. |
 | `--workspace <dir>` | Workspace root. Default: the nearest folder above the entry file that contains `.open-design/`, else the current directory. |

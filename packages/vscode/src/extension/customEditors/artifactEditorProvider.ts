@@ -8,7 +8,7 @@ import {
   findCollectionArtifacts,
   formatExportResult,
   liveShareRecords,
-  PUBLISH_RECIPES,
+  publishProviderLabel,
   readShareRecords,
   findExplorationArtifacts,
   readExplorationPlan,
@@ -640,7 +640,7 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
       items.push({
         action: 'copy',
         url: record.url,
-        label: `$(copy) Copy link (${PUBLISH_RECIPES[record.provider].label})`,
+        label: `$(copy) Copy link (${publishProviderLabel(record.provider)})`,
         description: record.url,
         detail: record.expiresAt ? `Expires ${new Date(record.expiresAt).toLocaleString()} unless claimed` : undefined,
       });

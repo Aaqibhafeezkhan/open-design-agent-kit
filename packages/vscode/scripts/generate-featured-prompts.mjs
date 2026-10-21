@@ -32,7 +32,7 @@ description: ${prompt.description}
 mode: agent
 ---
 
-${renderPromptBody(prompt, `\${input:brief:${placeholder}}`)}
+${renderPromptBody(prompt, `\${input:brief:${placeholder}}`, 'vscode')}
 `;
 }
 

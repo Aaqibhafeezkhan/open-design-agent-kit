@@ -263,4 +263,4 @@ Adapted from majidmanzarpour/threejs-game-skills (MIT) and checked against three
 4. **Export:**
    - **Still:** `export_open_design_artifact` with `format: "png"`; it shows `views.hero`.
    - **Flythrough:** `format: "mp4"` (or `"webm"`, or `"gif"` for a short loop). With `odScene.duration` set, no `duration` is needed.
-   - Viewers need a connection for three.js and CDN assets, including for `standalone` exports, unless you made offline copies.
+   - Viewers need a connection for three.js and CDN assets, including for `standalone` exports, unless you made offline copies. `export_open_design_artifact` with `format: "standalone"` and `embedAssets: true` embeds every asset in the spec's `assets` (and each file a glTF includes) in the file; publishing as a Claude artifact does it automatically. Keep `assets` complete, with each asset's own URL (a texture's folder URL is fine), or that file stays remote.

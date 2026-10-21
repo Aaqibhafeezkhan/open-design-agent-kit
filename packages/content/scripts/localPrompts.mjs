@@ -40,8 +40,21 @@ export async function loadLocalPrompts(assetsRoot) {
   return prompts;
 }
 
-export function renderPromptBody(prompt, briefText) {
-  return prompt.body.split(BRIEF_PLACEHOLDER).join(briefText);
+// Text only Claude can act on (its Artifact tool), between these comments.
+// Kept for the claude and mcp hosts, removed with the comments for the
+// others (openspec add-artifact-preview).
+const CLAUDE_ONLY_RE = /\n?<!-- claude-only -->[\s\S]*?<!-- \/claude-only -->\n?/g;
+const CLAUDE_HOSTS = new Set(['claude', 'mcp']);
+
+/** `text` as `host` sees it: claude-only blocks dropped unless host is claude or mcp. */
+export function forHost(text, host) {
+  if (CLAUDE_HOSTS.has(host)) return text;
+  const trailing = text.match(/\s*$/)[0];
+  return text.replace(CLAUDE_ONLY_RE, '\n').replace(/\n{3,}/g, '\n\n').trimEnd() + trailing;
+}
+
+export function renderPromptBody(prompt, briefText, host) {
+  return forHost(prompt.body.split(BRIEF_PLACEHOLDER).join(briefText), host);
 }
 
 /** Whether `host` (vscode, claude, codex or mcp) gets this prompt. */

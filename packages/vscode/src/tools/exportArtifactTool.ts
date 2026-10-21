@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { exportArtifact, formatExportResult, type ContentIndex, type ExportFormat, type PasteTarget } from '@feimacode/open-design-agent-kit-core';
+import { exportArtifact, formatExportResult, type AssetResolution, type ContentIndex, type ExportFormat, type PasteTarget } from '@feimacode/open-design-agent-kit-core';
 import { getOutputDirectory, getWorkspaceRoot } from '../workspace/artifactWriter';
 
 interface ExportArtifactInput {
@@ -15,6 +15,8 @@ interface ExportArtifactInput {
   slides?: number[];
   badge?: boolean;
   baseUrl?: string;
+  embedAssets?: boolean;
+  maxResolution?: AssetResolution;
   preset?: string;
   bleed?: number;
   cropMarks?: boolean;
