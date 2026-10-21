@@ -662,7 +662,7 @@ Looks up the trusted third-party MCP servers a workflow step can use instead of 
 | `capability` | string | no | What the step needs: `design.import`, `design.upload`, `design.export`, `design.read`, `design.write`, `brand.kits`, `docs.read`, `docs.write`, `storage.read`, `storage.search`, `storage.upload`, `team.share`, `social.post`, `social.schedule`. |
 | `integration` | string | no | One integration by id: `canva`, `figma`, `notion`, `google-drive`, `slack`, `buffer`, `metricool`, `x`. |
 | `platform` | string | no | A social network, for `social.*`: `x`, `linkedin`, `instagram`, `facebook`, `threads`, `tiktok`, `youtube`, `pinterest`, `bluesky`, `mastodon`. |
-| `agent` | `claude-code` · `codex` · `vscode` · `cursor` · `generic` | no | Which agent the setup steps are for. VS Code defaults to `vscode`; the MCP server infers it from the connecting client, falling back to `generic`. |
+| `agent` | `claude-code` · `claude-desktop` · `codex` · `vscode` · `cursor` · `generic` | no | Which agent the setup steps are for. VS Code defaults to `vscode`; the MCP server infers it from the connecting client (any Claude client other than Claude Code is `claude-desktop`), falling back to `generic`. `claude-desktop` covers Claude Desktop Chat, Cowork and claude.ai, where servers are added as claude.ai connectors. |
 
 **Result (text):**
 - With no arguments: the capability vocabulary and the list of integrations.

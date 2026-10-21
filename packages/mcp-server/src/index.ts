@@ -785,7 +785,7 @@ const TOOL_DEFS: ToolDef[] = [
           },
           agent: {
             type: 'string',
-            enum: ['claude-code', 'codex', 'vscode', 'cursor', 'generic'],
+            enum: ['claude-code', 'claude-desktop', 'codex', 'vscode', 'cursor', 'generic'],
             description: 'Which agent the setup steps are for. Defaults to the agent this server is connected to.',
           },
         },
