@@ -1095,6 +1095,58 @@ const TOOL_DEFS: ToolDef[] = [
     handler: (ctx, args) => tools.pushToFigma(ctx, args as { entryPath: string; refresh?: boolean }),
   },
   {
+    tool: {
+      name: 'start_open_design_job_run',
+      description:
+        "Starts one run of a recurring Open Design job: a job file at .open-design/jobs/<id>.job.md (YAML frontmatter naming the recipe, period, timezone, mode, target and outputs, then the brief). Call it first whenever a prompt says \"Run the Open Design job <path>\" (usually a scheduled task), or for the supervised first run after writing a job. It validates the job (listing every problem by field), works out the period key in the job's timezone (2026-10-21, 2026-W43 or 2026-10), and returns skip with a reason when this period already has a completed run and the sources haven't changed: then report that in one line and change nothing. Otherwise it records a started run and returns its runId, the target entry's state (exists, staleSources, the preview link), the run's capabilities (browser, cloud) and the ordered steps to follow, ending with finish_open_design_job_run. In a cloud session it first asks you to check out the job's state branch. Runs stay private: never publish publicly or post to social networks from a job run.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          jobPath: { type: 'string', description: 'Workspace-relative path of the job file, e.g. ".open-design/jobs/weekly-kpis.job.md".' },
+          runNow: { type: 'boolean', description: "Rebuild even though this period already has a completed run (the person asked for a fresh run). Don't set it from a scheduled prompt." },
+        },
+        required: ['jobPath'],
+      },
+    },
+    handler: (ctx, args) => tools.startJobRun(ctx, args as { jobPath: string; runNow?: boolean }),
+  },
+  {
+    tool: {
+      name: 'finish_open_design_job_run',
+      description:
+        "Finishes a recurring-job run started with start_open_design_job_run. It runs checks that need no browser on the target entry (missing local files, empty data-od-field elements, leftover placeholder text such as {{, TODO or Lorem ipsum, numbers found in no source, and the artifact viewer's size limits for the preview), settles the status (completed only without check errors; needs-review when the job has checks: required and the run had no browser), records outputs not made with their reasons (captures without a browser as skipped: no-browser), writes the run record to the job's run log, and returns a one-paragraph summary plus the remaining steps (commit or push the state branch, a PR, connector deliveries only for a completed run). Refuses, writing nothing, when runId isn't a started run of this job.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          jobPath: { type: 'string', description: 'The same job path passed to start_open_design_job_run.' },
+          runId: { type: 'string', description: 'The runId start_open_design_job_run returned.' },
+          status: { type: 'string', enum: ['completed', 'needs-review', 'failed'], description: 'completed when the design is done, needs-review when a person should look first, failed when it could not be made (e.g. a data pull failed).' },
+          outputs: {
+            type: 'object',
+            properties: {
+              written: { type: 'array', items: { type: 'string' }, description: 'Workspace paths this run wrote: the entry, exports, snapshots.' },
+              notMade: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    output: { type: 'string', description: 'The output, e.g. "pdf" or "preview".' },
+                    reason: { type: 'string', description: 'Why, e.g. "no-browser", "no-artifact-tool", or a short sentence.' },
+                  },
+                  required: ['output', 'reason'],
+                },
+                description: 'Outputs the job asks for that this run did not make.',
+              },
+            },
+          },
+          notes: { type: 'string', description: 'A sentence or two for the run record and summary: choices made without the person, anything odd.' },
+        },
+        required: ['jobPath', 'runId', 'status'],
+      },
+    },
+    handler: (ctx, args) => tools.finishJobRun(ctx, args as unknown as Parameters<typeof tools.finishJobRun>[1]),
+  },
+  {
     // main() handles this one itself: it replaces the server's context
     // instead of acting within it.
     tool: {

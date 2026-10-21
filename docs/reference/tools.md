@@ -35,6 +35,8 @@ Two rules apply to every tool:
 | [`restore_open_design_artifact`](#restore_open_design_artifact) | none | yes (MCP only) | Pick a design back up from a synced Claude artifact |
 | [`find_open_design_3d_assets`](#find_open_design_3d_assets) | `#od-3d-assets` | yes | Find free CC0 HDRIs, textures and models on Poly Haven for a 3D design |
 | [`list_open_design_integrations`](#list_open_design_integrations) | `#od-integrations` | yes | Find trusted integrations (Canva, Figma, Notion, Drive, Slack, social posting) and setup steps for this agent |
+| [`start_open_design_job_run`](#start_open_design_job_run) | none | yes (MCP only) | Start one run of a [recurring job](../guides/recurring-jobs.md): skip or the steps to follow |
+| [`finish_open_design_job_run`](#finish_open_design_job_run) | none | yes (MCP only) | Check a job run without a browser, record it and get its summary |
 | [`set_open_design_workspace`](#set_open_design_workspace) | none | yes (MCP only) | Tell the server which folder to work in, for hosts that start it elsewhere (Claude Desktop) |
 
 ## Workspace
@@ -686,6 +688,45 @@ What it checks, all before writing anything:
 ```json
 { "pagePath": "/tmp/artifact-abc.html", "artifactUrl": "https://claude.ai/artifact/abc" }
 ```
+
+## Recurring jobs
+
+MCP only: VS Code has no scheduler. See [Recurring design jobs](../guides/recurring-jobs.md) for the job file and the per-surface setup.
+
+### start_open_design_job_run
+
+Starts one run of the job at `jobPath`. It validates the job file, listing every problem by field; works out the period key in the job's `timezone` (`2026-10-21` for `day`, the ISO week `2026-W43` for `week`, `2026-10` for `month`); and reads the run log `.open-design/jobs/<id>.runs.json`. When this period already has a `completed` run, it returns `skip` with a reason, unless `runNow` is set or (with `rebuildOnSourceChange`, the default) a workspace source's hash changed since that run. Connector snapshots aren't compared, since they're only refreshed during a run.
+
+Otherwise it records a `started` run and returns:
+
+- the `runId` and period key;
+- the target: its entry path (`{period}` replaced in `series` mode), whether it exists, its `staleSources` and the preview link;
+- the capabilities: `browser` (a browser found the way [export](#export_open_design_artifact) finds one) and `cloud` (`CLAUDE_CODE_REMOTE` is `true`);
+- the outputs to make and the captures skipped for lack of a browser;
+- the brief and the ordered steps. Without a browser, the steps leave out [`check_open_design_artifact`](#check_open_design_artifact) and the captures. With a recorded `preview.url`, they republish that artifact through [`publish_open_design_artifact`](#publish_open_design_artifact) with `provider: "claude-artifact"`.
+
+In a cloud session that isn't on the job's state branch, it returns steps to check that branch out (or create it) and to call the tool again, and records nothing.
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `jobPath` | string | yes | The job file, e.g. `.open-design/jobs/weekly-kpis.job.md`. |
+| `runNow` | boolean | no | Rebuild even though this period already has a completed run. Not for scheduled prompts. |
+
+**Errors:** an invalid job file, by field: a missing `timezone`, a `series` `target` without `{period}`, a connector source without `snapshot`, or a `deliver` entry that names a public provider or social posting.
+
+### finish_open_design_job_run
+
+Finishes a started run. It checks the target without a browser: missing local files the entry or its CSS references, empty `data-od-field` elements, leftover `{{`, `TODO` or Lorem ipsum, numbers on the page found in no recorded source, and (for a `preview` delivery) the standalone file against the artifact viewer's limits. Then it settles the status: `completed` only when no check reports an error, and `needs-review` when the job has `checks: required` and the run had no browser. Capture formats the job asks for are recorded as `skipped: no-browser` when the run had none. It writes the run record (status, period, source hashes, outputs, findings, times) and returns a one-paragraph summary plus the remaining steps: push the state branch in the cloud, and the commit, PR and connector deliveries only for a `completed` run.
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `jobPath` | string | yes | The same job path. |
+| `runId` | string | yes | The id `start_open_design_job_run` returned. |
+| `status` | `completed` · `needs-review` · `failed` | yes | How the run went. |
+| `outputs` | object | no | `{ written?: string[], notMade?: [{ output, reason }] }`: the workspace paths written, and outputs not made with why (`no-browser`, `no-artifact-tool`, …). |
+| `notes` | string | no | A sentence or two for the record and summary. |
+
+**Errors:** a `runId` that isn't a started run of this job, or one already finished. Nothing is written.
 
 ## Assets
 

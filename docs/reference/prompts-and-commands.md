@@ -38,6 +38,7 @@ All of them are explicit-only. To see the current list, type `/od-` in the chat 
 | `/open-design-explore` | [Explore 2–4 design directions](../guides/explore-directions.md) side by side, then take one forward. |
 | `/open-design-publish` | [Share a design](../guides/share-and-publish.md) as a link or as one HTML file. |
 | `/open-design-deck-from-source` | [Turn a document into a deck](../guides/deck-from-a-document.md), outline first. |
+| `/open-design-recurring` | [Set up a recurring job](../guides/recurring-jobs.md) and write its job file. Scheduled runs need Claude Code or Claude Desktop. |
 | `/open-design-integrations` | [See which services are connected](../guides/integrations.md#see-whats-connected) (Canva, Figma, Notion, Drive, Slack, social posting) and set one up. |
 | `/od-<mode>-<id>` | The [curated entries](#curated-entries). |
 
@@ -89,12 +90,13 @@ Installed by the plugin (`/plugin install open-design`) or by [`init --tools cla
 | `open-design-publish` | `/open-design:open-design-publish` (plugin) or `/open-design-publish` (init) | yes, from requests to share, publish or get a link |
 | `open-design-deck-from-source` | `/open-design:open-design-deck-from-source` (plugin) or `/open-design-deck-from-source` (init) | yes, from requests to make slides or a one-pager from a document |
 | `open-design-integrations` | `/open-design:open-design-integrations` (plugin) or `/open-design-integrations` (init) | yes, from questions about integrations, connectors or what's connected |
+| `open-design-recurring` | `/open-design:open-design-recurring` (plugin) or `/open-design-recurring` (init) | yes, from requests for a design every day, week or month, and from "Run the Open Design job …" prompts. See [Recurring design jobs](../guides/recurring-jobs.md) |
 | `open-design-preview` | `/open-design:open-design-preview` (plugin) or `/open-design-preview` (init) | yes, from requests to see, preview or comment on a design. Opens the [browser preview](../guides/browser-preview.md) |
 | curated entries | see [Curated entries](#curated-entries) | no |
 
 The MCP server also offers **MCP prompts**. In Claude Code they appear as `/mcp__open-design__<name>`:
 
-- `open-design-new`, `open-design-campaign`, `open-design-docs`, `open-design-social-post`, `open-design-poster`, `open-design-explore`, `open-design-publish`, `open-design-deck-from-source`, `open-design-integrations` and `open-design-preview` take an optional `brief` argument.
+- `open-design-new`, `open-design-campaign`, `open-design-docs`, `open-design-social-post`, `open-design-poster`, `open-design-explore`, `open-design-publish`, `open-design-deck-from-source`, `open-design-integrations`, `open-design-recurring` and `open-design-preview` take an optional `brief` argument.
 - There's one prompt per remixable example, named `od-<mode>-<id>`, e.g. `od-deck-deck-guizang-editorial-example`. Selecting one prefills a remix request; nothing runs until you send it.
 
 ## Codex
@@ -114,6 +116,7 @@ Skills in `.agents/skills/` (from [`init --tools codex`](cli.md#init) or copied 
 | `open-design-deck-from-source` | yes |
 | `open-design-integrations` | yes |
 | `open-design-preview` | yes |
+| `open-design-recurring` | yes |
 | curated entries (`guizang-ppt`, `card-twitter`, …) | no: each has `agents/openai.yaml` with `policy.allow_implicit_invocation: false` |
 
 MCP prompts are the same as for Claude Code, if your Codex version surfaces them.

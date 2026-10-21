@@ -2,7 +2,7 @@
   "sourceRepo": "https://github.com/nexu-io/open-design.git",
   "sourceRef": "open-design-v0.24.1",
   "sourceCommit": "89e64d813bb1c7a11519b3f668f011f7017637d7",
-  "syncedAt": "2026-10-21T07:23:01.226Z",
+  "syncedAt": "2026-10-21T09:05:43.728Z",
   "counts": {
     "skills": 163,
     "designTemplates": 114,
@@ -15,7 +15,7 @@
   "localOverlay": {
     "skills": 16,
     "examples": 26,
-    "prompts": 10,
+    "prompts": 11,
     "designSystemOverrides": 8,
     "designSystemPackages": 46
   }
