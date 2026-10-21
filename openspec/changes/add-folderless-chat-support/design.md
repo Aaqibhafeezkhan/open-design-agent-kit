@@ -87,7 +87,7 @@ The rule has two halves. A keeps the first and relaxes the second, in one place 
 - **Only design file types.** Text: `.html .htm .css .js .mjs .json .svg .md .txt .csv`. Binary, sent as base64: `.png .jpg .jpeg .webp .gif .woff .woff2`. Anything else is refused.
 - **Size cap.** 5 MiB decoded per call, the same budget `get_open_design_preview_state` uses for a page.
 - **No delete, no move, no read-anywhere.** Writes and overwrites only. Reading back uses the existing `get_open_design_artifact` (entry content) and `read_open_design_source`.
-- **A visible place.** `~/Open Design/<name>/`, or `OPEN_DESIGN_MANAGED_ROOT/<name>/`. The name is the slug of what the agent passes (the design or project name). The same name in a later chat reopens the same folder, so work can continue.
+- **A visible place.** `~/Open Design/<name>/`, or `OPEN_DESIGN_MANAGED_ROOT/<name>/`, or, when the desktop extension's default design folder (`OPEN_DESIGN_DEFAULT_WORKSPACE`) is set, `<default>/<name>/`: that setting is the user's answer to "where should designs from a chat with no folder go". The name is the slug of what the agent passes (the design or project name). The same name in a later chat reopens the same folder, so work can continue.
 
 ### The managed workspace
 

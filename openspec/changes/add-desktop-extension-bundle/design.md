@@ -77,6 +77,8 @@ On Windows without system Node, the plugin's server fails to spawn (`ENOENT`) an
 
 New precedence: agent-set folder, `OPEN_DESIGN_WORKSPACE_ROOT`, MCP roots, `OPEN_DESIGN_DEFAULT_WORKSPACE`, working directory.
 
+When the server runs as the extension (`OPEN_DESIGN_HOST=claude-desktop-extension`), its working directory is wherever Desktop starts extensions, never the user's folder, so the guard treats a working-directory root like the home folder there.
+
 The guard also covers a root that came from the default: until the agent calls `set_open_design_workspace`, tools refuse. The message names the default as the folder to pass when no folder is connected, and otherwise says to pass the connected folder's host path. That costs one extra call. In exchange, Claude can't write into the default folder while joining paths onto a different connected folder.
 
 ### 4. Figma token
@@ -137,7 +139,7 @@ The server already serves its remixable-example prompts over `prompts/list`. Tha
 Added to `release.yml`'s `build` job, after "Pack npm packages":
 
 1. **Build `.mcpb`:** `npm run build --workspace=packages/desktop-extension -- --content release/feimacode-open-design-agent-kit-content-$VERSION.tgz --out release/open-design-$VERSION.mcpb`.
-2. **Inspect:** `mcpb info` prints the manifest, and the step checks the name and that `version` matches `$VERSION`.
+2. **Inspect:** `mcpb info` prints the file, size and signature status (in 2.1.2 it doesn't print the manifest), and `scripts/test-mcpb.mjs` checks the bundle's `manifest.json` name and that `version` matches `$VERSION`.
 3. **Smoke test:** unzip into a temp folder outside the checkout and run `node server/out/index.js` with `OPEN_DESIGN_DEFAULT_WORKSPACE` set to a temp dir. Do the same JSON-RPC `initialize` and `tools/list` handshake as `scripts/test-npm-publish.mjs`, and require `list_open_design_skills` and `set_open_design_workspace` in the list. This proves the bundle runs with no repo `node_modules`.
 4. **Size guard:** fail above 40 MB. That is well over the expected size (content about 19 MB uncompressed) and catches an accidental sweep of the monorepo, the problem `--no-dependencies` solved for the `.vsix`.
 5. **Checksum** `open-design-$VERSION.mcpb.sha256`, upload with the other artifacts, attach to the GitHub Release (`files:` gains `release/*.mcpb`), and list it in the release summary.

@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Managed Workspace for Chats Without a Folder
-The MCP server SHALL provide `use_open_design_managed_workspace` (MCP only) with a required `name`. It SHALL create, or reopen, a folder named by the slug of `name` under `OPEN_DESIGN_MANAGED_ROOT`, defaulting to `Open Design` in the user's home folder. It SHALL make that folder the session's workspace root as `set_open_design_workspace` does, mark the workspace as managed, and return the folder's absolute path.
+The MCP server SHALL provide `use_open_design_managed_workspace` (MCP only) with a required `name`. It SHALL create, or reopen, a folder named by the slug of `name` under `OPEN_DESIGN_MANAGED_ROOT`, else under `OPEN_DESIGN_DEFAULT_WORKSPACE` (the desktop extension's default design folder) when that names an existing folder, else under `Open Design` in the user's home folder. It SHALL make that folder the session's workspace root as `set_open_design_workspace` does, mark the workspace as managed, and return the folder's absolute path.
 
 #### Scenario: First design in a chat with no folder
 - **WHEN** the agent calls `use_open_design_managed_workspace` with `name: "Coffee poster"`
@@ -45,7 +45,7 @@ The MCP server SHALL provide `write_open_design_file` (MCP only) with a required
 - **THEN** the tool SHALL refuse and name the 5 MiB limit
 
 ### Requirement: Folderless Tool Listing
-The MCP server SHALL list `use_open_design_managed_workspace` and `write_open_design_file` only when it has no folder of its own: its working directory is the user's home folder, `OPEN_DESIGN_WORKSPACE_ROOT` is unset, and the client reported no usable MCP root after the first roots lookup.
+The MCP server SHALL list `use_open_design_managed_workspace` and `write_open_design_file` only when it has no folder of its own: its working directory is the user's home folder (or it runs as the desktop extension, whose working directory is never the user's folder), `OPEN_DESIGN_WORKSPACE_ROOT` is unset, and the client reported no usable MCP root after the first roots lookup.
 
 #### Scenario: Claude Code project
 - **WHEN** Claude Code starts the server in a project folder

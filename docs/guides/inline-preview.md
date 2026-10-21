@@ -4,7 +4,7 @@ In a Claude Desktop **Chat** conversation, Open Design shows the design right in
 
 | Where | What you see |
 |---|---|
-| Claude Desktop Chat (with or without a folder) | The design inline, with Comment, Ask Claude to apply, export buttons and Fullscreen |
+| Claude Desktop Chat (with a folder, or without one when the [desktop extension](../getting-started/claude-desktop.md#install-the-desktop-extension) is installed) | The design inline, with Comment, Ask Claude to apply, export buttons and Fullscreen |
 | Claude Desktop's Code tab, the Claude Code terminal, Codex | A text summary (title, path, open comments); the agent opens the [browser preview](browser-preview.md) |
 
 ## Show a design

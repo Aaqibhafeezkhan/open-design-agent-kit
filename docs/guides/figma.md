@@ -13,6 +13,8 @@ Either of these:
 
   > **In VS Code:** run **Open Design: Set Figma Access Token** and paste it. It's stored encrypted and never shown again.
 
+  > **In the Claude Desktop extension:** enter it under **Settings → Extensions → Open Design → Figma access token**. Desktop keeps it in your system keychain.
+
   > **In the Claude Code or Claude Desktop plugin:** save it as the only line of `~/.config/open-design/figma-token` on your machine. The server reads it on each call, so there's nothing to restart. Keep the file private to your user (`chmod 600` on macOS and Linux).
 
   > **In Codex, or Claude Code without the plugin:** set [`OPEN_DESIGN_FIGMA_TOKEN`](../reference/settings-and-env.md#open_design_figma_token) in the MCP server's `env`.

@@ -35,6 +35,8 @@ Two rules apply to every tool:
 | [`find_open_design_3d_assets`](#find_open_design_3d_assets) | `#od-3d-assets` | yes | Find free CC0 HDRIs, textures and models on Poly Haven for a 3D design |
 | [`list_open_design_integrations`](#list_open_design_integrations) | `#od-integrations` | yes | Find trusted integrations (Canva, Figma, Notion, Drive, Slack, social posting) and setup steps for this agent |
 | [`set_open_design_workspace`](#set_open_design_workspace) | none | yes (MCP only) | Tell the server which folder to work in, for hosts that start it elsewhere (Claude Desktop) |
+| [`use_open_design_managed_workspace`](#use_open_design_managed_workspace) | none | yes (MCP only, chats with no folder) | Open a folder the server keeps for a design, in a Claude Desktop chat with no folder |
+| [`write_open_design_file`](#write_open_design_file) | none | yes (MCP only, chats with no folder) | Save a design file Claude wrote into that folder |
 
 ## Workspace
 
@@ -47,6 +49,32 @@ Claude Code, Codex and VS Code start the server in your project, so they never n
 | Argument | Required | Description |
 |---|---|---|
 | `path` | yes | Absolute path of the folder on the machine the server runs on. It must exist. |
+
+It also wins over [`OPEN_DESIGN_DEFAULT_WORKSPACE`](settings-and-env.md#open_design_default_workspace), the desktop extension's default design folder. Until Claude calls it (or the next tool), tools refuse with a message saying which folder to pass, so nothing lands in your home folder or in the default folder by mistake.
+
+### use_open_design_managed_workspace
+
+MCP only, and listed only when the server has no folder of its own: it runs in your home folder (or as the [desktop extension](../getting-started/claude-desktop.md#install-the-desktop-extension)), with no `OPEN_DESIGN_WORKSPACE_ROOT` and no MCP roots. That's a Claude Desktop chat with no connected folder, where Claude's own file tools (if it has any) write into a cloud sandbox the server can't see.
+
+It creates, or reopens, `~/Open Design/<name>/` and makes it the workspace for the rest of the session. The folder sits under [`OPEN_DESIGN_MANAGED_ROOT`](settings-and-env.md#open_design_managed_root) when that is set, else under the extension's default design folder when one is set. Using the same name in a later chat continues the same design. Claude tells you the folder's path the first time.
+
+| Argument | Required | Description |
+|---|---|---|
+| `name` | yes | A short name for the design, e.g. "Coffee poster". The folder is named after it (`coffee-poster`). |
+
+### write_open_design_file
+
+MCP only, and only in a folder opened with `use_open_design_managed_workspace`. Everywhere else Claude writes design files with its own tools and this tool refuses. It is the one exception to "the agent writes the files": Claude still writes every byte, and the server only saves them where it can't. The file is written exactly as sent; the result gives its path, size and SHA-256.
+
+Limits: the path must be under the output directory (`.open-design/` by default), with no `..` or link leading out of it; only `.html .htm .css .js .mjs .json .svg .md .txt .csv` as text and `.png .jpg .jpeg .webp .gif .woff .woff2` as base64; at most 5 MiB per file. Manifests (`*.artifact.json`), comments (`*.comments.json`), `config.json`, anything in an `exports/` folder and check screenshots belong to other tools and are refused. It never deletes or moves anything.
+
+| Argument | Required | Description |
+|---|---|---|
+| `path` | yes | Workspace-relative path, e.g. `.open-design/coffee-poster/coffee-poster.html`. |
+| `content` | yes | The whole file: text, or base64 for images and fonts. |
+| `encoding` | no | `"base64"` for images and fonts. |
+
+In a managed folder, [`publish_open_design_artifact`](#publish_open_design_artifact) with `provider: "claude-artifact"` hands Claude the page itself (up to 2 MiB) instead of a path its Artifact tool can't read.
 
 ## Catalog
 

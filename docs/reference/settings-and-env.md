@@ -58,13 +58,21 @@ For the MCP server and the CLI, set these in the environment of the process that
 
 MCP server. Default: the first workspace folder the client reports through MCP roots (VS Code does), otherwise the server process's working directory, which Claude Code and Codex set to your project. Setting it overrides both. The agent can still pick a folder for one session with [`set_open_design_workspace`](tools.md#set_open_design_workspace), which Claude Desktop needs because it starts the server in your home folder. It's the workspace artifacts are written to, and where `.open-design/config.json` (the active design system) is kept.
 
+### OPEN_DESIGN_DEFAULT_WORKSPACE
+
+MCP server. A folder to use when nothing else names one: below a folder the agent sets, `OPEN_DESIGN_WORKSPACE_ROOT` and MCP roots, and in place of the working directory. It must exist. Unlike `OPEN_DESIGN_WORKSPACE_ROOT`, it doesn't switch off the home-folder check: tools wait until the agent calls [`set_open_design_workspace`](tools.md#set_open_design_workspace), so a chat with a different connected folder never writes into it by accident. The [desktop extension](../getting-started/claude-desktop.md#install-the-desktop-extension) sets it from its **Default design folder** setting, and chats with no folder keep their designs under it (see [`OPEN_DESIGN_MANAGED_ROOT`](#open_design_managed_root)).
+
+### OPEN_DESIGN_MANAGED_ROOT
+
+MCP server. Where [`use_open_design_managed_workspace`](tools.md#use_open_design_managed_workspace) makes a folder per design, for chats with no folder. Default: `OPEN_DESIGN_DEFAULT_WORKSPACE` when set, else `~/Open Design`.
+
 ### OPEN_DESIGN_OUTPUT_DIR
 
 MCP server. Default: `.open-design`. The MCP equivalent of [`openDesign.outputDirectory`](#opendesignoutputdirectory).
 
 ### OPEN_DESIGN_FIGMA_TOKEN
 
-MCP server. A Figma personal access token (Figma → Settings → Personal access tokens), needed by [`pull_open_design_figma_frame`](tools.md#pull_open_design_figma_frame) when Figma isn't connected. When it's unset, the server reads the token from the file `~/.config/open-design/figma-token` (under `$XDG_CONFIG_HOME` when that's set), so a token saved there works in the Claude Code plugin and Claude Desktop without editing any config. In VS Code, use **Open Design: Set Figma Access Token** instead; it stores the token encrypted.
+MCP server. A Figma personal access token (Figma → Settings → Personal access tokens), needed by [`pull_open_design_figma_frame`](tools.md#pull_open_design_figma_frame) when Figma isn't connected. When it's unset, the server reads the token from the file `~/.config/open-design/figma-token` (under `$XDG_CONFIG_HOME` when that's set), so a token saved there works in the Claude Code plugin and Claude Desktop without editing any config. The [desktop extension](../getting-started/claude-desktop.md#install-the-desktop-extension) sets it from its **Figma access token** setting; an empty setting falls back to the file. In VS Code, use **Open Design: Set Figma Access Token** instead; it stores the token encrypted.
 
 ### OPEN_DESIGN_SHARE_BADGE
 
@@ -84,6 +92,14 @@ All hosts. The Chrome, Edge or Chromium executable used for export. When unset, 
 4. Snap-packaged Chromium, last, because it can't read hidden folders like `.open-design/`.
 
 Nothing is ever downloaded. See [Troubleshooting](../troubleshooting.md#no-chrome-edge-or-chromium-browser-was-found). The [browser preview](../guides/browser-preview.md) uses the same browser for its window and comment screenshots.
+
+### OPEN_DESIGN_HOST
+
+MCP server. Set to `claude-desktop-extension` by the desktop extension's manifest. The server then holds the lock file `~/.config/open-design/desktop-extension.lock` (under `$XDG_CONFIG_HOME` when set) while it runs, and treats its working directory as no folder of its own. You don't set it yourself.
+
+### OPEN_DESIGN_LAUNCHER
+
+MCP server. Set to `claude-plugin` by the Claude plugin's launcher. While a desktop extension holds its lock, a server started this way lists no tools to clients other than Claude Code, so Claude Desktop shows one set of Open Design tools. You don't set it yourself.
 
 ### OPEN_DESIGN_PREVIEW
 

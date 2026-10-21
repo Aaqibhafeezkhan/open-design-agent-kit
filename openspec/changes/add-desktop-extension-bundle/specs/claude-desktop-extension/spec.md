@@ -9,7 +9,7 @@ The system SHALL build a Claude Desktop extension `open-design-<version>.mcpb` f
 
 #### Scenario: Manifest version follows the release
 - **WHEN** the bundle is built for release 0.3.0
-- **THEN** `mcpb info` SHALL report name `open-design` and version `0.3.0`
+- **THEN** the bundle's `manifest.json` SHALL have name `open-design` and version `0.3.0`, and the server SHALL report version `0.3.0` in `serverInfo`
 
 ### Requirement: Desktop Extension Settings
 The extension's `user_config` SHALL declare an optional `figma_token` of type `string` with `sensitive: true`, mapped to `OPEN_DESIGN_FIGMA_TOKEN`, and an optional `workspace` of type `directory`, mapped to `OPEN_DESIGN_DEFAULT_WORKSPACE`. The server SHALL treat an environment value that is still a literal `${user_config.<key>}` placeholder as unset.
