@@ -5,7 +5,7 @@ import { checkbox } from '@inquirer/prompts';
 import { ALL_TOOL_IDS, buildToolChoices, InvalidToolsArgError, parseToolsArg, type ToolId } from './toolSelection';
 import { getClaudeSkillsAssetRoot, getCodexSkillsAssetRoot } from './env';
 import { mergeClaudeLaunchConfig, mergeClaudeMcpConfig, writeClaudeSkills } from './claudeSetup';
-import { CODEX_CONFIG_SNIPPET, ensureCodexMcpConfig, writeCodexSkills } from './codexSetup';
+import { codexConfigSnippet, ensureCodexMcpConfig, writeCodexSkills } from './codexSetup';
 import { runCheck, type CheckCliOptions } from './checkCommand';
 import { runExport, runRenderVideo, type ExportCliOptions } from './exportCommand';
 import { runPreview, type PreviewCliOptions } from './previewCommand';
@@ -52,7 +52,7 @@ async function runInit(targetPathArg: string, toolsFlag: string | undefined): Pr
       console.log(`Codex: ${result.configPath} already registers open-design — nothing to do`);
     } else {
       console.log(
-        `Codex: ${result.configPath} already exists and was left untouched (existing TOML files are never rewritten). Add this yourself:\n\n${CODEX_CONFIG_SNIPPET}`,
+        `Codex: ${result.configPath} already exists and was left untouched (existing TOML files are never rewritten). Add this yourself:\n\n${codexConfigSnippet()}`,
       );
     }
   }

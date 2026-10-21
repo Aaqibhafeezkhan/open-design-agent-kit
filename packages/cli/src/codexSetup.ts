@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import { parse } from 'smol-toml';
+import { pinned } from './packageVersion';
 import { writeSkillTree } from './skillWriter';
 
 /** Writes the bundled Codex skill content into `<targetPath>/.agents/skills/`. */
@@ -17,10 +18,13 @@ async function pathExists(p: string): Promise<boolean> {
   }
 }
 
-export const CODEX_CONFIG_SNIPPET = `[mcp_servers.open-design]
+/** The MCP server registration, pinned to this CLI's version (see packageVersion.ts). */
+export function codexConfigSnippet(version?: string): string {
+  return `[mcp_servers.open-design]
 command = "npx"
-args = ["-y", "@feimacode/open-design-agent-kit-mcp"]
+args = ["-y", "${pinned('@feimacode/open-design-agent-kit-mcp', version)}"]
 `;
+}
 
 export type CodexConfigOutcome =
   | { outcome: 'created' }
@@ -41,7 +45,7 @@ export async function ensureCodexMcpConfig(targetPath: string): Promise<CodexCon
 
   if (!(await pathExists(configPath))) {
     await fs.mkdir(path.dirname(configPath), { recursive: true });
-    await fs.writeFile(configPath, CODEX_CONFIG_SNIPPET, 'utf8');
+    await fs.writeFile(configPath, codexConfigSnippet(), 'utf8');
     return { outcome: 'created' };
   }
 
