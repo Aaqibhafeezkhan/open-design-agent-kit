@@ -58,10 +58,10 @@ Release a prerelease first, test it, then release the same code as the stable ve
 1. `node scripts/bump-version.mjs 0.3.0-beta.1` and push the tag. The release workflow builds everything and creates a GitHub **pre-release**, which the docs' "latest release" links skip.
 2. Run **Publish npm Packages** with `0.3.0-beta.1`. A prerelease is published under the npm dist-tag `next`, not `latest`, so `npx @feimacode/open-design-agent-kit-mcp` and every `.mcp.json` that `init` wrote keep resolving the stable version. The MCP registry job is skipped for prereleases. Skip **Publish to Marketplace**: it only takes stable versions.
 3. Test against it:
-   - Claude Code: `"args": ["-y", "@feimacode/open-design-agent-kit-mcp@next"]` in a test project's `.mcp.json`, and `npx -y @feimacode/open-design-agent-kit@next init` or `preview`.
+   - Claude Code and Codex: `npx -y @feimacode/open-design-agent-kit@next init` in a test project. `init` pins the server and the preview to its own version, so the project runs the beta's server with the beta's skills.
    - Claude Desktop extension: install the `.mcpb` from the pre-release.
    - Plugin: on a local branch, pin the plugin to `0.3.0-beta.1` (step 4 below, without pushing), then in Claude Code add your checkout as a marketplace with `/plugin marketplace add <path to checkout>` and install Open Design from it. The public marketplace keeps the stable pin.
-4. Fix and repeat with `-beta.2` as needed. When it passes, `node scripts/bump-version.mjs 0.3.0`, release, publish (it goes to `latest` and the MCP registry), and pin the plugin to `0.3.0`.
+4. Fix and repeat with `-beta.2` as needed. When it passes, `node scripts/bump-version.mjs 0.3.0`, release, publish (it goes to `latest` and the MCP registry, and `next` moves to it too so it's never older than `latest`), and pin the plugin to `0.3.0`.
 
 npm keeps every published version, so a prerelease stays downloadable by its exact version. It's public, just never picked by default.
 

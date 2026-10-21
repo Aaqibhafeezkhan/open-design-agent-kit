@@ -163,6 +163,18 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish "feimacode-open-design-agent-kit-${{ needs.validate.outputs.version }}.tgz" --tag "${{ needs.validate.outputs.dist_tag }}"
 
+      - name: Point next at the stable release
+        # `next` would otherwise stay on the last prerelease, older than this
+        # release, for anyone who installs or tests with @next.
+        if: ${{ needs.validate.outputs.dist_tag == 'latest' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          for PKG in @feimacode/open-design-agent-kit-content @feimacode/open-design-agent-kit-mcp @feimacode/open-design-agent-kit; do
+            npm dist-tag add "$PKG@$VERSION" next
+          done
+
       - name: Publish summary
         run: |
           VERSION="${{ needs.validate.outputs.version }}"
