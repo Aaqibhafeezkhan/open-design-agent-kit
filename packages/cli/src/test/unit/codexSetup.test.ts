@@ -2,7 +2,8 @@ import * as assert from 'node:assert';
 import { promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { CODEX_CONFIG_SNIPPET, ensureCodexMcpConfig, writeCodexSkills } from '../../codexSetup';
+import { codexConfigSnippet, ensureCodexMcpConfig, writeCodexSkills } from '../../codexSetup';
+import { cliVersion, pinned } from '../../packageVersion';
 
 const GENERATED_MARKER = '<!-- generated:open-design-agent-kit -->';
 
@@ -36,7 +37,8 @@ describe('ensureCodexMcpConfig', () => {
     const result = await ensureCodexMcpConfig(target);
     assert.strictEqual(result.outcome, 'created');
     const written = await fs.readFile(path.join(target, '.codex', 'config.toml'), 'utf8');
-    assert.strictEqual(written, CODEX_CONFIG_SNIPPET);
+    assert.strictEqual(written, codexConfigSnippet());
+    assert.match(written, new RegExp(`"@feimacode/open-design-agent-kit-mcp@${cliVersion().replace(/\./g, '\\.')}"`));
   });
 
   it('never rewrites an existing config.toml, byte-for-byte', async () => {
@@ -70,5 +72,16 @@ describe('ensureCodexMcpConfig', () => {
     await ensureCodexMcpConfig(target);
     const second = await ensureCodexMcpConfig(target);
     assert.strictEqual(second.outcome, 'already-registered');
+  });
+});
+
+describe('pinned', () => {
+  it('pins a package to the given version, including a prerelease', () => {
+    assert.strictEqual(pinned('@feimacode/open-design-agent-kit-mcp', '0.3.0-beta.1'), '@feimacode/open-design-agent-kit-mcp@0.3.0-beta.1');
+    assert.match(codexConfigSnippet('0.3.0-beta.1'), /args = \["-y", "@feimacode\/open-design-agent-kit-mcp@0\.3\.0-beta\.1"\]/);
+  });
+
+  it('reads the CLI version from its package.json', () => {
+    assert.match(cliVersion(), /^\d+\.\d+\.\d+/);
   });
 });

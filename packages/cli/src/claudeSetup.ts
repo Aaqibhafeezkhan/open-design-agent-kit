@@ -1,5 +1,6 @@
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
+import { pinned } from './packageVersion';
 import { writeSkillTree } from './skillWriter';
 
 /** Writes the bundled Claude Code skill content into `<targetPath>/.claude/skills/`. */
@@ -7,10 +8,10 @@ export async function writeClaudeSkills(targetPath: string, assetRoot: string): 
   return writeSkillTree(path.join(targetPath, '.claude', 'skills'), assetRoot);
 }
 
-const OPEN_DESIGN_MCP_ENTRY = {
-  command: 'npx',
-  args: ['-y', '@feimacode/open-design-agent-kit-mcp'],
-};
+/** The MCP server, pinned to this CLI's version (see packageVersion.ts). */
+export function openDesignMcpEntry(version?: string): { command: string; args: string[] } {
+  return { command: 'npx', args: ['-y', pinned('@feimacode/open-design-agent-kit-mcp', version)] };
+}
 
 export class MalformedMcpJsonError extends Error {
   constructor(mcpJsonPath: string, cause: unknown) {
@@ -49,7 +50,7 @@ export async function mergeClaudeMcpConfig(targetPath: string): Promise<{ create
   }
 
   const mcpServers = (config.mcpServers as Record<string, unknown> | undefined) ?? {};
-  mcpServers['open-design'] = OPEN_DESIGN_MCP_ENTRY;
+  mcpServers['open-design'] = openDesignMcpEntry();
   config.mcpServers = mcpServers;
 
   await fs.writeFile(mcpJsonPath, JSON.stringify(config, null, 2) + '\n', 'utf8');
@@ -64,12 +65,14 @@ export const LAUNCH_PREVIEW_PORT = 5317;
  * tab can open it in its Browser pane (openspec add-claude-desktop-guide).
  * Uses the launch.json configuration shape (name, runtimeExecutable, runtimeArgs, port).
  */
-export const OPEN_DESIGN_LAUNCH_ENTRY = {
-  name: 'open-design-preview',
-  runtimeExecutable: 'npx',
-  runtimeArgs: ['-y', '@feimacode/open-design-agent-kit', 'preview', '--no-open', '--root-redirect', '--port', String(LAUNCH_PREVIEW_PORT)],
-  port: LAUNCH_PREVIEW_PORT,
-};
+export function openDesignLaunchEntry(version?: string) {
+  return {
+    name: 'open-design-preview',
+    runtimeExecutable: 'npx',
+    runtimeArgs: ['-y', pinned('@feimacode/open-design-agent-kit', version), 'preview', '--no-open', '--root-redirect', '--port', String(LAUNCH_PREVIEW_PORT)],
+    port: LAUNCH_PREVIEW_PORT,
+  };
+}
 
 /**
  * Merges the `open-design-preview` configuration into
@@ -91,10 +94,11 @@ export async function mergeClaudeLaunchConfig(targetPath: string): Promise<{ out
     }
   }
 
+  const entry = openDesignLaunchEntry();
   const configurations = Array.isArray(config.configurations) ? [...config.configurations] : [];
-  const ours = configurations.findIndex((c) => (c as { name?: unknown } | null)?.name === OPEN_DESIGN_LAUNCH_ENTRY.name);
-  if (ours >= 0) configurations[ours] = OPEN_DESIGN_LAUNCH_ENTRY;
-  else configurations.push(OPEN_DESIGN_LAUNCH_ENTRY);
+  const ours = configurations.findIndex((c) => (c as { name?: unknown } | null)?.name === entry.name);
+  if (ours >= 0) configurations[ours] = entry;
+  else configurations.push(entry);
   config.configurations = configurations;
 
   const next = JSON.stringify(config, null, 2) + '\n';

@@ -8,6 +8,7 @@ One version covers the VS Code extension and the npm packages (`content`, `mcp-s
 
 - **Claude Desktop extension.** Each release now carries `open-design-<version>.mcpb`: the MCP server for Claude Desktop on its own Node, with no Node.js install, no `npx` and no download on first start, a settings form for the Figma token (kept in the system keychain) and a default design folder. With the plugin installed too, Claude sees one set of tools. [Claude Desktop](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/getting-started/claude-desktop.md#install-the-desktop-extension)
 - **Chat without a folder.** With the extension, a Claude Desktop chat with no folder makes real designs: `use_open_design_managed_workspace` opens `~/Open Design/<name>/`, and `write_open_design_file` saves the files Claude writes there. With the plugin alone, Claude says what's missing and can make a single page as a Claude artifact.
+- **`init` pins the server.** The `.mcp.json`, `.codex/config.toml` and `.claude/launch.json` entries now name the CLI's own version, so a project's server matches its skills. Re-run `npx @feimacode/open-design-agent-kit@latest init` to upgrade both.
 - **Server:** `OPEN_DESIGN_DEFAULT_WORKSPACE` and `OPEN_DESIGN_MANAGED_ROOT`; the server reports its real version.
 
 ## [0.2.0] - 2026-10-10

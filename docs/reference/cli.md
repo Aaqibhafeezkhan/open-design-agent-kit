@@ -35,6 +35,8 @@ What it writes:
   - the same skills in `.agents/skills/`, with curated entries marked explicit-only by `agents/openai.yaml`;
   - `.codex/config.toml` with the MCP server, created only if that file doesn't exist. Otherwise the snippet to add is printed.
 
+The MCP server in `.mcp.json` and `.codex/config.toml`, and the CLI in `.claude/launch.json`, are pinned to the version of the CLI that ran `init` (for example `@feimacode/open-design-agent-kit-mcp@0.3.0`), so the server always matches the skills written beside it. To upgrade, run `npx @feimacode/open-design-agent-kit@latest init` again: it rewrites the skills and the pins together.
+
 Safe to re-run: generated skills are refreshed, stale generated ones are removed, and skills you wrote yourself are never touched.
 
 ### export

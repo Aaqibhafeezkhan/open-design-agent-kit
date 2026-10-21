@@ -2,7 +2,10 @@ import * as assert from 'node:assert';
 import { promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { MalformedMcpJsonError, mergeClaudeLaunchConfig, mergeClaudeMcpConfig, OPEN_DESIGN_LAUNCH_ENTRY, writeClaudeSkills } from '../../claudeSetup';
+import { MalformedMcpJsonError, mergeClaudeLaunchConfig, mergeClaudeMcpConfig, openDesignLaunchEntry, writeClaudeSkills } from '../../claudeSetup';
+import { cliVersion } from '../../packageVersion';
+
+const OPEN_DESIGN_LAUNCH_ENTRY = openDesignLaunchEntry();
 
 const GENERATED_MARKER = '<!-- generated:open-design-agent-kit -->';
 
@@ -63,7 +66,7 @@ describe('mergeClaudeMcpConfig', () => {
     const { created } = await mergeClaudeMcpConfig(target);
     assert.strictEqual(created, true);
     const config = JSON.parse(await fs.readFile(path.join(target, '.mcp.json'), 'utf8'));
-    assert.deepStrictEqual(config.mcpServers['open-design'], { command: 'npx', args: ['-y', '@feimacode/open-design-agent-kit-mcp'] });
+    assert.deepStrictEqual(config.mcpServers['open-design'], { command: 'npx', args: ['-y', `@feimacode/open-design-agent-kit-mcp@${cliVersion()}`] });
   });
 
   it('preserves other existing MCP servers when merging', async () => {
@@ -109,7 +112,7 @@ describe('mergeClaudeLaunchConfig', () => {
     const config = JSON.parse(await fs.readFile(launchJson(target), 'utf8'));
     assert.strictEqual(config.version, '0.0.1');
     assert.deepStrictEqual(config.configurations, [OPEN_DESIGN_LAUNCH_ENTRY]);
-    assert.deepStrictEqual(OPEN_DESIGN_LAUNCH_ENTRY.runtimeArgs.slice(2, 4), ['preview', '--no-open']);
+    assert.deepStrictEqual(OPEN_DESIGN_LAUNCH_ENTRY.runtimeArgs.slice(1, 4), [`@feimacode/open-design-agent-kit@${cliVersion()}`, 'preview', '--no-open']);
   });
 
   it('adds itself beside existing configurations and leaves them unchanged', async () => {
