@@ -223,6 +223,15 @@ A custom design system is just Markdown, so you can write it or refine a generat
 - Everything else is read by the agent as-is, so the more specific you are (hex values, sizes, do's and don'ts), the more consistent the output.
 - Changes apply from the next generation on.
 
+### Copy one to or from Claude Design (prototype)
+
+Claude Design keeps design systems as "Design System" artifacts in Claude (Settings > Design systems). There is no public API for them, so this one-off copy runs from a repository checkout, and an agent with Claude's Artifact tool (Claude Code or Cowork) does the upload or download.
+
+- **To Claude:** `npx tsx scripts/claude-design-system.ts export <design-system-folder> <out-dir>` writes `<out-dir>/project/` (`design-system.json`, `tokens.json`, `README.md`, a cover). Ask the agent to create a Design System artifact and publish that folder to it.
+- **From Claude:** ask the agent to read `project/design-system.json`, `project/tokens.json` and `project/README.md` from the system into a folder, then run `npx tsx scripts/claude-design-system.ts import <that-folder> .open-design/design-systems` (your Open Design output folder). The result shows up as `user:<name>`.
+
+Both directions are lossy, and each run lists what it dropped in the README or `DESIGN.md`. Claude has no motion tokens and rejects `var()` and `color-mix()` values. Importing maps Claude's token names (such as `ink` or `surface`) onto Open Design's token contract by name. Nothing keeps the two copies in step afterwards.
+
 ### tokens.css for custom design systems
 
 A `tokens.css` next to your `DESIGN.md` makes the preview exact rather than approximated. It's a single `:root { … }` block. Required are the identity tokens (`--bg`, `--surface`, `--fg`, `--muted`, `--border`, `--accent`, `--font-display`, `--font-body`) and the type-scale, section-spacing and container tokens. Everything else (status colors, spacing steps, radius, elevation, motion, secondary text and surface tiers) is optional, with defaults. [`create_open_design_design_system`](../reference/tools.md#create_open_design_design_system) spells out the full list for the agent.
