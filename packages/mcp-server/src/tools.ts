@@ -85,6 +85,11 @@ import {
   type ContentIndex,
   type ExportFormat,
   type LocalPrompt,
+  startJobRun as startJobRunCore,
+  finishJobRun as finishJobRunCore,
+  formatStartJobRunResult,
+  formatFinishJobRunResult,
+  type FinishJobRunInput,
 } from '@feimacode/open-design-agent-kit-core';
 import { figmaTokenFilePath } from './env';
 
@@ -762,4 +767,18 @@ export async function readSource(ctx: ToolContext, input: { path: string }): Pro
 /** find_open_design_3d_assets: searches Poly Haven for CC0 HDRIs, textures and models; writes nothing. */
 export async function find3dAssets(_ctx: ToolContext, input: Find3dAssetsInput): Promise<string> {
   return formatFound3dAssets(await find3dAssetsCore(input));
+}
+
+// ── Recurring design jobs (openspec add-recurring-design-jobs) ────────────
+// MCP only: VS Code has no scheduler. Browser path: OPEN_DESIGN_BROWSER_PATH
+// is read by core's discovery itself.
+
+/** start_open_design_job_run: validates the job, decides skip or run, records a started run and returns the steps. */
+export async function startJobRun(ctx: ToolContext, input: { jobPath: string; runNow?: boolean }): Promise<string> {
+  return formatStartJobRunResult(await startJobRunCore({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir }, input));
+}
+
+/** finish_open_design_job_run: browserless checks, the final status and the run record, plus a summary. */
+export async function finishJobRun(ctx: ToolContext, input: FinishJobRunInput): Promise<string> {
+  return formatFinishJobRunResult(await finishJobRunCore({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir }, input));
 }
