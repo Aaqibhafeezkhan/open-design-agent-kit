@@ -11,10 +11,12 @@
 // openspec: add-artifact-sharing.
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
-import { artifactPreflight } from '../export/artifactPreflight';
+import { ARTIFACT_MAX_BYTES, artifactPreflight } from '../export/artifactPreflight';
 import { declaredRemoteAssets, type BinaryFetch } from '../export/embedAssets';
 import { exportArtifact, formatExportResult } from '../export/exportArtifact';
 import { readArtifact, writeArtifactManifest } from '../vendored/artifactCreate';
+import type { JsonRecord } from '../vendored/artifactManifest';
+import { collectSyncBundle, encodeSyncBlock, injectSyncBlock } from '../workspace/artifactSync';
 import {
   CLAUDE_ARTIFACT_PROVIDER,
   isExpired,
@@ -28,7 +30,7 @@ import {
   type PublishedInput,
   type ShareRecord,
 } from '../workspace/shareRecords';
-import { composeArtifactPublishInstructions, composePublishInstructions, siteNameForShare, slugForShare } from './publishInstructions';
+import { composeArtifactPublishInstructions, composePublishInstructions, siteNameForShare, slugForShare, type ArtifactSyncSummary } from './publishInstructions';
 import { PUBLISH_RECIPES, publishProviderLabel } from './publishProviders';
 
 export interface PublishArtifactOptions {
@@ -45,6 +47,14 @@ export interface PublishArtifactOptions {
    */
   includeFiles?: string[];
   published?: PublishedInput;
+  /**
+   * claude-artifact only: carry the design's working files in the page
+   * (openspec add-artifact-sync). Stored as `metadata.sync`; the stored value
+   * is used when omitted.
+   */
+  sync?: boolean;
+  /** Workspace-relative output directory the sync bundle's paths are relative to. Default `.open-design`. */
+  outputDir?: string;
   now?: Date;
   /** Tests: the downloader for claude-artifact's embedded assets. */
   assetFetch?: BinaryFetch;
@@ -67,6 +77,9 @@ export async function publishArtifact(options: PublishArtifactOptions): Promise<
   const now = options.now ?? new Date();
   if (options.provider !== undefined && !isPublishProvider(options.provider)) {
     return { ok: false, text: `Unknown provider "${options.provider}". Use one of: ${PUBLISH_PROVIDERS.join(', ')}.` };
+  }
+  if (options.sync !== undefined && options.provider !== CLAUDE_ARTIFACT_PROVIDER) {
+    return { ok: false, text: `Not published (invalid-args): sync works only with provider "${CLAUDE_ARTIFACT_PROVIDER}", whose page can carry the design's working files.\n\nNothing was published.` };
   }
 
   let artifact;
@@ -106,7 +119,7 @@ export async function publishArtifact(options: PublishArtifactOptions): Promise<
     if (options.includeFiles?.length) {
       return { ok: false, text: 'includeFiles needs a hosted site: a Claude artifact is one page. Give the user the exported files\' paths instead, or pick a hosting provider.\n\nNothing was published.' };
     }
-    return prepareArtifact(options, title, records, declaredRemoteAssets(artifact.entryContent).length > 0);
+    return prepareArtifact(options, manifest, title, records, declaredRemoteAssets(artifact.entryContent).length > 0);
   }
 
   const included = await resolveIncludedFiles(options.workspaceRoot, options.entryPath, options.includeFiles ?? []);
@@ -158,7 +171,27 @@ export async function publishArtifact(options: PublishArtifactOptions): Promise<
 }
 
 /** claude-artifact: the standalone file, the artifact preflight, then publish-by-path instructions. */
-async function prepareArtifact(options: PublishArtifactOptions, title: string | undefined, records: ShareRecord[], declaresAssets: boolean): Promise<PublishArtifactResult> {
+async function prepareArtifact(
+  options: PublishArtifactOptions,
+  manifest: JsonRecord,
+  title: string | undefined,
+  records: ShareRecord[],
+  declaresAssets: boolean,
+): Promise<PublishArtifactResult> {
+  const metadata = manifest.metadata && typeof manifest.metadata === 'object' && !Array.isArray(manifest.metadata) ? (manifest.metadata as JsonRecord) : {};
+  const wasSynced = metadata.sync === true;
+  const syncOn = options.sync ?? wasSynced;
+  if (options.sync !== undefined && metadata.sync !== options.sync) {
+    try {
+      await writeArtifactManifest({
+        workspaceRoot: options.workspaceRoot,
+        entryPath: options.entryPath,
+        artifactManifest: { ...manifest, metadata: { ...metadata, sync: options.sync } },
+      });
+    } catch (err) {
+      return { ok: false, text: `Couldn't store the sync setting in the manifest: ${err instanceof Error ? err.message : String(err)}\n\nNothing was published.` };
+    }
+  }
   // A page that declares remote assets (a 3D scene's HDRI, textures, models) gets them embedded:
   // the artifact viewer blocks the CDN (openspec embed-3d-assets-for-artifacts).
   const file = await exportArtifact({
@@ -171,13 +204,42 @@ async function prepareArtifact(options: PublishArtifactOptions, title: string | 
   });
   if (!file.ok) return { ok: false, text: `${formatExportResult(file)}\n\nNothing was published.` };
   if (file.mode !== 'standalone') return { ok: false, text: 'The standalone export returned an unexpected result. Nothing was published.' };
-  const filePath = path.join(options.workspaceRoot, file.output);
-  const html = await fs.readFile(filePath, 'utf8');
+  let filePath = path.join(options.workspaceRoot, file.output);
+  let html = await fs.readFile(filePath, 'utf8');
+  let bytes = file.totalBytes;
+  // The synced page is its own file, so the plain standalone export (a file to send) never carries the sources.
+  const syncedPath = filePath.replace(/(\.html?)?$/i, '.sync.html');
+  let sync: ArtifactSyncSummary | undefined;
+  if (syncOn) {
+    const collected = await collectSyncBundle({ workspaceRoot: options.workspaceRoot, entryPath: options.entryPath, outputDir: options.outputDir ?? '.open-design', now: options.now });
+    if (!collected.ok) {
+      sync = { state: 'skipped', first: !wasSynced, pageBytes: bytes, reason: collected.error };
+    } else {
+      const block = encodeSyncBlock(collected.bundle);
+      const synced = injectSyncBlock(html, block);
+      const syncedBytes = Buffer.byteLength(synced, 'utf8');
+      const bundleBytes = Buffer.byteLength(block, 'utf8');
+      const files = collected.bundle.files.map((f) => f.path);
+      if (syncedBytes > ARTIFACT_MAX_BYTES && bytes <= ARTIFACT_MAX_BYTES) {
+        sync = { state: 'dropped', first: !wasSynced, pageBytes: bytes, bundleBytes, files, notes: collected.notes };
+      } else {
+        await fs.writeFile(syncedPath, synced, 'utf8');
+        filePath = syncedPath;
+        html = synced;
+        sync = { state: 'on', first: !wasSynced, pageBytes: bytes, bundleBytes, files, notes: collected.notes };
+        bytes = syncedBytes;
+      }
+    }
+  } else if (options.sync === false && wasSynced) {
+    sync = { state: 'off', first: false, pageBytes: bytes };
+  }
+  if (sync?.state !== 'on') await fs.rm(syncedPath, { force: true });
   const preflight = artifactPreflight({
     html,
-    bytes: file.totalBytes,
+    bytes,
     externalDependencies: file.externalDependencies,
     embeddedUrls: file.embeddedAssets?.map((a) => a.url),
+    syncBytes: sync?.state === 'on' ? sync.bundleBytes : undefined,
   });
   if (preflight.blocking) {
     const tooLarge = preflight.findings.find((f) => f.code === 'artifact-too-large');
@@ -189,8 +251,9 @@ async function prepareArtifact(options: PublishArtifactOptions, title: string | 
     entryPath: options.entryPath,
     title,
     filePath,
-    bytes: file.totalBytes,
+    bytes,
     badge: file.badge,
+    sync,
     records,
     findings: preflight.findings,
     embedded: file.embeddedAssets,

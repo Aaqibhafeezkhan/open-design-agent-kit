@@ -33,7 +33,7 @@ Turn one brief into a whole campaign: the same message and look in every channel
    Every size is in the [format catalog](../reference/tools.md#canvas-formats).
 4. **Every shape is checked, in every language,** and weak shapes are tuned in the same file with [`adapt_open_design_artifact`](../reference/tools.md#adapt_open_design_artifact). Tiny ads get their own layout: headline and call to action only.
 5. **Other pieces, if you want them:** a landing page and an [HTML email](html-email.md), built with the same design system and registered in the same collection.
-6. **Export and the campaign sheet.** One file per shape per language, such as `master-de-banner-mrec.png`, plus `exports/campaign-sheet.png`: every shape and every other piece on one image, with a red dot on anything that still has errors.
+6. **Export and the campaign sheet.** One file per shape per language, such as `master-de-banner-mrec.png`, plus `exports/campaign-sheet.png`: every shape and every other piece on one image, with a red dot on anything that still has errors. `exports/campaign-sheet.json` lists the same tiles with their errors, so the agent can say exactly which piece needs fixing. In Claude Desktop Chat the agent then shows the sheet [inline](inline-preview.md#campaign-sheet): click a landing page or email tile to open it, or **Fix this piece** to send that tile's errors to Claude.
 
 ## Long translations: `data-od-fit`
 

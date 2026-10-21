@@ -6,6 +6,7 @@ import {
   formatIntegrations,
   INTEGRATION_AGENTS,
   INTEGRATION_CONSENT_RULES,
+  installableOn,
   parseIntegrationRegistry,
   renderInstall,
   resolveIntegrations,
@@ -72,6 +73,30 @@ describe('integration registry', () => {
     assert.ok(renderInstall(entry('buffer'), 'cursor').steps.join('\n').includes('Bearer ${env:BUFFER_API_KEY}'));
   });
 
+  it('Canva on Claude Desktop is a connector step with no command or config snippet', () => {
+    const t = renderInstall(entry('canva'), 'claude-desktop');
+    assert.match(t.steps[0], /Settings > Connectors/);
+    assert.match(t.steps[0], /claude\.ai\/customize\/connectors/);
+    const text = t.steps.join('\n');
+    assert.ok(!text.includes('claude mcp add') && !text.includes('mcpServers') && !text.includes('/mcp'), text);
+    assert.ok(installableOn(entry('canva'), 'claude-desktop'));
+  });
+
+  it('Buffer on Claude Desktop is manual only, with no snippet and no key', () => {
+    const t = renderInstall(entry('buffer'), 'claude-desktop');
+    assert.strictEqual(t.manualOnly, true);
+    const text = t.steps.join('\n');
+    assert.ok(!/mcpServers|claude_desktop_config|BUFFER_API_KEY|Bearer|```/.test(text), text);
+    assert.ok(!installableOn(entry('buffer'), 'claude-desktop'));
+  });
+
+  it('a browser sign-in server without a connector is a custom connector on Claude Desktop', () => {
+    const custom = { ...entry('canva'), claudeAiConnector: undefined };
+    const text = renderInstall(custom, 'claude-desktop').steps.join('\n');
+    assert.match(text, /Add custom connector[\s\S]*https:\/\/mcp\.canva\.com\/mcp/);
+    assert.match(text, /only an Owner/);
+  });
+
   it('Canva on Claude Code offers the claude.ai connector first, then a user-scope add', () => {
     const steps = renderInstall(entry('canva'), 'claude-code').steps;
     assert.match(steps[0], /claude\.ai\/customize\/connectors/);
@@ -122,6 +147,10 @@ describe('integration registry', () => {
     assert.strictEqual(agentFromClientName('Visual Studio Code - Insiders'), 'vscode');
     assert.strictEqual(agentFromClientName('Cursor'), 'cursor');
     assert.strictEqual(agentFromClientName('some-other-client'), 'generic');
+    // Claude Desktop's name isn't captured yet: any Claude client other than Claude Code.
+    assert.strictEqual(agentFromClientName('claude-ai'), 'claude-desktop');
+    assert.strictEqual(agentFromClientName('Claude Desktop'), 'claude-desktop');
+    assert.strictEqual(agentFromClientName('Claude Code'), 'claude-code');
     assert.strictEqual(agentFromClientName(undefined), 'generic');
   });
 

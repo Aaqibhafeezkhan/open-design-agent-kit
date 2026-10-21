@@ -5,15 +5,18 @@
 //
 // Naming rules behind the hints (verified 2026-10-07):
 //   Claude Code  mcp__claude_ai_<Connector>__<tool> (claude.ai connector) or mcp__<name>__<tool>
+//   Claude Desktop: unverified; assumed to follow Claude Code, plus mcp__<Connector>__<tool>.
 //   Codex        mcp__<name>__<tool>
 //   VS Code      mcp_<server name, lowercased, max 13 chars>_<tool>
 //   Cursor and other clients: unverified, so only "a tool named <tool>".
 // Client names (MCP initialize, captured 2026-10-10): "claude-code",
 // "codex-mcp-client", VS Code's product name ("Visual Studio Code"), Cursor
-// assumed to contain "cursor".
+// assumed to contain "cursor". Claude Desktop's name isn't captured yet (an
+// unverified note says "claude-ai"), so any other name containing "claude"
+// maps to claude-desktop, matching isClaudeClient in the MCP server.
 import type { IntegrationEntry } from './registry';
 
-export const INTEGRATION_AGENTS = ['claude-code', 'codex', 'vscode', 'cursor', 'generic'] as const;
+export const INTEGRATION_AGENTS = ['claude-code', 'claude-desktop', 'codex', 'vscode', 'cursor', 'generic'] as const;
 export type IntegrationAgent = (typeof INTEGRATION_AGENTS)[number];
 
 export function isIntegrationAgent(v: unknown): v is IntegrationAgent {
@@ -24,6 +27,7 @@ export function isIntegrationAgent(v: unknown): v is IntegrationAgent {
 export function agentFromClientName(name: string | undefined): IntegrationAgent {
   const n = (name ?? '').toLowerCase();
   if (n.includes('claude-code') || n === 'claude code') return 'claude-code';
+  if (n.includes('claude')) return 'claude-desktop';
   if (n.includes('codex')) return 'codex';
   if (n.includes('cursor')) return 'cursor';
   if (n.includes('visual studio code') || n.includes('vscode')) return 'vscode';
@@ -41,6 +45,10 @@ export function toolNameHints(entry: IntegrationEntry, agent: IntegrationAgent):
     case 'claude-code':
       if (connector) hints.push(`mcp__claude_ai_${connector}__*`);
       hints.push(`mcp__${name}__*`, `mcp__plugin_*_${name}__*`);
+      break;
+    case 'claude-desktop':
+      if (connector) hints.push(`mcp__claude_ai_${connector}__*`, `mcp__${connector}__*`);
+      else hints.push(`mcp__${name}__*`);
       break;
     case 'codex':
       hints.push(`mcp__${name}__*`);
@@ -65,6 +73,7 @@ export interface InstallTemplate {
 
 const RELOAD = {
   'claude-code': 'New MCP servers load when a session starts: if the tools are not listed afterwards, ask the user to restart Claude Code or start a new session.',
+  'claude-desktop': 'Connectors load when a chat or task starts: ask the user to start a new chat (or Cowork task) so its tools appear.',
   codex: 'Restart Codex (a new session) so it loads the server.',
   vscode: 'Start the server from the MCP Servers view (or run "MCP: List Servers" → Start); reload the window if its tools do not appear.',
   cursor: "Open Cursor Settings → MCP and make sure the server is enabled; restart Cursor if its tools do not appear.",
@@ -90,6 +99,37 @@ function json(value: unknown): string {
   return JSON.stringify(value, null, 2);
 }
 
+/**
+ * Claude Desktop Chat, Cowork and claude.ai take MCP servers only as account
+ * connectors: Desktop ignores remote servers in claude_desktop_config.json, so
+ * there is no command or config snippet here (openspec desktop-connector-setup-text).
+ */
+function renderDesktop(entry: IntegrationEntry): InstallTemplate {
+  const agent = 'claude-desktop';
+  const { url } = entry.server!;
+  const auth = entry.auth!;
+  const steps: string[] = [];
+  if (entry.claudeAiConnector) {
+    steps.push(`Connect **${entry.claudeAiConnector}** under **Settings > Connectors** in Claude Desktop, or at https://claude.ai/customize/connectors; the user completes ${entry.vendor}'s sign-in there. The connector is saved to their claude.ai account and appears in Desktop, claude.ai, mobile and Cowork.`);
+  } else if (auth.kind === 'api-key-header') {
+    const docs = entry.docsUrl ? ` Docs: ${entry.docsUrl}` : '';
+    return {
+      steps: [`${entry.displayName} needs an API key, and Claude Desktop can't add it with one: custom connectors send request headers only in a limited beta, and Desktop ignores remote servers in its config file. Continue with the workflow's manual path.${docs}`],
+      manualOnly: true,
+    };
+  } else {
+    if (auth.kind === 'own-oauth-client') {
+      steps.push(`The user creates their own OAuth client first (${auth.docsUrl ?? entry.docsUrl ?? 'see the vendor docs'}) and enters its client id under the custom connector's Advanced settings.`);
+    }
+    if (auth.kind === 'admin-enabled') {
+      steps.push(`An admin of the user's ${entry.vendor} organization may need to enable MCP access first${auth.docsUrl ? ` (${auth.docsUrl})` : ''}.`);
+    }
+    steps.push(`Add it as a custom connector: **Customize > Connectors > Add custom connector**, paste \`${url}\`, then click Connect and complete ${entry.vendor}'s sign-in. On Team and Enterprise plans only an Owner can add one (**Organization settings > Connectors > Add > Custom**); members then click Connect with their own account. Free plans allow one custom connector, and mobile can use connectors but can't add them.`);
+  }
+  steps.push(RELOAD[agent], verifyStep(entry, agent));
+  return { steps, manualOnly: true };
+}
+
 /** Install steps for one entry on one agent. */
 export function renderInstall(entry: IntegrationEntry, agent: IntegrationAgent): InstallTemplate {
   const docs = entry.docsUrl ? ` Docs: ${entry.docsUrl}` : '';
@@ -104,6 +144,8 @@ export function renderInstall(entry: IntegrationEntry, agent: IntegrationAgent):
   const connectorStep = entry.claudeAiConnector
     ? `Connect **${entry.claudeAiConnector}** at https://claude.ai/customize/connectors (signed in with the same claude.ai account Claude Code uses). It then appears in every Claude app, including this session after a restart.`
     : undefined;
+
+  if (agent === 'claude-desktop') return renderDesktop(entry);
 
   if (auth.kind === 'claude-ai-only') {
     if (agent === 'claude-code' && connectorStep) return { steps: [connectorStep, RELOAD['claude-code'], verifyStep(entry, agent)], manualOnly: true };
