@@ -32,4 +32,5 @@ Each guide covers one task for every host. Where a host differs, the guide says 
 - [Export decks and PDFs](export-decks.md)
 - [Export animations](export-animations.md)
 - [Share and publish](share-and-publish.md)
+- [Recurring design jobs](recurring-jobs.md)
 - [Connect other services](integrations.md)

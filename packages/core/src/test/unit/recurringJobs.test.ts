@@ -42,7 +42,8 @@ describe('recurring jobs: job file', () => {
   });
 
   it('refuses a missing timezone, naming it', () => {
-    const { timezone: _tz, ...rest } = BASE;
+    const rest: Record<string, string> = { ...BASE };
+    delete rest.timezone;
     assert.deepStrictEqual(errorFields(jobText(rest)), ['timezone']);
   });
 

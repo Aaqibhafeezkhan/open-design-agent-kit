@@ -1406,6 +1406,9 @@
         "path": "./prompts/local/open-design-publish.prompt.md"
       },
       {
+        "path": "./prompts/local/open-design-recurring.prompt.md"
+      },
+      {
         "path": "./prompts/local/open-design-social-post.prompt.md"
       },
       {

@@ -14,14 +14,14 @@
 
 ## 3. Content
 
-- [ ] 3.1 `packages/content/local/prompts/recurring.md` (set-up and run modes, `model_trigger` for "every week", "on a schedule", "recurring")
-- [ ] 3.2 Regenerate the Claude plugin, CLI-installed Claude and Codex skills, VS Code prompt and MCP prompt; drift checks pass
-- [ ] 3.3 Overview skill line: when asked for a recurring design, use `open-design-recurring`
+- [x] 3.1 `packages/content/local/prompts/recurring.md` (set-up and run modes, `model_trigger` for "every week", "on a schedule", "recurring")
+- [x] 3.2 Regenerate the Claude plugin, CLI-installed Claude and Codex skills, VS Code prompt and MCP prompt; drift checks pass
+- [x] 3.3 Overview skill line: when asked for a recurring design, use `open-design-recurring`
 
 ## 4. Docs
 
-- [ ] 4.1 `docs/guides/recurring-jobs.md` with the per-surface sections and an example job for a weekly deck and a weekly social batch
-- [ ] 4.2 `docs/reference/tools.md` entries; guides index; link from `docs/automation/social-pipeline.md`
+- [x] 4.1 `docs/guides/recurring-jobs.md` with the per-surface sections and an example job for a weekly deck and a weekly social batch
+- [x] 4.2 `docs/reference/tools.md` entries; guides index; link from `docs/automation/social-pipeline.md`
 
 ## 5. Verification
 

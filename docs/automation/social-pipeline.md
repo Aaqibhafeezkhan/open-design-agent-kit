@@ -70,4 +70,4 @@ The runner needs Node.js 18 or later, a Chromium-family browser for `export`, an
 
 ## Related
 
-[Social media posts](../guides/social-posts.md) · [CLI reference](../reference/cli.md)
+[Social media posts](../guides/social-posts.md) · [Recurring design jobs](../guides/recurring-jobs.md), for an agent that redesigns the posts on a schedule · [CLI reference](../reference/cli.md)

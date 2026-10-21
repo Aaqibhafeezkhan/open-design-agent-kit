@@ -47,6 +47,7 @@ Task-by-task, for every host ([how the guides are laid out](guides/README.md)):
 - [Export decks and PDFs](guides/export-decks.md): PowerPoint, deck PDF, page PDF
 - [Export animations](guides/export-animations.md): MP4, WebM and GIF, frame-exact
 - [Share and publish](guides/share-and-publish.md): one HTML file, a temporary link, or your own Netlify, Vercel, Cloudflare or GitHub Pages
+- [Recurring design jobs](guides/recurring-jobs.md): rebuild a design every day, week or month on a schedule, in the cloud or on your computer, without duplicates
 - [Connect other services](guides/integrations.md): let the agent use Canva, Figma, Notion, Google Drive, Slack or a posting service directly, with your consent
 
 ## Reference
