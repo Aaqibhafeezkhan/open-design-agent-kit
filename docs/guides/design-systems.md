@@ -177,6 +177,19 @@ The agent calls [`create_open_design_design_system`](../reference/tools.md#creat
 
 > **In VS Code:** `/open-design-custom-design-system` starts this explicitly.
 
+### Take one from a website
+
+> Make a design system from https://example.com. It's our brand, light and dark.
+
+The agent uses `/open-design-design-system-from-url` (in VS Code, also **Open Design: Design System from Website**, on the Design Systems view's title bar). It asks only what you left out: the address, light, dark or both, and whether the site is your brand or a reference. Then it:
+
+1. **Measures the rendered site** with [`extract_open_design_design_system`](../reference/tools.md#extract_open_design_design_system) in your installed Chrome, Edge or Chromium: the colours of the elements that carry them (background, cards, text, borders, the main button and its hover and pressed states), the fonts the page actually loaded, text sizes, radii, spacing and motion. The screenshots, one crop per colour and the logo go to `.open-design/.extract/<site>/`.
+2. **Writes `DESIGN.md` and `tokens.css` from the same measurements**, so the two agree. Anything nothing measured is left to the token contract's defaults rather than guessed.
+3. **Shows you a review**: the site's screenshot beside a sample page (hero, buttons, a card, a form) in the new tokens, checked with `check_open_design_artifact`. Say what's off ("the buttons are rounder on the site"); it fixes and re-checks, up to two rounds.
+4. **Saves it** as `user:<name>` and offers to make it active.
+
+For a reference site, the design system is named "<Name>-inspired" and no logos or images are copied. Dark values are only measured when the site has a dark theme. A page behind a bot check or login comes back as blocked, with its screenshot; give the agent the CSS or a screenshot instead. Without a browser, the agent gets candidate colours and fonts from the page source only, and asks you to confirm them.
+
 ### Pick one from style tiles
 
 Not sure what the brand should look like? Ask for options:
@@ -245,7 +258,7 @@ A custom design system is just Markdown, so you can write it or refine a generat
 
 Claude Design keeps design systems as "Design System" artifacts in Claude (Settings > Design systems). There is no public API for them, so this one-off copy runs from a repository checkout, and an agent with Claude's Artifact tool (Claude Code or Cowork) does the upload or download.
 
-- **To Claude:** `npx tsx scripts/claude-design-system.ts export <design-system-folder> <out-dir>` writes `<out-dir>/project/` (`design-system.json`, `tokens.json`, `README.md`, a cover). Ask the agent to create a Design System artifact and publish that folder to it.
+- **To Claude:** `npx tsx scripts/claude-design-system.ts export <design-system-folder> <out-dir>` writes `<out-dir>/project/` (`design-system.json`, `tokens.json`, `README.md`, a cover). For a built-in system (a folder under `packages/content/assets/open-design/design-systems/`), it reads the reconciled `DESIGN.md` and tokens, so the README and tokens name the same colours and fonts. Ask the agent to create a Design System artifact and publish that folder to it.
 - **From Claude:** ask the agent to read `project/design-system.json`, `project/tokens.json` and `project/README.md` from the system into a folder, then run `npx tsx scripts/claude-design-system.ts import <that-folder> .open-design/design-systems` (your Open Design output folder). The result shows up as `user:<name>`.
 
 Both directions are lossy, and each run lists what it dropped in the README or `DESIGN.md`. Claude has no motion tokens and rejects `var()` and `color-mix()` values. Importing maps Claude's token names (such as `ink` or `surface`) onto Open Design's token contract by name. Nothing keeps the two copies in step afterwards.

@@ -1,0 +1,7 @@
+/* generated from DESIGN.md by audit-design-system-consistency.mjs; do not edit. */
+/* colour: DESIGN.md has the placeholder; type: tokens.css has the placeholder (reviewed 2026-10-22) */
+:root {
+  --font-body: Roboto, system-ui, sans-serif;
+  --font-display: Audiowide, system-ui, sans-serif;
+  --font-mono: "Anonymous Pro", ui-monospace, Menlo, monospace;
+}

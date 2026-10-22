@@ -716,13 +716,51 @@
             },
             "sourceUrl": {
               "type": "string",
-              "description": "Optional: a website URL to extract a starting palette/fonts from."
+              "description": "Optional: a website URL to take a rough starting palette and fonts from, by reading its source. For a design system that matches a site, call extract_open_design_design_system first instead: it renders the page and measures it."
             },
             "existingDesignSystemId": {
               "type": "string",
               "description": "Optional: the id of an existing custom design system (user:…). Returns instructions to write only its tokens.css, from its current DESIGN.md; name, brief and sourceUrl are then ignored."
             }
           }
+        }
+      },
+      {
+        "name": "extract_open_design_design_system",
+        "displayName": "Extract Design System from Website",
+        "modelDescription": "Renders a website in an installed Chrome, Edge or Chromium and measures its design system: colour roles from the elements that carry them (page background, cards, text, borders, the primary button and its forced :hover/:active states), declared CSS custom properties, the fonts it loaded, text sizes, radii, spacing, container width and motion. Writes an evidence bundle (evidence.json, screenshots, one crop per role, the logo) under <output folder>/.extract/<site>/ and returns a draft token set on the Open Design token contract, with where each value came from and which tokens nothing measured. Does NOT write DESIGN.md or tokens.css: write both from the draft, keeping measured values as measured (the open-design-design-system-from-url prompt has the steps), then save it as a custom design system. Only public http(s) pages; at most 4 pages, 20 seconds each; no logins, cookies or form submissions. A bot check, login wall or empty page comes back as blocked with its screenshot. With no browser installed, falls back to reading the page source and marks the result partial.",
+        "userDescription": "Measure a website's colours, fonts and spacing as a starting design system",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "od-extract-design-system",
+        "icon": "$(globe)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "description": "The page to measure, e.g. the home page."
+            },
+            "extraUrls": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 3,
+              "description": "Optional: up to 3 more pages on the same site (a product or pricing page) to fill in roles the first page lacks."
+            },
+            "theme": {
+              "type": "string",
+              "enum": [
+                "light",
+                "dark",
+                "both"
+              ],
+              "description": "Which theme to measure (default light). dark and both measure a dark theme only if the site has one."
+            }
+          },
+          "required": [
+            "url"
+          ]
         }
       },
       {
@@ -1497,6 +1535,9 @@
         "path": "./prompts/local/open-design-deck-from-source.prompt.md"
       },
       {
+        "path": "./prompts/local/open-design-design-system-from-url.prompt.md"
+      },
+      {
         "path": "./prompts/local/open-design-docs.prompt.md"
       },
       {
@@ -1614,6 +1655,12 @@
         "title": "Import Design System",
         "category": "Open Design",
         "icon": "$(cloud-download)"
+      },
+      {
+        "command": "openDesign.designSystemFromWebsite",
+        "title": "Design System from Website",
+        "category": "Open Design",
+        "icon": "$(globe)"
       },
       {
         "command": "openDesign.previewDesignSystem",
@@ -1821,6 +1868,11 @@
       "view/title": [
         {
           "command": "openDesign.importDesignSystem",
+          "when": "view == openDesign.designSystemsView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "openDesign.designSystemFromWebsite",
           "when": "view == openDesign.designSystemsView",
           "group": "navigation@1"
         },

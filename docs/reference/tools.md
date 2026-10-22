@@ -22,6 +22,7 @@ Two rules apply to every tool:
 | [`set_active_design_system`](#set_active_design_system) | `#od-set-design-system` | yes | Set or clear the workspace's design system |
 | [`remix_open_design_example`](#remix_open_design_example) | `#od-remix-example` | yes | Copy an example in as a starting point |
 | [`create_open_design_design_system`](#create_open_design_design_system) | `#od-create-design-system` | yes | Instructions for a custom design system |
+| [`extract_open_design_design_system`](#extract_open_design_design_system) | `#od-extract-design-system` | yes | Measure a website's colours, fonts and spacing as a draft design system |
 | [`port_open_design_artifact_to_app`](#port_open_design_artifact_to_app) | `#od-port-to-app` | yes | Instructions to turn a prototype into app code |
 | [`share_open_design_artifact_to_community`](#share_open_design_artifact_to_community) | `#od-share-to-community` | **no** (VS Code only) | Instructions to contribute a design to the community catalog |
 | [`publish_open_design_artifact_to_canva`](#publish_open_design_artifact_to_canva) | `#od-publish-to-canva` | yes | Get a design into Canva: through your Canva connector when it's connected, otherwise a file to import |
@@ -459,10 +460,26 @@ Composes instructions for writing a custom design system: a `DESIGN.md` plus a s
 |---|---|---|---|
 | `name` | string | yes, unless `existingDesignSystemId` is given | Name, e.g. `Acme Corp`. |
 | `brief` | string | yes, unless `existingDesignSystemId` is given | The brand in the user's words: colors, tone, industry. |
-| `sourceUrl` | string | no | A website to extract a starting palette, fonts and favicon from (best effort). |
+| `sourceUrl` | string | no | A website to take a rough starting palette, fonts and favicon from, by reading its source (best effort). To match a site, use [`extract_open_design_design_system`](#extract_open_design_design_system) first. |
 | `existingDesignSystemId` | string | no | An existing custom design system (`user:<slug>`). Returns instructions to write **only** its `tokens.css`, from its current `DESIGN.md`; the other arguments are ignored. Built-in ids are rejected. |
 
 **Result:** `{ instructions, suggestedEntryPath, id }`. The files go to `<outputDirectory>/design-systems/<slug>/DESIGN.md` and `…/tokens.css`, and the id is `user:<slug>`. After writing them, call `set_active_design_system` with that id. In tokens-only mode, `suggestedEntryPath` is the `tokens.css` path. See [Design systems](../guides/design-systems.md).
+
+### extract_open_design_design_system
+
+Renders a website in an installed Chrome, Edge or Chromium and measures its design system. **It writes no `DESIGN.md` or `tokens.css`**, only an evidence bundle at `<outputDirectory>/.extract/<site>/`.
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `url` | string | yes | The page to measure, usually the home page. `http` or `https` only. |
+| `extraUrls` | string[] | no | Up to 3 more pages on the same site, to fill in roles the first page lacks. |
+| `theme` | `light` \| `dark` \| `both` | no | Default `light`. `dark` and `both` measure a dark theme only when the site has one (under `prefers-color-scheme: dark`, or a `data-theme`/`.dark` toggle on the root element). |
+
+What it measures: the page background, card surface, body and secondary text, border, the primary button's colour, its text colour and its `:hover` and `:active` states (forced in the browser); `:root` and theme-scoped custom properties; the fonts the page loaded; text sizes, line heights and tracking; radii, spacing and the container width; transition durations and easing. Each page is shot at 1440×900 and 390×844.
+
+**Result:** `status` (`ok`, `partial` or `blocked`), the bundle path, screenshots (the desktop one is attached as an image), `draft.tokens` (contract names only, plus `draft.dark` when the site has a dark theme), `draft.sources` (the element and crop each value came from), `draft.unmeasured` (left to the contract's fallbacks), `draftCss`, and `marks` (the logo and favicon). With no browser it reads the page source instead and returns `partial` with candidate colours and fonts. A bot check, a login redirect or an empty page is `blocked`, with its screenshot.
+
+Limits: public addresses only (private, loopback and link-local hosts are refused, for the page and everything it loads); at most 4 pages, 20 seconds each; no cookies, logins or form submissions. See [Design systems](../guides/design-systems.md#take-one-from-a-website).
 
 ## Beyond the prototype
 

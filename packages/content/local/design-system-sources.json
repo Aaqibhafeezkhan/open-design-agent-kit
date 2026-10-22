@@ -1,0 +1,287 @@
+{
+  "agentic": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "colour: genuine conflict, keeping what renders; type: tokens.css has the placeholder (reviewed 2026-10-22)"
+  },
+  "ant": {
+    "color": "tokens",
+    "type": "tokens",
+    "reason": "colour: genuine conflict, keeping what renders; type: genuine conflict, keeping what renders (reviewed 2026-10-22)"
+  },
+  "application": {
+    "color": "design",
+    "type": "tokens",
+    "reason": "tokens.css ships the generator placeholder accent #2563eb; DESIGN.md names the brand primary (the original hand-written override)"
+  },
+  "artistic": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "colour: DESIGN.md has the placeholder; type: tokens.css has the placeholder (reviewed 2026-10-22)"
+  },
+  "bento": {
+    "color": "design",
+    "type": "tokens",
+    "reason": "tokens.css ships the generator placeholder accent #2563eb; DESIGN.md names the brand primary (the original hand-written override)"
+  },
+  "bold": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "colour: genuine conflict, keeping what renders; type: tokens.css has the placeholder (reviewed 2026-10-22)"
+  },
+  "brutalism": {
+    "color": "tokens",
+    "type": "tokens",
+    "reason": "colour: genuine conflict, keeping what renders; type: genuine conflict, keeping what renders (reviewed 2026-10-22)"
+  },
+  "cafe": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "colour: genuine conflict, keeping what renders; type: tokens.css has the placeholder (reviewed 2026-10-22)"
+  },
+  "claymorphism": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "colour: DESIGN.md has the placeholder; type: tokens.css has the placeholder (reviewed 2026-10-22)"
+  },
+  "clean": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "colour: DESIGN.md has the placeholder; type: tokens.css has the placeholder (reviewed 2026-10-22)"
+  },
+  "colorful": {
+    "color": "tokens",
+    "type": "tokens",
+    "reason": "colour: DESIGN.md has the placeholder; type: genuine conflict, keeping what renders (reviewed 2026-10-22)"
+  },
+  "contemporary": {
+    "color": "design",
+    "type": "design",
+    "reason": "tokens.css ships the generator placeholder accent #2563eb; DESIGN.md names the brand primary (the original hand-written override); tokens.css body font is the Inter placeholder"
+  },
+  "corporate": {
+    "color": "design",
+    "type": "design",
+    "reason": "tokens.css ships the generator placeholder accent #2563eb; DESIGN.md names the brand primary (the original hand-written override); tokens.css body font is the Inter placeholder"
+  },
+  "cosmic": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "colour: DESIGN.md has the placeholder; type: tokens.css has the placeholder (reviewed 2026-10-22)"
+  },
+  "creative": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "colour: DESIGN.md has the placeholder; type: tokens.css has the placeholder (reviewed 2026-10-22)"
+  },
+  "dashboard": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "colour: genuine conflict, keeping what renders; type: tokens.css has the placeholder (reviewed 2026-10-22)"
+  },
+  "dithered": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "colour: DESIGN.md has the placeholder; type: tokens.css has the placeholder (reviewed 2026-10-22)"
+  },
+  "doodle": {
+    "color": "tokens",
+    "type": "tokens",
+    "reason": "colour: genuine conflict, keeping what renders; type: genuine conflict, keeping what renders (reviewed 2026-10-22)"
+  },
+  "dramatic": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "colour: genuine conflict, keeping what renders; type: tokens.css has the placeholder (reviewed 2026-10-22)"
+  },
+  "editorial": {
+    "color": "tokens",
+    "type": "tokens",
+    "reason": "colour: genuine conflict, keeping what renders; type: genuine conflict, keeping what renders (reviewed 2026-10-22)"
+  },
+  "elegant": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "colour: DESIGN.md has the placeholder; type: tokens.css has the placeholder (reviewed 2026-10-22)"
+  },
+  "energetic": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "colour: genuine conflict, keeping what renders; type: tokens.css has the placeholder (reviewed 2026-10-22)"
+  },
+  "enterprise": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "colour: genuine conflict, keeping what renders; type: tokens.css has the placeholder (reviewed 2026-10-22)"
+  },
+  "expressive": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "colour: genuine conflict, keeping what renders; type: tokens.css has the placeholder (reviewed 2026-10-22)"
+  },
+  "fantasy": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "colour: genuine conflict, keeping what renders; type: tokens.css has the placeholder (reviewed 2026-10-22)"
+  },
+  "flat": {
+    "color": "design",
+    "type": "tokens",
+    "reason": "tokens.css ships the generator placeholder accent #2563eb; DESIGN.md names the brand primary (the original hand-written override)"
+  },
+  "friendly": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "colour: genuine conflict, keeping what renders; type: tokens.css has the placeholder (reviewed 2026-10-22)"
+  },
+  "futuristic": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "colour: DESIGN.md has the placeholder; type: tokens.css has the placeholder (reviewed 2026-10-22)"
+  },
+  "glassmorphism": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "colour: genuine conflict, keeping what renders; type: tokens.css has the placeholder (reviewed 2026-10-22)"
+  },
+  "gradient": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "colour: genuine conflict, keeping what renders; type: tokens.css has the placeholder (reviewed 2026-10-22)"
+  },
+  "levels": {
+    "color": "tokens",
+    "type": "tokens",
+    "reason": "colour: genuine conflict, keeping what renders; type: genuine conflict, keeping what renders (reviewed 2026-10-22)"
+  },
+  "lingo": {
+    "color": "design",
+    "type": "design",
+    "reason": "name and summary describe the playful green Nunito look (DESIGN.md); tokens.css is a different, violet localization brand"
+  },
+  "luxury": {
+    "color": "tokens",
+    "type": "tokens",
+    "reason": "colour: genuine conflict, keeping what renders; type: genuine conflict, keeping what renders (reviewed 2026-10-22)"
+  },
+  "material": {
+    "color": "tokens",
+    "type": "tokens",
+    "reason": "colour: genuine conflict, keeping what renders; type: DESIGN.md has the placeholder (reviewed 2026-10-22)"
+  },
+  "minimal": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "colour: genuine conflict, keeping what renders; type: tokens.css has the placeholder (reviewed 2026-10-22)"
+  },
+  "modern": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "colour: genuine conflict, keeping what renders; type: tokens.css has the placeholder (reviewed 2026-10-22)"
+  },
+  "mono": {
+    "color": "tokens",
+    "type": "tokens",
+    "reason": "colour: genuine conflict, keeping what renders; type: genuine conflict, keeping what renders (reviewed 2026-10-22)"
+  },
+  "neobrutalism": {
+    "color": "tokens",
+    "type": "tokens",
+    "reason": "colour: genuine conflict, keeping what renders; type: genuine conflict, keeping what renders (reviewed 2026-10-22)"
+  },
+  "neon": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "colour: genuine conflict, keeping what renders; type: tokens.css has the placeholder (reviewed 2026-10-22)"
+  },
+  "neumorphism": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "colour: genuine conflict, keeping what renders; type: tokens.css has the placeholder (reviewed 2026-10-22)"
+  },
+  "pacman": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "colour: genuine conflict, keeping what renders; type: tokens.css has the placeholder (reviewed 2026-10-22)"
+  },
+  "paper": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "colour: genuine conflict, keeping what renders; type: tokens.css has the placeholder (reviewed 2026-10-22)"
+  },
+  "perspective": {
+    "color": "design",
+    "type": "design",
+    "reason": "tokens.css ships the generator placeholder accent #2563eb; DESIGN.md names the brand primary (the original hand-written override); tokens.css body font is the Inter placeholder"
+  },
+  "premium": {
+    "color": "tokens",
+    "type": "tokens",
+    "reason": "colour: DESIGN.md has the placeholder; type: genuine conflict, keeping what renders (reviewed 2026-10-22)"
+  },
+  "professional": {
+    "color": "design",
+    "type": "design",
+    "reason": "tokens.css ships the generator placeholder accent #2563eb; DESIGN.md names the brand primary (the original hand-written override); tokens.css body font is the Inter placeholder"
+  },
+  "publication": {
+    "color": "tokens",
+    "type": "tokens",
+    "reason": "colour: genuine conflict, keeping what renders; type: genuine conflict, keeping what renders (reviewed 2026-10-22)"
+  },
+  "refined": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "colour: DESIGN.md has the placeholder; type: tokens.css has the placeholder (reviewed 2026-10-22)"
+  },
+  "retro": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "colour: DESIGN.md has the placeholder; type: tokens.css has the placeholder (reviewed 2026-10-22)"
+  },
+  "shadcn": {
+    "color": "tokens",
+    "type": "tokens",
+    "reason": "colour: already consistent; type: genuine conflict, keeping what renders (reviewed 2026-10-22)"
+  },
+  "simple": {
+    "color": "design",
+    "type": "tokens",
+    "reason": "tokens.css ships the generator placeholder accent #2563eb; DESIGN.md names the brand primary (the original hand-written override)"
+  },
+  "skeumorphism": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "colour: genuine conflict, keeping what renders; type: tokens.css has the placeholder (reviewed 2026-10-22)"
+  },
+  "sleek": {
+    "color": "tokens",
+    "type": "tokens",
+    "reason": "colour: DESIGN.md has the placeholder; type: genuine conflict, keeping what renders (reviewed 2026-10-22)"
+  },
+  "spacious": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "colour: DESIGN.md has the placeholder; type: tokens.css has the placeholder (reviewed 2026-10-22)"
+  },
+  "storytelling": {
+    "color": "tokens",
+    "type": "tokens",
+    "reason": "colour: DESIGN.md has the placeholder; type: genuine conflict, keeping what renders (reviewed 2026-10-22)"
+  },
+  "tetris": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "colour: genuine conflict, keeping what renders; type: tokens.css has the placeholder (reviewed 2026-10-22)"
+  },
+  "vibrant": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "colour: genuine conflict, keeping what renders; type: tokens.css has the placeholder (reviewed 2026-10-22)"
+  },
+  "vintage": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "colour: genuine conflict, keeping what renders; type: tokens.css has the placeholder (reviewed 2026-10-22)"
+  }
+}

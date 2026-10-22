@@ -33,6 +33,7 @@ All of them are explicit-only. To see the current list, type `/od-` in the chat 
 | `/open-design-generate` | Generate a design from a brief: picks a skill, prepares the brief, writes and registers the artifact. |
 | `/open-design-list-skills` | Browse the skill catalog. |
 | `/open-design-custom-design-system` | Invent a design system for your brand. |
+| `/open-design-design-system-from-url` | [Make a design system from a website](../guides/design-systems.md#take-one-from-a-website): measure it, write both files, review side by side. |
 | `/open-design-social-post` | [Design a social media post](../guides/social-posts.md) for a platform and export ready-to-upload files. |
 | `/open-design-poster` | [Design a poster or flyer](../guides/posters.md) for print or screens, check it, and export print-ready PDFs or images, in other sizes or one per spreadsheet row. |
 | `/open-design-explore` | [Explore 2–4 design directions](../guides/explore-directions.md) side by side, then take one forward. |
@@ -50,6 +51,7 @@ Copilot also receives Open Design's chat instructions on every request, so a pla
 |---|---|---|
 | Open Design: Browse Design Systems | `openDesign.browseDesignSystems` | Fuzzy-search the design systems and set the active one (also on the status bar). |
 | Open Design: Import Design System | `openDesign.importDesignSystem` | Import a design system from a file, pasted text or a GitHub repo. No model is involved. |
+| Open Design: Design System from Website | `openDesign.designSystemFromWebsite` | Ask for a website, theme and whether it's your brand, then prefill Copilot Chat with `/open-design-design-system-from-url` (not sent). Also on the Design Systems view's title bar. |
 | Open Design: Preview Design System | `openDesign.previewDesignSystem` | Open the read-only preview (Visualize, Showcase, DESIGN.md / tokens.css) of a design system. Doesn't change the active one. |
 | Open Design: Set as Active Design System | `openDesign.setActiveDesignSystem` | Make the selected design system active (Design Systems view). |
 | Open Design: Use Design System in Chat | `openDesign.useDesignSystemInChat` | Prefill Copilot Chat naming the selected design system (not sent). |
@@ -92,11 +94,12 @@ Installed by the plugin (`/plugin install open-design`) or by [`init --tools cla
 | `open-design-integrations` | `/open-design:open-design-integrations` (plugin) or `/open-design-integrations` (init) | yes, from questions about integrations, connectors or what's connected |
 | `open-design-recurring` | `/open-design:open-design-recurring` (plugin) or `/open-design-recurring` (init) | yes, from requests for a design every day, week or month, and from "Run the Open Design job …" prompts. See [Recurring design jobs](../guides/recurring-jobs.md) |
 | `open-design-preview` | `/open-design:open-design-preview` (plugin) or `/open-design-preview` (init) | yes, from requests to see, preview or comment on a design. Opens the [browser preview](../guides/browser-preview.md) |
+| `open-design-design-system-from-url` | `/open-design:open-design-design-system-from-url` (plugin) or `/open-design-design-system-from-url` (init) | yes, from requests to take a design system, theme or tokens from a website |
 | curated entries | see [Curated entries](#curated-entries) | no |
 
 The MCP server also offers **MCP prompts**. In Claude Code they appear as `/mcp__open-design__<name>`:
 
-- `open-design-new`, `open-design-campaign`, `open-design-docs`, `open-design-social-post`, `open-design-poster`, `open-design-explore`, `open-design-publish`, `open-design-deck-from-source`, `open-design-integrations`, `open-design-recurring` and `open-design-preview` take an optional `brief` argument.
+- `open-design-new`, `open-design-campaign`, `open-design-docs`, `open-design-social-post`, `open-design-poster`, `open-design-explore`, `open-design-publish`, `open-design-deck-from-source`, `open-design-integrations`, `open-design-recurring`, `open-design-preview` and `open-design-design-system-from-url` take an optional `brief` argument.
 - There's one prompt per remixable example, named `od-<mode>-<id>`, e.g. `od-deck-deck-guizang-editorial-example`. Selecting one prefills a remix request; nothing runs until you send it.
 
 ## Codex
@@ -117,6 +120,7 @@ Skills in `.agents/skills/` (from [`init --tools codex`](cli.md#init) or copied 
 | `open-design-integrations` | yes |
 | `open-design-preview` | yes |
 | `open-design-recurring` | yes |
+| `open-design-design-system-from-url` | yes |
 | curated entries (`guizang-ppt`, `card-twitter`, …) | no: each has `agents/openai.yaml` with `policy.allow_implicit_invocation: false` |
 
 MCP prompts are the same as for Claude Code, if your Codex version surfaces them.

@@ -41,6 +41,19 @@ The 8 existing hand-written overrides are regenerated from it, keeping their exp
 
 A `design` decision can change `--accent` against `--accent-on`. The generator measures contrast with the same helper the artifact checks use. When the pair falls below 4.5:1, it also writes `--accent-on` (white or near-black, whichever passes), and it says so in the report.
 
+### What a decision can't move
+
+A decision picks a side per group, but three things always follow `tokens.css`, so the two files still agree afterwards:
+- **Light/dark polarity.** A `design` Surface, Background or Text that would flip the page from light to dark (or back) stays with tokens, and the Color section states the token value instead. The prose describes the rendered page.
+- **The type scale**, unless the template lists all eight `--text-*` steps. No bundled template does (they have six or seven, or prose), so the Typography section's `**Scale:**` is rewritten from tokens.
+- **Spacing.** The template's `**Spacing scale:**` is rewritten from the `--space-*` steps.
+
+A `tokens` decision also rewrites any other section that repeats the old Primary hex (Components, Motion & Interaction), since leaving it would bring the second brand back. Serif families get a serif fallback stack.
+
+### The sections logic lives twice
+
+`applyDesignSections` exists in `packages/content/scripts/designSystemConsistency.mjs` (the overlay step validates headings with it) and in `packages/core/src/content/designSections.ts` (the content index applies it). The content package has no dependency on core, so the two are kept in step by hand and each has its own tests.
+
 ## Risks / Trade-offs
 
 - **About 50 manual decisions.** Mitigation: the audit's suggestions resolve the placeholder cases automatically, leaving roughly 30 real conflicts to review in one sitting with the side-by-side table.

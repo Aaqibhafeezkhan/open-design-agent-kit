@@ -1,13 +1,12 @@
-/* Local override for upstream design-systems/flat/tokens.css (open-design-v0.22.2).
- * Upstream ships the placeholder accent #2563eb (plus --meta/--focus-ring
- * derived from it), contradicting its own DESIGN.md "**Primary:** `#F2673C`".
- * --accent-on is the higher-contrast of #ffffff / #111111 against the new accent.
- * Applied on top of tokens.css by core's resolveDesignSystemTokens(); delete
- * once upstream fixes it (the content drift check reports it when redundant).
- */
+/* generated from DESIGN.md by audit-design-system-consistency.mjs; do not edit. */
+/* tokens.css ships the generator placeholder accent #2563eb; DESIGN.md names the brand primary (the original hand-written override) */
+/* --accent-on set to #111111: #ffffff on #f2673c is 3.10:1, below 4.5:1. */
 :root {
   --accent: #f2673c;
   --meta: #f2673c;
-  --accent-on: #111111;
   --focus-ring: 0 0 0 4px rgba(242, 103, 60, 0.22);
+  --accent-on: #111111;
+  --warn: #d97706;
+  --danger: #dc2626;
+  --fg: #111827;
 }

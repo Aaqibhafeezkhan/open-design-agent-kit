@@ -1,0 +1,7 @@
+/* generated from DESIGN.md by audit-design-system-consistency.mjs; do not edit. */
+/* colour: genuine conflict, keeping what renders; type: tokens.css has the placeholder (reviewed 2026-10-22) */
+:root {
+  --font-body: Roboto, system-ui, sans-serif;
+  --font-display: "STIX Two Text", system-ui, sans-serif;
+  --font-mono: "Source Code Pro", ui-monospace, Menlo, monospace;
+}

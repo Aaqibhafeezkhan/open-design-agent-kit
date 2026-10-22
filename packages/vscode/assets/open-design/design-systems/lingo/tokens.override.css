@@ -1,0 +1,16 @@
+/* generated from DESIGN.md by audit-design-system-consistency.mjs; do not edit. */
+/* name and summary describe the playful green Nunito look (DESIGN.md); tokens.css is a different, violet localization brand */
+/* --accent-on set to #111111: #ffffff on #58cc02 is 2.09:1, below 4.5:1. */
+:root {
+  --accent: #58cc02;
+  --meta: #58cc02;
+  --focus-ring: 0 0 0 4px rgba(88, 204, 2, 0.24);
+  --accent-on: #111111;
+  --success: #58cc02;
+  --warn: #ffc800;
+  --danger: #ff4b4b;
+  --fg: #3c3c3c;
+  --font-body: Nunito, system-ui, sans-serif;
+  --font-display: Nunito, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}

@@ -57,6 +57,13 @@ The skill always ends with the side-by-side view, built as a regular Open Design
 | `designlang` | Broadest output, but its licence isn't stated, and it's a large CLI to depend on. |
 | Own measurement on our existing browser session (chosen) | No new dependency. It writes our contract directly, works in every host that can run checks, and reuses the check and preview tools for the review. We can still borrow ideas such as role sampling and forced hover states, credited in the code. |
 
+### Where the pieces landed
+
+- The skill is a local prompt (`local/prompts/design-system-from-url.md`), like `open-design-explore`, so the Claude plugin, Codex, VS Code and the MCP prompt list all get it from one file. Its review page layout is spelled out in the prompt rather than shipped as a template file.
+- VS Code gets the same tool (`#od-extract-design-system`) and a command, **Design System from Website**, that asks the three questions and prefills chat with the prompt.
+- Subresource requests are checked too: a page can't make the browser fetch a private or loopback address (literal hosts and local names). DNS is resolved once, for the requested pages.
+- Chrome won't start its sandbox as root, so the sandbox is turned off only when the process runs as root (containers and CI).
+
 ## Risks / Trade-offs
 
 - **Sites differ wildly.** Role detection will be wrong sometimes. Mitigation: every role carries its source selector and crop, and the review loop exists to catch this.

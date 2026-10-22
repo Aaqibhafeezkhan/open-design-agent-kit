@@ -1,0 +1,7 @@
+/* generated from DESIGN.md by audit-design-system-consistency.mjs; do not edit. */
+/* colour: DESIGN.md has the placeholder; type: tokens.css has the placeholder (reviewed 2026-10-22) */
+:root {
+  --font-body: Bangers, system-ui, sans-serif;
+  --font-display: Bangers, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}

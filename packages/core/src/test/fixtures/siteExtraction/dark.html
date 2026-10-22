@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Night reader</title>
+<link rel="icon" href="/favicon.svg">
+<style>
+  :root { --brand-green: #58cc02; --brand-ink: #3c3c3c; }
+  body { margin: 0; background: #ffffff; color: #3c3c3c; font-family: "Nunito", Arial, sans-serif; font-size: 15px; line-height: 24px; }
+  header { padding: 16px 24px; border-bottom: 2px solid #e5e5e5; }
+  header .logo svg { width: 120px; height: 32px; }
+  .container { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+  h1 { font-size: 48px; line-height: 52px; letter-spacing: -0.96px; margin: 32px 0 16px; }
+  h2 { font-size: 32px; line-height: 40px; }
+  h3 { font-size: 22px; line-height: 28px; }
+  small { font-size: 13px; color: #777777; }
+  a { color: #1cb0f6; }
+  .btn-primary { display: inline-block; background-color: rgb(88, 204, 2); color: #ffffff; padding: 12px 24px; border: 0; border-radius: 12px; font: 700 15px "Nunito", Arial, sans-serif; transition: background-color 150ms ease-out; }
+  .btn-primary:hover { background-color: rgb(70, 163, 2); }
+  .btn-primary:active { background-color: rgb(60, 140, 2); }
+  .card { background: #f7f7f7; border: 2px solid #e5e5e5; border-radius: 16px; padding: 24px; margin: 16px 0; box-shadow: 0 2px 0 #e5e5e5; transition: transform 300ms ease-out; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  input { border: 2px solid #e5e5e5; border-radius: 8px; padding: 8px 12px; }
+  .muted { color: #777777; }
+  @media (prefers-color-scheme: dark) { :root { --surface: #1f1f1f; } body { background: #131f24; color: #f1f7fb; } .card { background: #202f36; } }
+</style>
+</head>
+<body>
+<header><a class="logo" href="/"><svg viewBox="0 0 120 32"><rect width="120" height="32" rx="8" fill="#58cc02"/></svg></a> <a href="/about">About</a></header>
+<main class="container">
+  <h1>Learn a language for free</h1>
+  <p>Fun, effective lessons in bite-sized pieces. Practice speaking, reading, listening and writing to build your vocabulary and grammar skills.</p>
+  <p class="muted">Free forever. No ads in your way, and more than forty languages to choose from.</p>
+  <button class="btn-primary">Get started</button>
+  <a href="/login">I already have an account</a>
+  <h2>Why it works</h2>
+  <div class="grid">
+    <div class="card"><h3>Bite-sized</h3><p>Short lessons that fit into any part of your day, with instant feedback.</p></div>
+    <div class="card"><h3>Personalized</h3><p>Lessons adapt to your strengths and the words you keep forgetting.</p></div>
+  </div>
+  <form><input type="email" placeholder="Email"> <small>We never share it.</small></form>
+</main>
+</body>
+</html>

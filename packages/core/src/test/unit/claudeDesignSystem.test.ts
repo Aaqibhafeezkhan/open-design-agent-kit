@@ -1,4 +1,6 @@
 import * as assert from 'node:assert';
+import * as path from 'node:path';
+import { ContentIndex } from '../../content/contentIndex';
 import { fromClaudeDesignSystem, toClaudeDesignSystem, type ClaudeTokensJson } from '../../generation/claudeDesignSystem';
 import { resolveDesignSystemTokens } from '../../generation/designSystemTokens';
 
@@ -125,5 +127,28 @@ describe('fromClaudeDesignSystem', () => {
     const resolved = resolveDesignSystemTokens({ designMd: out.designMd, tokensCss: out.tokensCss });
     assert.deepStrictEqual(resolved.missing, []);
     assert.deepStrictEqual(resolved.fromDesignMd, ['--font-mono'], 'only the mono stack (absent in Claude) is guessed');
+  });
+});
+
+describe('exporting a reconciled bundled design system', () => {
+  const assetsRoot = path.resolve(__dirname, '..', '..', '..', '..', 'content', 'assets', 'open-design');
+
+  it('names the same primary colour and body font in README.md and tokens.json (lingo)', async () => {
+    const lingo = await new ContentIndex(assetsRoot).getDesignSystem('lingo');
+    assert.ok(lingo?.tokensCss);
+    const out = toClaudeDesignSystem({
+      name: lingo.name,
+      id: 'lingo',
+      designMd: lingo.body,
+      tokensCss: lingo.tokensOverrideCss ? `${lingo.tokensCss}\n${lingo.tokensOverrideCss}` : lingo.tokensCss,
+      now: '2026-10-22T00:00:00.000Z',
+    });
+    const readme = out.files['project/README.md'];
+    const tokens = JSON.parse(out.files['project/tokens.json']) as ClaudeTokensJson & { type: { families: Record<string, string> } };
+    const primary = /\*\*Primary:\*\* `(#[0-9a-fA-F]{6})`/.exec(readme)?.[1].toLowerCase();
+    const family = /\*\*Families:\*\* primary=([^,]+)/.exec(readme)?.[1].trim().toLowerCase();
+    const accent = tokens.color?.tokens?.find((t) => t.name === 'accent')?.value;
+    assert.strictEqual(typeof accent === 'string' ? accent.toLowerCase() : accent, primary);
+    assert.strictEqual(tokens.type.families.body.split(',')[0].replace(/"/g, '').trim().toLowerCase(), family);
   });
 });

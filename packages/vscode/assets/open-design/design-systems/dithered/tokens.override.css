@@ -1,0 +1,7 @@
+/* generated from DESIGN.md by audit-design-system-consistency.mjs; do not edit. */
+/* colour: DESIGN.md has the placeholder; type: tokens.css has the placeholder (reviewed 2026-10-22) */
+:root {
+  --font-body: "Open Sans", system-ui, sans-serif;
+  --font-display: "Space Grotesk", ui-monospace, monospace;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
