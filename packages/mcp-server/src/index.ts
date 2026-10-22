@@ -508,7 +508,11 @@ const TOOL_DEFS: ToolDef[] = [
         properties: {
           name: { type: 'string', description: 'A short name for the design system. Required unless existingDesignSystemId is given.' },
           brief: { type: 'string', description: "A description of the brand, in the user's own words. Required unless existingDesignSystemId is given." },
-          sourceUrl: { type: 'string', description: 'Optional: a website URL to extract a starting palette/fonts from.' },
+          sourceUrl: {
+            type: 'string',
+            description:
+              'Optional: a website URL to take a rough starting palette and fonts from, by reading its source. For a design system that matches a site, call extract_open_design_design_system first instead: it renders the page and measures it.',
+          },
           existingDesignSystemId: {
             type: 'string',
             description: 'Optional: the id of an existing custom design system (user:…). Returns instructions to write only its tokens.css, from its current DESIGN.md.',
@@ -518,6 +522,32 @@ const TOOL_DEFS: ToolDef[] = [
     },
     handler: (ctx, args) =>
       tools.createCustomDesignSystem(ctx, args as { name?: string; brief?: string; sourceUrl?: string; existingDesignSystemId?: string }),
+  },
+  {
+    tool: {
+      name: 'extract_open_design_design_system',
+      description:
+        "Renders a website in an installed Chrome, Edge or Chromium and measures its design system: colour roles from the elements that carry them (page background, cards, text, borders, the primary button and its forced :hover/:active states), declared CSS custom properties, the fonts it loaded, text sizes, radii, spacing, container width and motion. Writes an evidence bundle (evidence.json, screenshots, one crop per role, the logo) under <output folder>/.extract/<site>/ and returns a draft token set on the Open Design token contract, with where each value came from and which tokens nothing measured. Does NOT write DESIGN.md or tokens.css: write both from the draft, keeping measured values as measured (the open-design-design-system-from-url skill has the steps), then save it as a custom design system. Only public http(s) pages; at most 4 pages, 20 seconds each; no logins, cookies or form submissions. A bot check, login wall or empty page comes back as blocked with its screenshot. With no browser installed, falls back to reading the page source and marks the result partial.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          url: { type: 'string', description: 'The page to measure, e.g. the home page.' },
+          extraUrls: {
+            type: 'array',
+            items: { type: 'string' },
+            maxItems: 3,
+            description: 'Optional: up to 3 more pages on the same site (a product or pricing page) to fill in roles the first page lacks.',
+          },
+          theme: {
+            type: 'string',
+            enum: ['light', 'dark', 'both'],
+            description: 'Which theme to measure (default light). dark and both measure a dark theme only if the site has one (prefers-color-scheme or a theme attribute on the root element).',
+          },
+        },
+        required: ['url'],
+      },
+    },
+    handler: (ctx, args) => tools.extractDesignSystemFromSite(ctx, args as { url?: string; extraUrls?: string[]; theme?: string }),
   },
   {
     tool: {

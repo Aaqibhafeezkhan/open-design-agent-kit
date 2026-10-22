@@ -19,6 +19,8 @@ export * from './generation/designSystemTokens';
 export * from './generation/designSystemVisualize';
 export * from './generation/designSystemImport';
 export * from './generation/claudeDesignSystem';
+export * from './generation/evidenceToTokens';
+export * from './generation/siteExtraction';
 export * from './generation/explorationPlan';
 export * from './generation/tweaks';
 export * from './generation/explorationTools';

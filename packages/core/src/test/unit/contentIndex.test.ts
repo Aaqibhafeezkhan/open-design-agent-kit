@@ -319,6 +319,34 @@ describe('ContentIndex', () => {
     assert.strictEqual(starbucks!.source, 'built-in');
   });
 
+  it('applies a built-in DESIGN.sections.md overlay, replacing only the sections it names', async () => {
+    const assetsRoot = await makeFixture();
+    const dir = path.join(assetsRoot, 'design-systems', 'acme');
+    const vendored = [
+      '# Acme',
+      '',
+      '## 1. Visual Theme & Atmosphere',
+      '',
+      'Calm and orange.',
+      '',
+      '## 2. Color',
+      '',
+      '- **Primary:** `#FF5701` — Token from style foundations.',
+      '',
+      '## 3. Typography',
+      '',
+      '- **Families:** primary=Inter',
+    ].join('\n');
+    await fs.writeFile(path.join(dir, 'DESIGN.md'), vendored);
+    await fs.writeFile(path.join(dir, 'DESIGN.sections.md'), '<!-- generated; do not edit -->\n\n## Color\n\n- **Primary:** `#60a5fa` — Token from style foundations.\n');
+    const acme = await new ContentIndex(assetsRoot).getDesignSystem('acme');
+    assert.match(acme!.body, /## 2\. Color\n\n- \*\*Primary:\*\* `#60a5fa`/);
+    assert.doesNotMatch(acme!.body, /#FF5701/);
+    assert.ok(acme!.body.includes('## 1. Visual Theme & Atmosphere\n\nCalm and orange.\n\n## 2. Color'));
+    assert.ok(acme!.body.endsWith('## 3. Typography\n\n- **Families:** primary=Inter'));
+    assert.strictEqual(await fs.readFile(path.join(dir, 'DESIGN.md'), 'utf8'), vendored);
+  });
+
   it('reads a built-in tokens.css and its local override, and flags hasTokens', async () => {
     const assetsRoot = await makeFixture();
     await fs.writeFile(path.join(assetsRoot, 'design-systems', 'acme', 'tokens.css'), ':root { --accent: #2563eb; }\n');

@@ -1,0 +1,344 @@
+{
+  "agentic": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "suggested: color conflict, type tokens-placeholder",
+    "suggested": true
+  },
+  "ant": {
+    "color": "tokens",
+    "type": "tokens",
+    "reason": "suggested: color conflict, type conflict",
+    "suggested": true
+  },
+  "application": {
+    "color": "design",
+    "type": "tokens",
+    "reason": "tokens.css ships the generator placeholder accent #2563eb; DESIGN.md names the brand primary (the original hand-written override)",
+    "suggested": true
+  },
+  "artistic": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "suggested: color design-placeholder, type tokens-placeholder",
+    "suggested": true
+  },
+  "bento": {
+    "color": "design",
+    "type": "tokens",
+    "reason": "tokens.css ships the generator placeholder accent #2563eb; DESIGN.md names the brand primary (the original hand-written override)",
+    "suggested": true
+  },
+  "bold": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "suggested: color conflict, type tokens-placeholder",
+    "suggested": true
+  },
+  "brutalism": {
+    "color": "tokens",
+    "type": "tokens",
+    "reason": "suggested: color conflict, type conflict",
+    "suggested": true
+  },
+  "cafe": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "suggested: color conflict, type tokens-placeholder",
+    "suggested": true
+  },
+  "claymorphism": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "suggested: color design-placeholder, type tokens-placeholder",
+    "suggested": true
+  },
+  "clean": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "suggested: color design-placeholder, type tokens-placeholder",
+    "suggested": true
+  },
+  "colorful": {
+    "color": "tokens",
+    "type": "tokens",
+    "reason": "suggested: color design-placeholder, type conflict",
+    "suggested": true
+  },
+  "contemporary": {
+    "color": "design",
+    "type": "design",
+    "reason": "tokens.css ships the generator placeholder accent #2563eb; DESIGN.md names the brand primary (the original hand-written override); tokens.css body font is the Inter placeholder",
+    "suggested": true
+  },
+  "corporate": {
+    "color": "design",
+    "type": "design",
+    "reason": "tokens.css ships the generator placeholder accent #2563eb; DESIGN.md names the brand primary (the original hand-written override); tokens.css body font is the Inter placeholder",
+    "suggested": true
+  },
+  "cosmic": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "suggested: color design-placeholder, type tokens-placeholder",
+    "suggested": true
+  },
+  "creative": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "suggested: color design-placeholder, type tokens-placeholder",
+    "suggested": true
+  },
+  "dashboard": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "suggested: color conflict, type tokens-placeholder",
+    "suggested": true
+  },
+  "dithered": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "suggested: color design-placeholder, type tokens-placeholder",
+    "suggested": true
+  },
+  "doodle": {
+    "color": "tokens",
+    "type": "tokens",
+    "reason": "suggested: color conflict, type conflict",
+    "suggested": true
+  },
+  "dramatic": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "suggested: color conflict, type tokens-placeholder",
+    "suggested": true
+  },
+  "editorial": {
+    "color": "tokens",
+    "type": "tokens",
+    "reason": "suggested: color conflict, type conflict",
+    "suggested": true
+  },
+  "elegant": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "suggested: color design-placeholder, type tokens-placeholder",
+    "suggested": true
+  },
+  "energetic": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "suggested: color conflict, type tokens-placeholder",
+    "suggested": true
+  },
+  "enterprise": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "suggested: color conflict, type tokens-placeholder",
+    "suggested": true
+  },
+  "expressive": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "suggested: color conflict, type tokens-placeholder",
+    "suggested": true
+  },
+  "fantasy": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "suggested: color conflict, type tokens-placeholder",
+    "suggested": true
+  },
+  "flat": {
+    "color": "design",
+    "type": "tokens",
+    "reason": "tokens.css ships the generator placeholder accent #2563eb; DESIGN.md names the brand primary (the original hand-written override)",
+    "suggested": true
+  },
+  "friendly": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "suggested: color conflict, type tokens-placeholder",
+    "suggested": true
+  },
+  "futuristic": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "suggested: color design-placeholder, type tokens-placeholder",
+    "suggested": true
+  },
+  "glassmorphism": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "suggested: color conflict, type tokens-placeholder",
+    "suggested": true
+  },
+  "gradient": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "suggested: color conflict, type tokens-placeholder",
+    "suggested": true
+  },
+  "levels": {
+    "color": "tokens",
+    "type": "tokens",
+    "reason": "suggested: color conflict, type conflict",
+    "suggested": true
+  },
+  "lingo": {
+    "color": "design",
+    "type": "design",
+    "reason": "name and summary describe the playful green Nunito look (DESIGN.md); tokens.css is a different, violet localization brand",
+    "suggested": true
+  },
+  "luxury": {
+    "color": "tokens",
+    "type": "tokens",
+    "reason": "suggested: color conflict, type conflict",
+    "suggested": true
+  },
+  "material": {
+    "color": "tokens",
+    "type": "tokens",
+    "reason": "suggested: color conflict, type design-placeholder",
+    "suggested": true
+  },
+  "minimal": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "suggested: color conflict, type tokens-placeholder",
+    "suggested": true
+  },
+  "modern": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "suggested: color conflict, type tokens-placeholder",
+    "suggested": true
+  },
+  "mono": {
+    "color": "tokens",
+    "type": "tokens",
+    "reason": "suggested: color conflict, type conflict",
+    "suggested": true
+  },
+  "neobrutalism": {
+    "color": "tokens",
+    "type": "tokens",
+    "reason": "suggested: color conflict, type conflict",
+    "suggested": true
+  },
+  "neon": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "suggested: color conflict, type tokens-placeholder",
+    "suggested": true
+  },
+  "neumorphism": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "suggested: color conflict, type tokens-placeholder",
+    "suggested": true
+  },
+  "pacman": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "suggested: color conflict, type tokens-placeholder",
+    "suggested": true
+  },
+  "paper": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "suggested: color conflict, type tokens-placeholder",
+    "suggested": true
+  },
+  "perspective": {
+    "color": "design",
+    "type": "design",
+    "reason": "tokens.css ships the generator placeholder accent #2563eb; DESIGN.md names the brand primary (the original hand-written override); tokens.css body font is the Inter placeholder",
+    "suggested": true
+  },
+  "premium": {
+    "color": "tokens",
+    "type": "tokens",
+    "reason": "suggested: color design-placeholder, type conflict",
+    "suggested": true
+  },
+  "professional": {
+    "color": "design",
+    "type": "design",
+    "reason": "tokens.css ships the generator placeholder accent #2563eb; DESIGN.md names the brand primary (the original hand-written override); tokens.css body font is the Inter placeholder",
+    "suggested": true
+  },
+  "publication": {
+    "color": "tokens",
+    "type": "tokens",
+    "reason": "suggested: color conflict, type conflict",
+    "suggested": true
+  },
+  "refined": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "suggested: color design-placeholder, type tokens-placeholder",
+    "suggested": true
+  },
+  "retro": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "suggested: color design-placeholder, type tokens-placeholder",
+    "suggested": true
+  },
+  "shadcn": {
+    "color": "tokens",
+    "type": "tokens",
+    "reason": "suggested: color consistent, type conflict",
+    "suggested": true
+  },
+  "simple": {
+    "color": "design",
+    "type": "tokens",
+    "reason": "tokens.css ships the generator placeholder accent #2563eb; DESIGN.md names the brand primary (the original hand-written override)",
+    "suggested": true
+  },
+  "skeumorphism": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "suggested: color conflict, type tokens-placeholder",
+    "suggested": true
+  },
+  "sleek": {
+    "color": "tokens",
+    "type": "tokens",
+    "reason": "suggested: color design-placeholder, type conflict",
+    "suggested": true
+  },
+  "spacious": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "suggested: color design-placeholder, type tokens-placeholder",
+    "suggested": true
+  },
+  "storytelling": {
+    "color": "tokens",
+    "type": "tokens",
+    "reason": "suggested: color design-placeholder, type conflict",
+    "suggested": true
+  },
+  "tetris": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "suggested: color conflict, type tokens-placeholder",
+    "suggested": true
+  },
+  "vibrant": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "suggested: color conflict, type tokens-placeholder",
+    "suggested": true
+  },
+  "vintage": {
+    "color": "tokens",
+    "type": "design",
+    "reason": "suggested: color conflict, type tokens-placeholder",
+    "suggested": true
+  }
+}

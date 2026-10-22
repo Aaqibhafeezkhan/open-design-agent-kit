@@ -1,0 +1,7 @@
+/* generated from DESIGN.md by audit-design-system-consistency.mjs; do not edit. */
+/* suggested: color conflict, type tokens-placeholder */
+:root {
+  --font-body: "Noto Serif Display", Georgia, "Times New Roman", serif;
+  --font-display: "Noto Serif Display", Georgia, "Times New Roman", serif;
+  --font-mono: "Space Mono", ui-monospace, Menlo, monospace;
+}

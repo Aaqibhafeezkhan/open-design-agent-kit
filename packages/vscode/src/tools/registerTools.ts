@@ -9,6 +9,7 @@ import { GetArtifactTool } from './getArtifactTool';
 import { SetActiveDesignSystemTool } from './setActiveDesignSystemTool';
 import { RemixExampleTool } from './remixExampleTool';
 import { CreateCustomDesignSystemTool } from './createCustomDesignSystemTool';
+import { ExtractDesignSystemTool } from './extractDesignSystemTool';
 import { PortToAppCodeTool } from './portToAppCodeTool';
 import { ShareToCommunityTool } from './shareToCommunityTool';
 import { PublishCanvaTemplateTool } from './publishCanvaTemplateTool';
@@ -46,6 +47,7 @@ export function registerTools(
     ['set_active_design_system', new SetActiveDesignSystemTool(contentIndex)],
     ['remix_open_design_example', new RemixExampleTool(contentIndex, assetsRoot, communityContentDir)],
     ['create_open_design_design_system', new CreateCustomDesignSystemTool(contentIndex)],
+    ['extract_open_design_design_system', new ExtractDesignSystemTool()],
     ['port_open_design_artifact_to_app', new PortToAppCodeTool()],
     ['share_open_design_artifact_to_community', new ShareToCommunityTool()],
     ['publish_open_design_artifact_to_canva', new PublishCanvaTemplateTool()],

@@ -1,0 +1,6 @@
+/* generated from DESIGN.md by audit-design-system-consistency.mjs; do not edit. */
+/* suggested: color conflict, type tokens-placeholder */
+:root {
+  --font-body: "Open Sans", system-ui, sans-serif;
+  --font-mono: Inconsolata, ui-monospace, Menlo, monospace;
+}

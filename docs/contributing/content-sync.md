@@ -35,10 +35,26 @@ Files under `packages/content/assets/open-design/` are never hand-edited. This p
 
 - `local/skills/<id>/SKILL.md`: extension-authored skills (e.g. `social-youtube-thumbnail`). An id that collides with an upstream skill or template fails the sync.
 - `local/prompts/<name>.md`: host-agnostic prompts (e.g. `social-post.md`), rendered per host by the generators.
-- `local/design-systems/<id>/tokens.override.css`: additive token fixes for an upstream design system, applied on top of its vendored `tokens.css` (which stays untouched) when previews resolve tokens. The id must exist upstream and the folder may hold only this file. Today these fix 8 systems whose upstream `tokens.css` still has the placeholder accent `#2563eb`; see `local/README.md`.
+- `local/design-systems/<id>/tokens.override.css` and `DESIGN.sections.md`: generated fixes for an upstream design system whose `DESIGN.md` and `tokens.css` describe different looks. The first is applied on top of the vendored `tokens.css` when tokens resolve; the second replaces whole sections (Color, Typography, Spacing & Grid) of the loaded `DESIGN.md`. Neither vendored file is touched. The id must exist upstream and the folder may hold only these two files; see `local/README.md`.
+- `local/design-system-sources.json`: which side is the truth, per system, for colour and for type. See [Design system consistency](#design-system-consistency).
 - `local/curated.json`: extra entries that get a curated command even though upstream doesn't flag them. An unknown id fails generation.
 
 See [Adding a skill or prompt](adding-a-skill-or-prompt.md).
+
+## Design system consistency
+
+Most of upstream's template `DESIGN.md` files (the ones whose colour bullets end "Token from style foundations") name a different primary colour and font from their own `tokens.css`, so a brief or a Claude Design export would carry two brands. The audit compares the template's Primary, Success, Warning, Danger, Background, Surface and Text colours, its font families, and its type and spacing scales with the resolved tokens:
+
+```bash
+npm run audit-design-systems --workspace=@feimacode/open-design-agent-kit-content              # side-by-side table
+npm run audit-design-systems --workspace=@feimacode/open-design-agent-kit-content -- --suggest  # rows for undecided systems
+npm run audit-design-systems --workspace=@feimacode/open-design-agent-kit-content -- --write    # regenerate the overlays
+npm run apply-overlay --workspace=@feimacode/open-design-agent-kit-content
+```
+
+Each system is `consistent`, `tokens-placeholder`, `design-placeholder` or `conflict`. A suggestion makes the placeholder side lose (`#2563eb`, `#3b82f6`, or Inter alone against a named family) and otherwise keeps `tokens`, which is what renders today. Review the table, change `color` or `type` where the system's name and summary describe the other side (`lingo` is the playful green Nunito of its `DESIGN.md`), write a reason, and delete `"suggested"`. A `"design"` decision generates a `tokens.override.css`; a `"tokens"` one generates a `DESIGN.sections.md`. Light/dark polarity, the eight-step type scale and spacing always follow `tokens.css`, so both files end up agreeing.
+
+When a sync changes a system's resolved tokens, list it in the release notes: designs made in it will look different.
 
 ## Curation
 
@@ -48,7 +64,7 @@ An entry gets a one-step command when upstream frontmatter has `featured`, `reco
 
 | Check | Fails when |
 |---|---|
-| `packages/content/scripts/check-content-sync.mjs` | The pinned ref and `MANIFEST.json` disagree, an overlay file is missing or stale in `assets/`, a vendored `tokens.css` is missing, or a token override repeats a value upstream now has (delete it). |
+| `packages/content/scripts/check-content-sync.mjs` | The pinned ref and `MANIFEST.json` disagree, an overlay file is missing or stale in `assets/`, a vendored `tokens.css` is missing, a token override repeats a value upstream now has (delete it), or a template design system whose `DESIGN.md` and `tokens.css` disagree has no confirmed decision or a stale generated overlay. |
 | `packages/vscode/scripts/check-content-mirror.mjs` | The VS Code mirror differs from `packages/content`. |
 | `packages/claude-plugin/scripts/check-skills-sync.mjs` | Generated Claude skills don't match the curated set and local prompts. |
 | `packages/codex/scripts/check-codex-skills-sync.mjs` | Generated Codex skills don't match, or a local-prompt skill gained an explicit-only policy. |

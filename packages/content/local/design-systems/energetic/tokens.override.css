@@ -1,0 +1,7 @@
+/* generated from DESIGN.md by audit-design-system-consistency.mjs; do not edit. */
+/* suggested: color conflict, type tokens-placeholder */
+:root {
+  --font-body: Limelight, system-ui, sans-serif;
+  --font-display: Limelight, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}

@@ -1,0 +1,7 @@
+/* generated from DESIGN.md by audit-design-system-consistency.mjs; do not edit. */
+/* suggested: color conflict, type tokens-placeholder */
+:root {
+  --font-body: "IBM Plex Serif", Georgia, "Times New Roman", serif;
+  --font-display: "IBM Plex Serif", Georgia, "Times New Roman", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}

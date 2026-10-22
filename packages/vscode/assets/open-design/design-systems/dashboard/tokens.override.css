@@ -1,0 +1,7 @@
+/* generated from DESIGN.md by audit-design-system-consistency.mjs; do not edit. */
+/* suggested: color conflict, type tokens-placeholder */
+:root {
+  --font-body: "IBM Plex Sans", system-ui, sans-serif;
+  --font-display: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Sans", ui-monospace, Menlo, monospace;
+}

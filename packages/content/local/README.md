@@ -18,17 +18,20 @@ the extension adds lives here instead:
   MCP prompt, Claude Code and Codex skills).
 - `design-systems/<id>/` is one of two shapes, disambiguated by its own file
   set — never both, never a partial set of either:
-  - **Override** (`tokens.override.css` only): additive token fixes for an
-    *existing* upstream design system. It is a `:root { … }` block copied
-    beside the vendored `tokens.css`, which is never modified. Core's
-    `resolveDesignSystemTokens()` applies it on top. The id must exist
-    upstream, and the directory must contain only this file, or the sync
-    fails. The content drift check reports an override that upstream has
-    since made redundant. Current overrides fix 8 systems whose upstream
-    `tokens.css` still has the placeholder accent `#2563eb`, contradicting
-    their own DESIGN.md `**Primary:**` colour: `application`, `bento`,
-    `contemporary`, `corporate`, `flat`, `perspective`, `professional`,
-    `simple`.
+  - **Override** (`tokens.override.css`, `DESIGN.sections.md`, or both):
+    fixes for an *existing* upstream design system whose `DESIGN.md` and
+    `tokens.css` disagree. Both files are **generated** by
+    `npm run audit-design-systems` from the decision recorded for that
+    system in `design-system-sources.json` (below); never hand-edit them.
+    `tokens.override.css` is a `:root { … }` block copied beside the vendored
+    `tokens.css`, which is never modified; core's
+    `resolveDesignSystemTokens()` applies it on top. `DESIGN.sections.md`
+    holds whole `## ` sections (Color, Typography, Spacing & Grid, and any
+    section repeating the old primary colour) that core's content index
+    swaps into the loaded `DESIGN.md` by heading, ignoring the number. The id
+    must exist upstream, every section heading must exist in its `DESIGN.md`,
+    and the directory may hold nothing else, or the sync fails. The content
+    drift check reports an override that upstream has since made redundant.
   - **New package** (`DESIGN.md` + `manifest.json` + `tokens.css`, all three
     required): a wholly new, extension-authored design system with no
     upstream counterpart — the mirror image of the override case, and of
@@ -37,6 +40,17 @@ the extension adds lives here instead:
     `design-systems/README.md` upstream, or any bundled `manifest.json` for
     the shape). Copied wholesale into `assets/open-design/design-systems/`
     the same way `skills/<id>/` is.
+- `design-system-sources.json`: for each bundled design system whose
+  template `DESIGN.md` disagrees with its `tokens.css`, which side is the
+  truth for colour and for type (`"tokens"` or `"design"`) and a one-line
+  reason. `npm run audit-design-systems --workspace=@feimacode/open-design-agent-kit-content`
+  prints the side-by-side table; `-- --suggest` adds rows for undecided
+  systems (the placeholder side, `#2563eb`, `#3b82f6` or a lone Inter, loses;
+  otherwise `tokens`), each marked `"suggested": true` until a person
+  confirms it by deleting that key; `-- --write` regenerates the overrides
+  above. A `design` decision still keeps the page's light/dark polarity and
+  the eight-step type scale from `tokens.css`. The drift check fails on an
+  undecided system, a suggestion, or a stale generated overlay.
 - `notices/`: licence notices for content ported from other projects,
   copied verbatim to `assets/open-design/notices/` so every host that mirrors
   the assets carries them.

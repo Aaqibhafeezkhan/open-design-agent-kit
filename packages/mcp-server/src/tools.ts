@@ -1,3 +1,4 @@
+import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import {
   type AssetResolution,
@@ -19,6 +20,9 @@ import {
   type ExplorationToolContext,
   type PrepareExplorationInput,
   composeCustomDesignSystemInstructions,
+  extractSite,
+  formatExtractSiteResult,
+  type ExtractionTheme,
   composeDesignSystemTokensInstructions,
   composeInstructions,
   composePortToAppInstructions,
@@ -657,6 +661,33 @@ export async function createCustomDesignSystem(
   const evidence = input.sourceUrl ? await extractBrandEvidence(input.sourceUrl) : undefined;
   const instructions = composeCustomDesignSystemInstructions({ name: input.name, brief: input.brief, suggestedEntryPath, id, evidence });
   return JSON.stringify({ instructions, suggestedEntryPath, id }, null, 2);
+}
+
+/**
+ * extract_open_design_design_system: renders a website, writes the evidence
+ * bundle under <outputDir>/.extract/<slug>/ and returns a draft token set with
+ * the desktop screenshot. Never writes DESIGN.md or tokens.css.
+ */
+export async function extractDesignSystemFromSite(
+  ctx: ToolContext,
+  input: { url?: string; extraUrls?: string[]; theme?: string },
+): Promise<ToolOutput> {
+  if (typeof input.url !== 'string' || !input.url.trim()) throw new Error('"url" is required: the website to extract a design system from.');
+  if (input.extraUrls !== undefined && (!Array.isArray(input.extraUrls) || input.extraUrls.some((u) => typeof u !== 'string'))) {
+    throw new Error('"extraUrls" must be a list of URLs on the same site.');
+  }
+  if (input.theme !== undefined && !['light', 'dark', 'both'].includes(input.theme)) throw new Error('"theme" must be light, dark or both.');
+  const result = await extractSite({
+    url: input.url.trim(),
+    extraUrls: input.extraUrls,
+    theme: input.theme as ExtractionTheme | undefined,
+    workspaceRoot: ctx.workspaceRoot,
+    outputDir: ctx.outputDir,
+  });
+  if (result.status === 'invalid-args') throw new Error(result.error);
+  const shot = result.screenshots.find((s) => s.endsWith('desktop.png')) ?? result.blocked.find((b) => b.screenshot)?.screenshot;
+  const image = shot ? await fs.readFile(path.join(ctx.workspaceRoot, shot)).catch(() => undefined) : undefined;
+  return { text: formatExtractSiteResult(result), images: image ? [{ data: image, mime: 'image/png' }] : [] };
 }
 
 export async function portToAppCode(

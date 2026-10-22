@@ -25,6 +25,7 @@ import { registerCollectionsTreeView } from './views/collectionsTreeProvider';
 import { registerDesignSystemsTreeView } from './views/designSystemsTreeProvider';
 import { registerIntegrationsTreeView } from './views/integrationsTreeProvider';
 import { registerImportDesignSystemCommand } from './commands/importDesignSystemCommand';
+import { registerDesignSystemFromWebsiteCommand } from './commands/designSystemFromWebsiteCommand';
 import { registerSetFigmaTokenCommand } from './commands/setFigmaTokenCommand';
 import { registerRevealFigmaPluginCommand } from './commands/revealFigmaPluginCommand';
 import { registerOpenDocsCommand } from './commands/openDocsCommand';
@@ -59,6 +60,7 @@ export function activate(context: vscode.ExtensionContext): void {
   registerCollectionsTreeView(context);
   registerIntegrationsTreeView(context, contentIndex, log);
   registerImportDesignSystemCommand(context, log);
+  registerDesignSystemFromWebsiteCommand(context, log);
   registerSetFigmaTokenCommand(context, log);
   registerRevealFigmaPluginCommand(context, log);
   registerOpenDocsCommand(context, log);

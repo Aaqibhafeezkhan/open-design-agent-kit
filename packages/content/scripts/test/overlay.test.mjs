@@ -9,6 +9,7 @@ import {
   listOverlayFiles,
   OVERLAY_MARKER,
   TOKENS_OVERRIDE_FILE,
+  DESIGN_SECTIONS_FILE,
   NEW_DESIGN_SYSTEM_FILES,
 } from '../apply-local-overlay.mjs';
 import { collectCuratedEntries } from '../curatedEntries.mjs';
@@ -99,7 +100,7 @@ test('an override directory with any other file fails', async () => {
   await writeDesignSystem(target, 'application');
   await writeOverride(local, 'application');
   await fs.writeFile(path.join(local, 'design-systems', 'application', 'DESIGN.md'), '# shadow');
-  await assert.rejects(applyLocalOverlay(target, local), /application \(must contain exactly tokens\.override\.css/);
+  await assert.rejects(applyLocalOverlay(target, local), /application \(must contain tokens\.override\.css and\/or DESIGN\.sections\.md/);
 });
 
 test('re-applying after an override is removed from local/ drops it from the target', async () => {
@@ -111,6 +112,59 @@ test('re-applying after an override is removed from local/ drops it from the tar
   await fs.rm(path.join(local, 'design-systems'), { recursive: true });
   await applyLocalOverlay(target, local);
   await assert.rejects(fs.access(path.join(target, 'design-systems', 'application', TOKENS_OVERRIDE_FILE)));
+});
+
+const TEMPLATE_DESIGN_MD = '# Application\n\n## 1. Visual Theme & Atmosphere\n\nCalm.\n\n## 2. Color\n\n- **Primary:** `#9333EA` — Token from style foundations.\n';
+
+test('both override files in one folder are applied together', async () => {
+  const local = await tmp();
+  const target = await tmp();
+  await writeDesignSystem(target, 'application');
+  await fs.writeFile(path.join(target, 'design-systems', 'application', 'DESIGN.md'), TEMPLATE_DESIGN_MD);
+  await writeOverride(local, 'application');
+  await fs.writeFile(path.join(local, 'design-systems', 'application', DESIGN_SECTIONS_FILE), '## Color\n\n- **Primary:** `#2563eb`\n');
+  assert.equal((await applyLocalOverlay(target, local)).designSystemOverrides, 1);
+  const dir = path.join(target, 'design-systems', 'application');
+  await fs.access(path.join(dir, TOKENS_OVERRIDE_FILE));
+  assert.match(await fs.readFile(path.join(dir, DESIGN_SECTIONS_FILE), 'utf8'), /#2563eb/);
+  assert.equal(await fs.readFile(path.join(dir, 'DESIGN.md'), 'utf8'), TEMPLATE_DESIGN_MD);
+  assert.deepEqual((await listOverlayFiles(local)).sort(), [
+    path.join('design-systems', 'application', DESIGN_SECTIONS_FILE),
+    path.join('design-systems', 'application', TOKENS_OVERRIDE_FILE),
+  ]);
+  // Dropping one of the two from local/ drops only that one from the target.
+  await fs.rm(path.join(local, 'design-systems', 'application', DESIGN_SECTIONS_FILE));
+  await applyLocalOverlay(target, local);
+  await assert.rejects(fs.access(path.join(dir, DESIGN_SECTIONS_FILE)));
+  await fs.access(path.join(dir, TOKENS_OVERRIDE_FILE));
+});
+
+test('a sections override naming a heading DESIGN.md lacks fails, naming the system and heading', async () => {
+  const local = await tmp();
+  const target = await tmp();
+  await writeDesignSystem(target, 'application');
+  await fs.writeFile(path.join(target, 'design-systems', 'application', 'DESIGN.md'), TEMPLATE_DESIGN_MD);
+  await fs.mkdir(path.join(local, 'design-systems', 'application'), { recursive: true });
+  await fs.writeFile(path.join(local, 'design-systems', 'application', DESIGN_SECTIONS_FILE), '## Iconography\n\nNone.\n');
+  await assert.rejects(applyLocalOverlay(target, local), /application \(DESIGN\.sections\.md names a section DESIGN\.md doesn't have: "Iconography"\)/);
+});
+
+test('a sections override for an unknown design system fails', async () => {
+  const local = await tmp();
+  const target = await tmp();
+  await fs.mkdir(path.join(local, 'design-systems', 'ghost'), { recursive: true });
+  await fs.writeFile(path.join(local, 'design-systems', 'ghost', DESIGN_SECTIONS_FILE), '## Color\n');
+  await assert.rejects(applyLocalOverlay(target, local), /ghost \(override of a non-existent upstream design system\)/);
+});
+
+test('a sections override that changes nothing is reported as redundant', async () => {
+  const local = await tmp();
+  const target = await tmp();
+  await writeDesignSystem(target, 'application');
+  await fs.writeFile(path.join(target, 'design-systems', 'application', 'DESIGN.md'), TEMPLATE_DESIGN_MD);
+  await fs.mkdir(path.join(local, 'design-systems', 'application'), { recursive: true });
+  await fs.writeFile(path.join(local, 'design-systems', 'application', DESIGN_SECTIONS_FILE), '## Color\n\n- **Primary:** `#9333EA` — Token from style foundations.\n');
+  assert.deepEqual(await findRedundantOverrides(target, local), [`application: ${DESIGN_SECTIONS_FILE}`]);
 });
 
 async function writeNewDesignSystemPackage(root, id, { manifestId = id } = {}) {
@@ -167,7 +221,7 @@ test('a new design system package missing a required file fails', async () => {
   await fs.writeFile(path.join(dir, 'DESIGN.md'), '# riso\n');
   await fs.writeFile(path.join(dir, 'tokens.css'), ':root {}\n');
   assert.deepEqual(NEW_DESIGN_SYSTEM_FILES, ['DESIGN.md', 'manifest.json', 'tokens.css']);
-  await assert.rejects(applyLocalOverlay(target, local), /riso \(must contain exactly tokens\.override\.css, or exactly DESIGN\.md, manifest\.json, tokens\.css/);
+  await assert.rejects(applyLocalOverlay(target, local), /riso \(must contain tokens\.override\.css and\/or DESIGN\.sections\.md, or exactly DESIGN\.md, manifest\.json, tokens\.css/);
 });
 
 test('re-applying after a new design system package is removed from local/ drops the whole folder from the target', async () => {

@@ -2,6 +2,7 @@ import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import matter from 'gray-matter';
 import { loadIntegrationRegistry, type IntegrationRegistry } from '../integrations/registry';
+import { DESIGN_SECTIONS_FILE, applyDesignSections } from './designSections';
 
 export type SkillSource = 'skill' | 'design-template' | 'example' | 'community';
 // Priority order used both to decide which source keeps the plain public id
@@ -351,6 +352,21 @@ interface DesignSystemManifest {
   craft?: { suggested?: unknown; applies?: unknown; exemptions?: unknown };
 }
 
+/**
+ * The content overlay's DESIGN.sections.md, when present, replaces the
+ * sections of DESIGN.md that disagree with tokens.css. The overlay step
+ * already rejects unknown headings, so a failure here means a hand-copied
+ * assets tree; the vendored text is used rather than failing the whole index.
+ */
+function withDesignSections(id: string, designMd: string, sectionsMd: string | undefined): string {
+  if (sectionsMd === undefined) return designMd;
+  try {
+    return applyDesignSections(designMd, sectionsMd, id);
+  } catch {
+    return designMd;
+  }
+}
+
 async function loadDesignSystems(assetsRoot: string): Promise<Map<string, DesignSystemDetail>> {
   const dsDir = path.join(assetsRoot, 'design-systems');
   const result = new Map<string, DesignSystemDetail>();
@@ -361,7 +377,8 @@ async function loadDesignSystems(assetsRoot: string): Promise<Map<string, Design
     if (!entry.isDirectory()) continue;
     const designMdPath = path.join(dsDir, entry.name, 'DESIGN.md');
     if (!(await pathExists(designMdPath))) continue;
-    const raw = await fs.readFile(designMdPath, 'utf8');
+    const vendoredMd = await fs.readFile(designMdPath, 'utf8');
+    const raw = withDesignSections(entry.name, vendoredMd, await readOptional(path.join(dsDir, entry.name, DESIGN_SECTIONS_FILE)));
     const tokensCss = await readOptional(path.join(dsDir, entry.name, 'tokens.css'));
     const tokensOverrideCss = await readOptional(path.join(dsDir, entry.name, 'tokens.override.css'));
     const tokens = { hasTokens: tokensCss !== undefined, tokensCss, tokensOverrideCss };

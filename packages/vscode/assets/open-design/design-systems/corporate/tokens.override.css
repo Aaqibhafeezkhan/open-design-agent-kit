@@ -1,13 +1,15 @@
-/* Local override for upstream design-systems/corporate/tokens.css (open-design-v0.22.2).
- * Upstream ships the placeholder accent #2563eb (plus --meta/--focus-ring
- * derived from it), contradicting its own DESIGN.md "**Primary:** `#3B82F6`".
- * --accent-on is the higher-contrast of #ffffff / #111111 against the new accent.
- * Applied on top of tokens.css by core's resolveDesignSystemTokens(); delete
- * once upstream fixes it (the content drift check reports it when redundant).
- */
+/* generated from DESIGN.md by audit-design-system-consistency.mjs; do not edit. */
+/* tokens.css ships the generator placeholder accent #2563eb; DESIGN.md names the brand primary (the original hand-written override); tokens.css body font is the Inter placeholder */
+/* --accent-on set to #111111: #ffffff on #3b82f6 is 3.68:1, below 4.5:1. */
 :root {
   --accent: #3b82f6;
   --meta: #3b82f6;
-  --accent-on: #111111;
   --focus-ring: 0 0 0 4px rgba(59, 130, 246, 0.22);
+  --accent-on: #111111;
+  --warn: #d97706;
+  --danger: #dc2626;
+  --fg: #111827;
+  --font-body: "Open Sans", system-ui, sans-serif;
+  --font-display: Poppins, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
 }

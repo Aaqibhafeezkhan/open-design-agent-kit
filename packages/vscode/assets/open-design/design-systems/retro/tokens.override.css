@@ -1,0 +1,7 @@
+/* generated from DESIGN.md by audit-design-system-consistency.mjs; do not edit. */
+/* suggested: color design-placeholder, type tokens-placeholder */
+:root {
+  --font-body: Macondo, system-ui, sans-serif;
+  --font-display: Macondo, ui-monospace, monospace;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}

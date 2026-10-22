@@ -1,0 +1,7 @@
+/* generated from DESIGN.md by audit-design-system-consistency.mjs; do not edit. */
+/* suggested: color design-placeholder, type tokens-placeholder */
+:root {
+  --font-body: "Google Sans", system-ui, sans-serif;
+  --font-display: "Google Sans", system-ui, sans-serif;
+  --font-mono: "Anonymous Pro", ui-monospace, Menlo, monospace;
+}

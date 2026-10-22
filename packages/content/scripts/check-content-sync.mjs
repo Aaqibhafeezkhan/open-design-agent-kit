@@ -15,6 +15,7 @@ import { checkSurfaces } from './surfaces.mjs';
 import { checkIntegrations } from './integrations.mjs';
 import { checkPorts } from './ports.mjs';
 import { SCAFFOLD_MARKERS, findUnreviewedScaffolds } from './scaffoldGuard.mjs';
+import { checkConsistency } from './audit-design-system-consistency.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const assetsRoot = path.join(__dirname, '..', 'assets', 'open-design');
@@ -52,6 +53,19 @@ async function checkRedundantOverrides() {
       `Redundant design-system token overrides (upstream tokens.css now has the same value): ${redundant.join(', ')}.\n` +
         `Remove those declarations (or the whole file) from packages/content/local/design-systems/ and run \`npm run apply-overlay\`.`,
     );
+    process.exit(1);
+  }
+}
+
+// Every bundled template design system whose DESIGN.md and tokens.css
+// disagree must have a confirmed decision in local/design-system-sources.json,
+// with its generated overlays current (openspec reconcile-design-system-sources).
+// Catches an upstream update that introduces a new disagreement, too.
+async function checkDesignSystemConsistency() {
+  const { failures, removable } = await checkConsistency(assetsRoot, LOCAL_ROOT);
+  const problems = [...failures, ...removable.map((r) => `${r}: remove its decision and overlays, then run \`npm run apply-overlay\``)];
+  if (problems.length > 0) {
+    console.error(`Design system DESIGN.md/tokens.css consistency (${problems.length}):\n  ${problems.join('\n  ')}`);
     process.exit(1);
   }
 }
@@ -128,6 +142,7 @@ async function main() {
   await checkIntegrationRegistry();
   await checkPortProvenance();
   await checkRedundantOverrides();
+  await checkDesignSystemConsistency();
 
   let manifest;
   try {
