@@ -145,6 +145,9 @@ jobs:
       - name: Lint (includes vendored-content drift check)
         run: npm run lint
 
+      - name: Browser used by the real-browser tests
+        run: google-chrome --version || echo "no google-chrome on PATH"
+
       - name: Unit tests
         run: npm run test:unit
 
