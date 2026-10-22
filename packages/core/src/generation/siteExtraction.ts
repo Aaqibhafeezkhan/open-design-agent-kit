@@ -1,3 +1,4 @@
+/// <reference lib="dom" />
 // Renders a website in an installed headless browser and measures its
 // design system (openspec add-design-system-from-url): colour roles from the
 // elements that carry them, forced :hover/:active states, declared custom
