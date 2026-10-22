@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 // Builds the Claude Desktop extension, open-design-<version>.mcpb
 // (openspec add-desktop-extension-bundle):
 //   1. the MCP server bundled with the same esbuild options as the npm
@@ -10,18 +9,20 @@
 //   4. `mcpb validate` and `mcpb pack` from the pinned devDependency.
 // Nothing is fetched from the network.
 //
-// Usage (run through tsx, which the server's build config needs):
+// Usage (run through tsx, which the server's build config needs). A .ts file,
+// so tsx runs it as CommonJS: on Node 20 an .mjs importing serverBuild.ts gave
+// that module a data: URL for __dirname and broke the entry point path.
+//
 //   npm run build --workspace=packages/desktop-extension -- --content <content.tgz> --out <file.mcpb>
 import { execFileSync } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import * as esbuild from 'esbuild';
 import { buildPreviewBundles } from '../../core/build/previewBundles';
 import { CONTENT_PACKAGE, serverBuildOptions } from '../../mcp-server/serverBuild';
 
-const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const packageRoot = path.resolve(__dirname, '..');
 const repoRoot = path.resolve(packageRoot, '..', '..');
 const mcpb = path.join(repoRoot, 'node_modules', '.bin', process.platform === 'win32' ? 'mcpb.cmd' : 'mcpb');
 

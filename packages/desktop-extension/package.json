@@ -5,7 +5,7 @@
   "description": "Builds the Open Design Claude Desktop extension (open-design-<version>.mcpb): the MCP server bundled with its SDK and the vendored content, run on Claude Desktop's own Node. The .mcpb takes packages/mcp-server's version; this package is never published, and the .mcpb is attached to each GitHub release.",
   "license": "MIT",
   "scripts": {
-    "build": "tsx ./scripts/build-mcpb.mjs"
+    "build": "tsx ./scripts/build-mcpb.ts"
   },
   "devDependencies": {
     "@anthropic-ai/mcpb": "2.1.2"

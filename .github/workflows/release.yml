@@ -196,8 +196,8 @@ jobs:
         run: |
           VERSION="${{ needs.validate.outputs.version }}"
           npm run build --workspace=packages/desktop-extension -- \
-            --content "release/feimacode-open-design-agent-kit-content-${VERSION}.tgz" \
-            --out "release/open-design-${VERSION}.mcpb"
+            --content "$GITHUB_WORKSPACE/release/feimacode-open-design-agent-kit-content-${VERSION}.tgz" \
+            --out "$GITHUB_WORKSPACE/release/open-design-${VERSION}.mcpb"
 
       - name: Inspect and smoke-test the .mcpb
         # mcpb info prints the file, size and signature status; test-mcpb.mjs
