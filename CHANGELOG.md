@@ -10,6 +10,7 @@ One version covers the VS Code extension and the npm packages (`content`, `mcp-s
 - **Chat without a folder.** With the extension, a Claude Desktop chat with no folder makes real designs: `use_open_design_managed_workspace` opens `~/Open Design/<name>/`, and `write_open_design_file` saves the files Claude writes there. With the plugin alone, Claude says what's missing and can make a single page as a Claude artifact.
 - **`init` pins the server.** The `.mcp.json`, `.codex/config.toml` and `.claude/launch.json` entries now name the CLI's own version, so a project's server matches its skills. Re-run `npx @feimacode/open-design-agent-kit@latest init` to upgrade both.
 - **Server:** `OPEN_DESIGN_DEFAULT_WORKSPACE` and `OPEN_DESIGN_MANAGED_ROOT`; the server reports its real version.
+- **Design system recommendations.** Not sure which design system to use? When nothing is active and you haven't named a look, the agent now recommends 3 to 5 from what you asked for, or asks up to three quick questions first, the same way in every agent. New tool `recommend_open_design_design_systems`; `list_open_design_design_systems` now matches every word of a query ("warm fintech"). [Design systems](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/guides/design-systems.md#not-sure-which-one)
 
 ## [0.2.0] - 2026-10-10
 

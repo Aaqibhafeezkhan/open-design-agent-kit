@@ -11,4 +11,4 @@ Use the Open Design skill `od:prototype:social-carousel` (social-carousel).
 
 Brief: "$ARGUMENTS", or if empty: "Design a 3-card cinematic social carousel — ‘onwards.’, ‘to the next one.’, ‘looking ahead.’. 1080×1080 squares, drop-into-Instagram ready."
 
-Call `prepare_open_design_brief` (the open-design MCP server's tool) with skillId "od:prototype:social-carousel" and this brief — call `list_open_design_design_systems` first only if the user names a brand or visual direction. Author the files yourself with your own file-editing tools per the returned instructions, then call `register_open_design_artifact`.
+Call `prepare_open_design_brief` (the open-design MCP server's tool) with skillId "od:prototype:social-carousel" and this brief — call `list_open_design_design_systems` first if the user names a brand or visual direction, or `recommend_open_design_design_systems` if they name none and no design system is active. Author the files yourself with your own file-editing tools per the returned instructions, then call `register_open_design_artifact`.

@@ -11,6 +11,7 @@ Two rules apply to every tool:
 |---|---|---|---|
 | [`list_open_design_skills`](#list_open_design_skills) | `#od-skills` | yes | Browse skills, templates and remixable examples |
 | [`list_open_design_design_systems`](#list_open_design_design_systems) | `#od-design-systems` | yes | Browse brand design systems |
+| [`recommend_open_design_design_systems`](#recommend_open_design_design_systems) | `#od-recommend-design-system` | yes | Recommend design systems for what you're making |
 | [`read_open_design_source`](#read_open_design_source) | `#od-read-source` | yes | Turn a document into Markdown source material |
 | [`prepare_open_design_brief`](#prepare_open_design_brief) | `#od-prepare-brief` | yes | Compose instructions for a new design |
 | [`prepare_open_design_exploration`](#prepare_open_design_exploration) | `#od-explore` | yes | Plan 2–4 different directions to compare |
@@ -135,14 +136,36 @@ Mode `design-system` means "a skill that helps author a design-system deliverabl
 
 ### list_open_design_design_systems
 
-Lists the brand design systems (~150 bundled, 30 iOS app systems in the `Mobile Apps` category, plus any custom ones in the workspace).
+Lists the brand design systems (198 bundled, 30 of them iOS app systems in the `Mobile Apps` category, plus any custom ones in the workspace).
 
 | Argument | Type | Required | Meaning |
 |---|---|---|---|
-| `query` | string | no | Free-text filter over name, summary and category. |
+| `query` | string | no | Free-text filter. Every word must appear somewhere in the name, summary, category or curated descriptors (moods, industries, surfaces), so `warm fintech` works. |
 | `category` | string | no | Exact category, e.g. `E-Commerce & Retail`. Call with no arguments to see the categories. |
 
 **Result:** a list of `{ id, name, summary, category, source, active }`. `source` is `built-in` or `user` (custom systems, with ids starting `user:`), and `active` marks the workspace's active design system.
+
+### recommend_open_design_design_systems
+
+Recommends 3 to 5 design systems for a design, from a short profile the agent fills in from the conversation. The ranking is a plain function of the profile and the catalog, so every host gives the same answer. It never changes the active design system: the agent passes the chosen id to [`prepare_open_design_brief`](#prepare_open_design_brief). See [Not sure which one?](../guides/design-systems.md#not-sure-which-one).
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `industries` | string[] | no | What it's for: `saas`, `developer`, `ai`, `finance`, `commerce`, `consumer`, `media`, `editorial`, `brand`, `creative`, `dashboard`, `enterprise`, `wellness`, `education`, `automotive`, `travel`, `food`, `social`, `gaming`, `dating`. |
+| `moods` | string[] | no | How it should feel: `minimal`, `calm`, `warm`, `friendly`, `playful`, `bold`, `premium`, `elegant`, `technical`, `editorial`, `retro`, `futuristic`, `corporate`, `artistic`, `romantic`. |
+| `theme` | string | no | `light`, `dark` or `either`. `light` and `dark` filter by the system's real `--bg` token. |
+| `surface` | string | no | `web`, `mobile`, `slides`, `document` or `dashboard`. |
+| `likeBrands` | string[] | no | Products the user wants it to feel like, e.g. `["Notion"]`. A named system goes first. |
+| `avoid` | string[] | no | Design system ids or moods to leave out. |
+| `brief` | string | no | The request in the user's words, used as a light keyword fallback (and to fill empty `moods`/`industries` from words like "yoga" or "fintech"). |
+| `limit` | number | no | 3 to 5, default 5. |
+
+**Result:** `{ recommendations, confidence, questions?, ignored?, activeDesignSystemId }`.
+
+- `recommendations`: `{ id, name, category, kind, reason, facets }` in rank order. `kind` is `genre` or `brand`; product-named (`brand`) systems rank below every matching genre unless the user named them. `facets` are computed from the tokens: `theme`, `accent`, `accentFamily`, `display` (`serif`, `sans` or `mono`), `displayFont`, `shape` (`sharp`, `soft` or `round`).
+- `confidence`: `high`, `medium` or `low`.
+- `questions`: only when the profile has fewer than two fields and confidence is low. Up to three multiple-choice questions (what it's for, how it should feel, light or dark) plus an optional free-text one (a product it should feel like). The agent asks them once and accepts "you pick". With an empty profile the list starts with `default`.
+- `ignored`: values outside the lists above, which were skipped.
 
 ## Generating
 
@@ -183,7 +206,7 @@ Composes the instructions for a new design. It combines the skill's workflow, th
 | `format` | [format id](#canvas-formats) | no | A canvas format. The instructions gain a **Canvas** section with the exact size, units, safe area and, for print, the bleed and minimum type size, which takes precedence over any size the skill names. See [Posters and print](../guides/posters.md). |
 | `fluid` | boolean | no | Build a **fluid** design that [reflows to any shape](../guides/posters.md#change-the-shape): the format becomes the default shape, and the Canvas section teaches container-unit sizing with wide and tall layout rules. Default: `true` for print formats, `false` for screen formats. `fluid: true` without `format` uses A3. |
 
-**Result:** `{ instructions, suggestedEntryPath, suggestedKind, format?, fluid?, designSystemId?, designSystemName?, outlinePath?, sources? }`. `outlinePath` and `sources` (`[{ path, markdownPath, kind }]`) are present when `sources` was given.
+**Result:** `{ instructions, suggestedEntryPath, suggestedKind, format?, fluid?, designSystemId?, designSystemName?, designSystemHint?, outlinePath?, sources? }`. `outlinePath` and `sources` (`[{ path, markdownPath, kind }]`) are present when `sources` was given. `designSystemHint` is present when no design system was used, and points at [`recommend_open_design_design_systems`](#recommend_open_design_design_systems).
 
 **Errors:** unknown `skillId`, `designSystemId` or `format` (the message lists valid ids), `screenRole` missing with `collectionId`, and a source that can't be read (the message names it).
 

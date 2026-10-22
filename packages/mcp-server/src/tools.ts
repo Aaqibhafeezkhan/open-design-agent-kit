@@ -1,6 +1,7 @@
 import * as path from 'node:path';
 import {
   type AssetResolution,
+  type DesignProfile,
   CLAUDE_ARTIFACT_PROVIDER,
   latestShareFor,
   readShareRecords,
@@ -205,6 +206,17 @@ export async function listDesignSystems(ctx: ToolContext, input: { query?: strin
   }));
 }
 
+export async function recommendDesignSystems(ctx: ToolContext, input: DesignProfile & { limit?: number }): Promise<unknown> {
+  const { limit, ...profile } = input;
+  const result = await ctx.contentIndex.recommendDesignSystems(profile, limit);
+  const activeId = await ctx.store.get();
+  return { ...result, activeDesignSystemId: activeId };
+}
+
+/** Shown on a brief made with no design system, so an agent that skipped the overview skill still learns it can recommend one. */
+export const NO_DESIGN_SYSTEM_HINT =
+  'No design system was used. If the user wants a look but hasn\'t named one, call recommend_open_design_design_systems with what you know about the design, then prepare the brief again with the chosen designSystemId.';
+
 export async function prepareBrief(
   ctx: ToolContext,
   input: {
@@ -293,6 +305,7 @@ export async function prepareBrief(
     fluid: canvasFormat ? canvas.fluid : undefined,
     designSystemId: designSystem ? designSystemId : undefined,
     designSystemName: designSystem?.name,
+    designSystemHint: designSystem ? undefined : NO_DESIGN_SYSTEM_HINT,
     outlinePath: sources.context?.outlinePath,
     sources: sources.context?.sources.map((s) => ({ path: s.path, markdownPath: s.markdownPath, kind: s.kind })),
   };

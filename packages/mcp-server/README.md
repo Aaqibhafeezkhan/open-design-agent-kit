@@ -91,9 +91,9 @@ Or run `npx @feimacode/open-design-agent-kit init --tools codex` to add the matc
 
 ## Tools and prompts
 
-23 tools, the same as the VS Code extension's (minus community sharing):
+24 tools, the same as the VS Code extension's (minus community sharing):
 
-- **Catalog:** `list_open_design_skills`, `list_open_design_design_systems`
+- **Catalog:** `list_open_design_skills`, `list_open_design_design_systems`, `recommend_open_design_design_systems`
 - **Generating:** `read_open_design_source` (DOCX, PPTX, XLSX, PDF and more to Markdown), `prepare_open_design_brief`, `register_open_design_artifact`, `get_open_design_artifact`, `remix_open_design_example`, `add_open_design_diagram_runtime`
 - **Exploring directions:** `prepare_open_design_exploration`, `compare_open_design_exploration`, `choose_open_design_direction`
 - **Design systems:** `set_active_design_system`, `create_open_design_design_system`

@@ -2,6 +2,7 @@ import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import matter from 'gray-matter';
 import { loadIntegrationRegistry, type IntegrationRegistry } from '../integrations/registry';
+import { computeDesignSystemFacets, loadDesignSystemDescriptors, matchesAllWords, rankDesignSystems, type DesignProfile, type DesignSystemDescriptor, type DesignSystemFacets, type MatchCandidate, type RecommendationResult } from './designSystemMatching';
 
 export type SkillSource = 'skill' | 'design-template' | 'example' | 'community';
 // Priority order used both to decide which source keeps the plain public id
@@ -135,6 +136,7 @@ interface LoadedContent {
   designSystems: Map<string, DesignSystemDetail>;
   craft: CraftSection[];
   surfaces: Surface[];
+  descriptors: Map<string, DesignSystemDescriptor>;
 }
 
 /** A kind of thing to make (openspec add-surface-picker): the extension-owned surfaces.json at the assets root. */
@@ -512,6 +514,7 @@ function mergeSkillPools(...pools: Map<string, SkillDetail>[]): Map<string, Skil
 export class ContentIndex {
   private loaded: Promise<LoadedContent> | undefined;
   private integrations: Promise<IntegrationRegistry> | undefined;
+  private readonly facetCache = new Map<string, DesignSystemFacets>();
 
   constructor(
     private readonly assetsRoot: string,
@@ -546,11 +549,13 @@ export class ContentIndex {
         loadDesignSystems(this.assetsRoot),
         loadCraft(this.assetsRoot),
         loadSurfaces(this.assetsRoot),
-      ]).then(([skills, templates, examples, designSystems, craft, surfaces]) => ({
+        loadDesignSystemDescriptors(this.assetsRoot),
+      ]).then(([skills, templates, examples, designSystems, craft, surfaces, descriptors]) => ({
         skills: mergeSkillPools(skills, templates, examples),
         designSystems,
         craft,
         surfaces,
+        descriptors,
       }));
     }
     return this.loaded;
@@ -687,11 +692,14 @@ export class ContentIndex {
 
   async listDesignSystems(query?: string, category?: string): Promise<DesignSystemSummary[]> {
     const designSystems = await this.loadedDesignSystems();
+    const { descriptors } = await this.ensureLoaded();
     const results: DesignSystemSummary[] = [];
     const wantedCategory = category?.trim().toLowerCase();
     for (const ds of designSystems.values()) {
       if (wantedCategory && (ds.category ?? '').toLowerCase() !== wantedCategory) continue;
-      if (query && !matchesQuery([ds.id, ds.name, ds.summary, ds.category ?? ''], query)) continue;
+      const d = descriptors.get(ds.id);
+      const descriptorWords = d ? [d.kind, ...d.moods, ...d.industries, ...d.surfaces] : [];
+      if (query && !matchesAllWords([ds.id, ds.name, ds.summary, ds.category ?? '', ...descriptorWords], query)) continue;
       results.push({ id: ds.id, name: ds.name, summary: ds.summary, category: ds.category, source: ds.source, hasTokens: ds.hasTokens });
     }
     results.sort((a, b) => (a.category ?? '').localeCompare(b.category ?? '') || a.name.localeCompare(b.name));
@@ -705,6 +713,26 @@ export class ContentIndex {
       if (ds.category) categories.add(ds.category);
     }
     return [...categories].sort((a, b) => a.localeCompare(b));
+  }
+
+  /**
+   * Ranks design systems against a design profile (openspec add-design-system-matching).
+   * Deterministic for a given catalog; never changes the active design system.
+   */
+  async recommendDesignSystems(profile: DesignProfile | undefined, limit?: number): Promise<RecommendationResult> {
+    const designSystems = await this.loadedDesignSystems();
+    const { descriptors } = await this.ensureLoaded();
+    const candidates: MatchCandidate[] = [];
+    for (const detail of designSystems.values()) {
+      // Built-in facets never change, so they're computed once; custom systems are re-read on every call anyway.
+      let facets = detail.source === 'built-in' ? this.facetCache.get(detail.id) : undefined;
+      if (!facets) {
+        facets = computeDesignSystemFacets(detail);
+        if (detail.source === 'built-in') this.facetCache.set(detail.id, facets);
+      }
+      candidates.push({ detail, facets, descriptor: descriptors.get(detail.id) });
+    }
+    return rankDesignSystems(candidates, profile, limit);
   }
 
   async getDesignSystem(id: string): Promise<DesignSystemDetail | undefined> {

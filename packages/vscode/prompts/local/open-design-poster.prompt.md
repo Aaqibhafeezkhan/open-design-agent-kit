@@ -38,7 +38,7 @@ Otherwise call `prepare_open_design_brief` with:
 - `format`: the default shape from step 1;
 - `fluid: true`.
 
-Call `list_open_design_design_systems` first only if the user names a brand or visual direction.
+Call `list_open_design_design_systems` first if the user names a brand or visual direction, or `recommend_open_design_design_systems` if they name none and no design system is active.
 
 Author the file yourself, following the returned instructions. Their **Canvas** section is authoritative: one `data-od-card data-od-fluid` element sized by `--od-w`/`--od-h`, everything inside sized in container units, and layout rules for wide and tall shapes. Also:
 

@@ -2,7 +2,7 @@
 
 A **design system** is a brand's visual language written down: color palette, typography, spacing and grid, layout, components, motion, voice, and what to avoid. When one is active, every design the agent generates follows it, so a landing page, a deck and a dashboard made on different days still look like they belong to the same brand.
 
-Open Design bundles 152 design systems, most inspired by real products (Apple, Stripe, Linear, Notion, Vercel, Airbnb, Claude…), plus neutral starters. You can also invent your own or import one your organization already has.
+Open Design bundles 198 design systems, most inspired by real products (Apple, Stripe, Linear, Notion, Vercel, Airbnb, Claude…), plus neutral starters. You can also invent your own or import one your organization already has.
 
 ## The key idea: one active design system per workspace
 
@@ -17,7 +17,7 @@ Here's exactly how the design system for a new design is chosen, on every host:
 | The request names a design system (the agent passes `designSystemId`) | that one | **yes**, it becomes the active one |
 | The request names one that doesn't exist | none; the agent gets an error listing valid ids | no |
 | No design system named, one is active | the active one | no |
-| No design system named, none active | none | no |
+| No design system named, none active | none, unless the agent [recommends one](#not-sure-which-one) first (new designs only) | only if you go with a recommendation |
 | No design system named, the active one no longer exists (a stale setting) | none, silently | no. Fix it by picking another |
 
 There's no "just this once" option: naming a design system always switches the workspace to it. To use a different look for one design only, switch, generate, then switch back.
@@ -51,24 +51,42 @@ Ask:
 
 The agent calls [`list_open_design_design_systems`](../reference/tools.md#list_open_design_design_systems), which filters by free text or by exact category. Each result's `active` flag shows the current one.
 
-The 152 bundled systems fall into these categories:
+The 198 bundled systems fall into these categories:
 
 | Category | Count | | Category | Count |
 |---|---|---|---|---|
-| AI & LLM | 15 | | Fintech & Crypto | 7 |
+| Mobile Apps | 30 | | Backend & Data | 9 |
+| AI & LLM | 15 | | Themed & Unique | 8 |
+| Productivity & SaaS | 13 | | Fintech & Crypto | 7 |
+| Modern & Minimal | 13 | | Design & Creative | 7 |
+| Bold & Expressive | 13 | | Automotive | 7 |
 | Media & Consumer | 12 | | Morphism & Effects | 6 |
-| Productivity & SaaS | 12 | | E-Commerce & Retail | 5 |
-| Creative & Artistic | 11 | | Retro & Nostalgic | 4 |
-| Professional & Corporate | 10 | | Layout & Structure | 4 |
-| Developer Tools | 10 | | Starter | 3 |
-| Modern & Minimal | 10 | | Editorial (three small categories) | 3 |
-| Backend & Data | 9 | | Social & Messaging | 1 |
-| Themed & Unique | 8 | | | |
-| Bold & Expressive | 8 | | | |
-| Design & Creative | 7 | | | |
-| Automotive | 7 | | | |
+| Professional & Corporate | 11 | | Retro & Nostalgic | 5 |
+| Developer Tools | 11 | | Editorial & Print | 5 |
+| Creative & Artistic | 11 | | E-Commerce & Retail | 5 |
+| Layout & Structure | 4 | | Starter | 3 |
+| Social & Messaging | 1 | | Editorial (two small categories) | 2 |
 
 Some ids you might reach for: `apple`, `stripe`, `linear-app`, `notion`, `vercel`, `airbnb`, `starbucks`, `claude`, `xiaohongshu`, `wechat`, and `default` ("Neutral Modern", a safe starter).
+
+## Not sure which one?
+
+You don't have to know the names. When you ask for a new design, haven't named a look, and nothing is active yet, the agent recommends one:
+
+> Make a landing page for my yoga studio.
+
+The agent fills in a short profile from what you said (here: wellness, calm and warm) and calls [`recommend_open_design_design_systems`](../reference/tools.md#recommend_open_design_design_systems). It gets back 3 to 5 systems with a reason each, uses the first, and tells you which one it used and how to switch. In Claude Desktop Chat it shows the shortlist as tiles; elsewhere as a short list.
+
+If your request doesn't say enough ("make me a landing page"), the agent asks up to three quick questions in one message: what it's for, how it should feel, light or dark, plus an optional "any product it should feel like?". Answer any of them, or say "you pick" and it starts from `default`.
+
+How it picks:
+
+- **Looks come from the tokens.** Light or dark, accent color, serif or sans headings and corner shape are read from each system's `tokens.css`, not its description.
+- **Moods and industries are curated.** Every bundled system has a reviewed row in `packages/content/local/design-system-descriptors.json`.
+- **Product looks only when you ask.** Systems named after a product (Stripe, Linear, Duolingo…) are recommended only when you name the product ("like Notion"), so your design doesn't quietly copy someone's brand.
+- **Same answer everywhere.** The ranking is deterministic, so VS Code, Claude Code, Codex and Claude Desktop recommend the same systems for the same request.
+
+Once you pick, it becomes the active design system, so this happens about once per workspace.
 
 ## Specify and switch
 
