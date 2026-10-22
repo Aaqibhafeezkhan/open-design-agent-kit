@@ -115,7 +115,7 @@ If you already use a filesystem extension (such as Desktop's Filesystem extensio
 
 - **No downloads from inline pages.** Desktop refuses files offered for download by a page shown in Chat. Ask Claude to export instead: the files are written in your folder and Claude gives you their paths.
 - **Links open in your system browser.** A link opened from Chat goes to your default browser, not the Browser pane. On Linux under WSL with no default browser set, nothing opens; installing `wslu` sends links to your Windows browser.
-- **Tested on Linux only.** These steps were tried on Desktop's Linux build in WSL2. macOS and Windows are expected to work the same way but are untested. The desktop extension declares macOS and Windows only, until Desktop's Linux build is tested with it. On macOS, a Node installed with nvm may not be found by Desktop when it's launched from the Dock (see [troubleshooting](../troubleshooting.md#claude-desktop-node-not-found-on-macos)).
+- **Tested on Linux only.** These steps were tried on Desktop's Linux build in WSL2. macOS and Windows are expected to work the same way but are untested. The desktop extension installs on macOS, Windows and Linux. On macOS, a Node installed with nvm may not be found by Desktop when it's launched from the Dock (see [troubleshooting](../troubleshooting.md#claude-desktop-node-not-found-on-macos)).
 
 ## Next
 
