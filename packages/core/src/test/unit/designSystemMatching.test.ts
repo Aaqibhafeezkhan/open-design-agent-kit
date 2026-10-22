@@ -105,6 +105,11 @@ describe('designSystemMatching', () => {
       assert.ok(!r.questions.some((q) => q.id === 'theme'));
     });
 
+    it('keeps dating-app brands out of a romantic shortlist unless named', async () => {
+      const r = await index.recommendDesignSystems({ industries: ['dating'], moods: ['romantic'] });
+      assert.ok(!r.recommendations.slice(0, 2).some((x) => x.kind === 'brand'), r.recommendations.map((x) => x.id).join(', '));
+    });
+
     it('ranks genres above unnamed brands', async () => {
       const r = await index.recommendDesignSystems({ industries: ['finance'], moods: ['premium'] });
       assert.strictEqual(r.recommendations[0].kind, 'genre');
@@ -145,6 +150,8 @@ describe('designSystemMatching', () => {
       { name: 'agency portfolio', profile: { industries: ['creative'], moods: ['artistic', 'bold'] }, acceptable: ['artistic', 'brutalism', 'creative', 'expressive', 'atelier-zero'] },
       { name: 'like Notion', profile: { likeBrands: ['Notion'] }, acceptable: ['notion'] },
       { name: 'spotify phone screen', profile: { likeBrands: ['spotify-ios'], surface: 'mobile' }, acceptable: ['spotify-ios'] },
+      { name: 'dating coach app', profile: { brief: 'Social Coach: a dating advisor app', surface: 'mobile' }, acceptable: ['claymorphism', 'lingo', 'luxury', 'elegant', 'friendly'] },
+      { name: 'like Feeld', profile: { likeBrands: ['Feeld'], moods: ['romantic'] }, acceptable: ['feeld-ios'] },
       { name: 'corporate deck', profile: { industries: ['enterprise'], moods: ['corporate'], surface: 'slides' }, acceptable: ['corporate', 'professional', 'enterprise', 'ant'] },
     ];
     for (const c of EVAL) {

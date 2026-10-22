@@ -168,7 +168,8 @@
                   "travel",
                   "food",
                   "social",
-                  "gaming"
+                  "gaming",
+                  "dating"
                 ]
               },
               "description": "What the design is for."
@@ -191,7 +192,8 @@
                   "retro",
                   "futuristic",
                   "corporate",
-                  "artistic"
+                  "artistic",
+                  "romantic"
                 ]
               },
               "description": "How it should feel, most important first."

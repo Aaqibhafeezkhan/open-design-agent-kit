@@ -31,7 +31,7 @@ The server SHALL provide `recommend_open_design_design_systems` on every host, t
 - **THEN** the active design system SHALL be unchanged
 
 ### Requirement: Questions When the Profile Is Thin
-When fewer than two profile fields are given and `confidence` is `low`, the recommendation result SHALL include a question set of at most three questions (what it is for, how it should feel, light or dark), each with 3 to 8 short options, and an optional free-text question asking for a product or site to feel like. The same profile SHALL always produce the same question set. With an empty profile, the first recommendation SHALL be `default`.
+When fewer than two profile fields are given and `confidence` is `low`, the recommendation result SHALL include a question set of at most three questions (what it is for, how it should feel, light or dark), each with 3 to 9 short options, and an optional free-text question asking for a product or site to feel like. The same profile SHALL always produce the same question set. With an empty profile, the first recommendation SHALL be `default`.
 
 #### Scenario: Empty profile asks
 - **WHEN** the tool is called with no profile

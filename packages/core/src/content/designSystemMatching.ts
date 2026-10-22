@@ -10,8 +10,8 @@ import * as path from 'node:path';
 import { parseTokensCss, resolveDesignSystemTokens, resolveTokenValue } from '../generation/designSystemTokens';
 import type { DesignSystemDetail } from './contentIndex';
 
-export const DESIGN_MOODS = ['minimal', 'calm', 'warm', 'friendly', 'playful', 'bold', 'premium', 'elegant', 'technical', 'editorial', 'retro', 'futuristic', 'corporate', 'artistic'] as const;
-export const DESIGN_INDUSTRIES = ['saas', 'developer', 'ai', 'finance', 'commerce', 'consumer', 'media', 'editorial', 'brand', 'creative', 'dashboard', 'enterprise', 'wellness', 'education', 'automotive', 'travel', 'food', 'social', 'gaming'] as const;
+export const DESIGN_MOODS = ['minimal', 'calm', 'warm', 'friendly', 'playful', 'bold', 'premium', 'elegant', 'technical', 'editorial', 'retro', 'futuristic', 'corporate', 'artistic', 'romantic'] as const;
+export const DESIGN_INDUSTRIES = ['saas', 'developer', 'ai', 'finance', 'commerce', 'consumer', 'media', 'editorial', 'brand', 'creative', 'dashboard', 'enterprise', 'wellness', 'education', 'automotive', 'travel', 'food', 'social', 'gaming', 'dating'] as const;
 export const DESIGN_SURFACES = ['web', 'mobile', 'slides', 'document', 'dashboard'] as const;
 export const DESIGN_THEMES = ['light', 'dark', 'either'] as const;
 export const DESCRIPTORS_FILE = 'design-system-descriptors.json';
@@ -233,6 +233,7 @@ const MOOD_FACETS: Record<DesignMood, (f: DesignSystemFacets) => boolean> = {
   futuristic: (f) => f.theme === 'dark',
   corporate: (f) => f.display === 'sans' && f.shape !== 'round',
   artistic: (f) => (f.accentChroma ?? 0) >= 0.5,
+  romantic: (f) => f.accentFamily === 'pink' || (f.display === 'serif' && (f.accentFamily === 'red' || f.accentFamily === 'orange')),
 };
 
 /** Shown when the profile gives nothing to go on: `default` first, then deliberately different starters. */
@@ -328,6 +329,7 @@ export function matchQuestions(p: NormalizedProfile): MatchQuestion[] {
         { label: 'Editorial or content', value: 'editorial' },
         { label: 'A brand, event or portfolio', value: 'brand' },
         { label: 'An internal tool or dashboard', value: 'dashboard' },
+        { label: 'Dating or relationships', value: 'dating' },
       ],
     });
   }
@@ -345,6 +347,7 @@ export function matchQuestions(p: NormalizedProfile): MatchQuestion[] {
         { label: 'Playful', value: 'playful' },
         { label: 'Editorial', value: 'editorial' },
         { label: 'Retro', value: 'retro' },
+        { label: 'Romantic', value: 'romantic' },
       ],
     });
   }
@@ -463,6 +466,17 @@ const BRIEF_HINTS: Record<string, { moods?: DesignMood[]; industries?: DesignInd
   community: { industries: ['social'] },
   enterprise: { industries: ['enterprise'], moods: ['corporate'] },
   internal: { industries: ['dashboard'] },
+  dating: { industries: ['dating'], moods: ['romantic'] },
+  date: { industries: ['dating'], moods: ['romantic'] },
+  dates: { industries: ['dating'], moods: ['romantic'] },
+  flirty: { industries: ['dating'], moods: ['romantic', 'playful'] },
+  flirting: { industries: ['dating'], moods: ['romantic', 'playful'] },
+  romantic: { moods: ['romantic'] },
+  romance: { moods: ['romantic'] },
+  love: { moods: ['romantic'] },
+  relationship: { industries: ['dating'] },
+  relationships: { industries: ['dating'] },
+  wedding: { industries: ['brand'], moods: ['romantic', 'elegant'] },
 };
 
 function briefHints(ws: string[]): { moods: DesignMood[]; industries: DesignIndustry[] } {

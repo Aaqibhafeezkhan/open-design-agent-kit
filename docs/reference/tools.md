@@ -151,8 +151,8 @@ Recommends 3 to 5 design systems for a design, from a short profile the agent fi
 
 | Argument | Type | Required | Meaning |
 |---|---|---|---|
-| `industries` | string[] | no | What it's for: `saas`, `developer`, `ai`, `finance`, `commerce`, `consumer`, `media`, `editorial`, `brand`, `creative`, `dashboard`, `enterprise`, `wellness`, `education`, `automotive`, `travel`, `food`, `social`, `gaming`. |
-| `moods` | string[] | no | How it should feel: `minimal`, `calm`, `warm`, `friendly`, `playful`, `bold`, `premium`, `elegant`, `technical`, `editorial`, `retro`, `futuristic`, `corporate`, `artistic`. |
+| `industries` | string[] | no | What it's for: `saas`, `developer`, `ai`, `finance`, `commerce`, `consumer`, `media`, `editorial`, `brand`, `creative`, `dashboard`, `enterprise`, `wellness`, `education`, `automotive`, `travel`, `food`, `social`, `gaming`, `dating`. |
+| `moods` | string[] | no | How it should feel: `minimal`, `calm`, `warm`, `friendly`, `playful`, `bold`, `premium`, `elegant`, `technical`, `editorial`, `retro`, `futuristic`, `corporate`, `artistic`, `romantic`. |
 | `theme` | string | no | `light`, `dark` or `either`. `light` and `dark` filter by the system's real `--bg` token. |
 | `surface` | string | no | `web`, `mobile`, `slides`, `document` or `dashboard`. |
 | `likeBrands` | string[] | no | Products the user wants it to feel like, e.g. `["Notion"]`. A named system goes first. |
