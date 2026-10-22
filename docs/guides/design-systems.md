@@ -254,14 +254,31 @@ A custom design system is just Markdown, so you can write it or refine a generat
 - Everything else is read by the agent as-is, so the more specific you are (hex values, sizes, do's and don'ts), the more consistent the output.
 - Changes apply from the next generation on.
 
-### Copy one to or from Claude Design (prototype)
+### Use one in Claude Design
 
-Claude Design keeps design systems as "Design System" artifacts in Claude (Settings > Design systems). There is no public API for them, so this one-off copy runs from a repository checkout, and an agent with Claude's Artifact tool (Claude Code or Cowork) does the upload or download.
+Claude Design keeps design systems as "Design System" artifacts in Claude (Settings > Design systems). Every built-in system is prebuilt in that format in [`claude-design-systems/`](../../claude-design-systems/README.md), one folder per system, with this kit's local fixes applied. Each folder holds a `project/` tree: `design-system.json`, `tokens.json`, `README.md` and a cover. Pick one of three routes:
 
-- **To Claude:** `npx tsx scripts/claude-design-system.ts export <design-system-folder> <out-dir>` writes `<out-dir>/project/` (`design-system.json`, `tokens.json`, `README.md`, a cover). For a built-in system (a folder under `packages/content/assets/open-design/design-systems/`), it reads the reconciled `DESIGN.md` and tokens, so the README and tokens name the same colours and fonts. Ask the agent to create a Design System artifact and publish that folder to it.
-- **From Claude:** ask the agent to read `project/design-system.json`, `project/tokens.json` and `project/README.md` from the system into a folder, then run `npx tsx scripts/claude-design-system.ts import <that-folder> .open-design/design-systems` (your Open Design output folder). The result shows up as `user:<name>`.
+- **From a GitHub repo.** In Claude's **Add design system**, choose the GitHub repo starting point and give `feimacode/open-design-agent-kit` with the system's folder, for example `claude-design-systems/kami`. The importer copies a `tokens.json` that is already in Claude's format as is. One import makes one design system.
+- **Upload from files.** Choose the upload starting point and drop the files of the folder's `project/`.
+- **Several at once, from Claude Code.** In a checkout of this repository, ask:
 
-Both directions are lossy, and each run lists what it dropped in the README or `DESIGN.md`. Claude has no motion tokens and rejects `var()` and `color-mix()` values. Importing maps Claude's token names (such as `ink` or `surface`) onto Open Design's token contract by name. Nothing keeps the two copies in step afterwards.
+  > Publish these Open Design design systems to Claude Design: kami, lingo, stripe.
+
+  The agent creates a Design System artifact for each, under your account, and publishes that system's folder to it.
+
+The **connector** starting point is for design tools (Figma, Canva and the like). It reads a design file through that tool's connector, so it doesn't apply to Open Design systems.
+
+For a custom system (yours, or one made from a website), export it first: `npx tsx scripts/claude-design-system.ts export <design-system-folder> <out-dir>` writes `<out-dir>/project/` in the same format, and fails if the result wouldn't pass Claude's format rules. Then upload it or ask the agent to publish it.
+
+To bring one back from Claude, ask the agent to read `project/design-system.json`, `project/tokens.json` and `project/README.md` from the system into a folder, then run `npx tsx scripts/claude-design-system.ts import <that-folder> .open-design/design-systems` (your Open Design output folder). The result shows up as `user:<name>`.
+
+Both directions are lossy, and each README's last section lists what was left out:
+
+- Claude has no motion tokens.
+- `color-mix()` shades (hover, active, tints) become literal colours, so they don't follow later edits to the colour they were mixed from.
+- Fonts are named by family, with no font files.
+
+Where a brand's own text colour reads below 4.5:1 on its background, the token's usage note says so; the value stays as the brand has it. Importing maps Claude's token names (such as `ink` or `surface`) onto Open Design's token contract by name. Nothing keeps the two copies in step afterwards.
 
 ### tokens.css for custom design systems
 

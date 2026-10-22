@@ -58,5 +58,5 @@ Apply what the user says ("the buttons are rounder on the site" → raise the ra
 Call `set_active_design_system` with the returned `id` if the user wants to design with it now (offer it). Tell the user the design system's id and where its files are, and that the measurements are kept in the evidence bundle.
 
 <!-- claude-only -->
-**Claude Design.** If you have Claude's Artifact tool, offer to copy the design system into Claude Design as a Design System artifact. The steps are in the Open Design design systems guide, "Copy one to or from Claude Design".
+**Claude Design.** If you have Claude's Artifact tool, offer to copy the design system into Claude Design as a Design System artifact. Export it with `npx tsx scripts/claude-design-system.ts export <its folder> <out-dir>` when you're in a checkout of the agent kit; that writes Claude's format and checks it. Otherwise follow the Open Design design systems guide, "Use one in Claude Design".
 <!-- /claude-only -->

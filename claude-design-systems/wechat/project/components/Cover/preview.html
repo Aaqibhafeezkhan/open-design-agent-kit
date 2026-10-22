@@ -1,0 +1,53 @@
+<!-- @dsCard height=288 -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>WeChat Design System</title>
+<style>
+  html, body { margin:0; height:100%; }
+  body { background:var(--bg); color:var(--fg); font-family:var(--font-display); overflow:hidden; }
+  .cover { position:relative; height:288px; overflow:hidden; }
+  .art { position:absolute; top:0; left:0px; width:960px; height:112px; overflow:hidden; }
+  .art svg { display:block; width:960px; height:112px; }
+  .brand { fill:var(--accent); }
+  .deep { fill:var(--fg); }
+  .tint { fill:var(--surface-warm); }
+  .signal { fill:var(--success); }
+  .dot { fill:var(--accent); }
+  .rule { stroke:var(--border); stroke-width:1; }
+  .blk { rx:var(--radius-md); }
+  .tile { rx:var(--radius-sm); }
+  .pill { rx:12px; }
+  .words { position:absolute; left:var(--space-6, 24px); right:var(--space-6, 24px); bottom:var(--space-6, 24px); }
+  .name { margin:0; font-size:64px; line-height:.92; font-weight:600; letter-spacing:-.02em; color:var(--fg); }
+  .tag { margin:12px 0 0 2px; font-size:14px; line-height:20px; color:var(--muted); }
+</style>
+</head>
+<body>
+<div class="cover">
+<div class="art" aria-hidden="true">
+<svg viewBox="0 0 960 112" width="960" height="112">
+<!--
+  blocks      accent 320×112 band · surface-warm 288×80 · fg 160×112 off the right edge · success 96×24 once
+  arrangement a strip of unequal bands across the top, the name beneath it
+  pattern     pills over the surface-warm block, half-round ends (soft and friendly: radius-lg is 16px)
+  scales      gaps space-4; corners radius-md; pills 24px tall, rx half of that
+-->
+<rect class="brand blk" x="0" y="-16" width="320" height="128"/>
+<rect class="tint blk" x="336" y="16" width="288" height="80"/>
+<rect class="deep blk" x="816" y="0" width="160" height="112"/>
+<rect class="signal blk" x="640" y="72" width="96" height="24"/>
+<rect class="brand pill" x="352" y="32" width="64" height="24"/>
+<rect class="deep pill" x="432" y="32" width="40" height="24"/>
+<rect class="brand pill" x="488" y="32" width="64" height="24"/>
+<rect class="brand pill" x="568" y="32" width="40" height="24"/>
+</svg>
+</div>
+<div class="words">
+<h1 class="name">WeChat Design System</h1>
+<p class="tag">Brand visual language for WeChat Mini Programs, official accounts, and open ecosystem extensions.</p>
+</div>
+</div>
+</body>
+</html>

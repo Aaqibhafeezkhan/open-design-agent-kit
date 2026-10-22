@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { ContentIndex } from '../../content/contentIndex';
 import { fromClaudeDesignSystem, toClaudeDesignSystem, type ClaudeTokensJson } from '../../generation/claudeDesignSystem';
+import { validateClaudeDesignSystem } from '../../generation/claudeDesignSystemFormat';
 import { resolveDesignSystemTokens } from '../../generation/designSystemTokens';
 
 const DESIGN_MD = '# Paper\n\n> Category: Editorial\n> Warm paper, ink-blue accent. Built for print.\n\n## Color\n\nUse the accent sparingly.\n';
@@ -63,7 +64,8 @@ describe('toClaudeDesignSystem', () => {
     const bg = tokens.color!.tokens!.find((t) => t.name === 'bg');
     assert.deepStrictEqual(bg?.value, { light: '#f5f4ed', dark: '#111111' });
     assert.strictEqual(tokens.color!.tokens!.find((t) => t.name === 'accent-active')?.value, '{accent}', 'colour var() becomes an alias');
-    assert.ok(!tokens.color!.tokens!.some((t) => t.name === 'accent-hover'), 'color-mix() is dropped');
+    assert.strictEqual(tokens.color!.tokens!.find((t) => t.name === 'accent-hover')?.value, '#172f52', 'color-mix() is computed to a literal');
+    assert.ok(!JSON.stringify(tokens).includes('color-mix('), 'no color-mix() anywhere');
     assert.ok(!JSON.stringify(tokens).includes('var('), 'no var() anywhere');
   });
 
@@ -76,9 +78,16 @@ describe('toClaudeDesignSystem', () => {
   });
 
   it('reports what did not carry across, in notes and the README', () => {
-    assert.ok(result.notes.some((n) => n.startsWith('--accent-hover')));
+    assert.ok(result.notes.some((n) => n.startsWith('Written as literal colours computed from color-mix(): --accent-hover')));
     assert.ok(result.notes.some((n) => n.startsWith('--motion-fast')));
-    assert.match(result.files['project/README.md'], /^# Paper[\s\S]*## Not synced from Open Design[\s\S]*--motion-fast/);
+    assert.match(result.files['project/README.md'], /^> Warm paper, ink-blue accent\.[\s\S]*## Not synced from Open Design[\s\S]*--motion-fast/);
+  });
+
+  it('writes a brand book with no title or provenance, and passes the format validator', () => {
+    const readme = result.files['project/README.md'];
+    assert.doesNotMatch(readme, /^#\s|> Category:/m);
+    assert.match(readme, /## Color/);
+    assert.deepStrictEqual(validateClaudeDesignSystem(result.files).errors, []);
   });
 });
 
@@ -94,7 +103,7 @@ describe('fromClaudeDesignSystem', () => {
       assert.ok(back.tokensCss.includes(line), `missing ${line}`);
     }
     assert.match(back.tokensCss, /\[data-theme="dark"\] \{\n {2}--bg: #111111;/);
-    assert.match(back.designMd, /^# Paper\n\n> Category: Editorial/);
+    assert.match(back.designMd, /^# Paper\n\n> Category: Imported from Claude Design\n> Warm paper/);
     assert.doesNotMatch(back.designMd, /Not synced from Open Design|Consuming this system/);
   });
 

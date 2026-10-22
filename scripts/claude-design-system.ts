@@ -5,6 +5,8 @@
 //   npx tsx scripts/claude-design-system.ts export <design-system-dir> <out-dir> [--by <name>]
 //     Reads DESIGN.md (+ tokens.css, manifest.json) and writes <out-dir>/project/…,
 //     ready for an agent to publish to a Design System artifact with its Artifact tool.
+//     The output is checked against Claude's format and the export fails if it doesn't match.
+//     Every bundled system is also prebuilt in claude-design-systems/ (scripts/build-claude-design-systems.ts).
 //     A bundled design system (a folder of the content package's assets) is read
 //     through the content index, so its DESIGN.sections.md and tokens.override.css
 //     overlays apply and the export carries one brand.
@@ -17,6 +19,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { ContentIndex } from '../packages/core/src/content/contentIndex';
 import { fromClaudeDesignSystem, toClaudeDesignSystem, type ClaudeTokensJson } from '../packages/core/src/generation/claudeDesignSystem';
+import { validateClaudeDesignSystem } from '../packages/core/src/generation/claudeDesignSystemFormat';
 
 const readOptional = async (file: string): Promise<string | undefined> => fs.readFile(file, 'utf8').catch(() => undefined);
 
@@ -47,19 +50,24 @@ async function exportCommand(dir: string, out: string, by?: string): Promise<voi
   const { designMd, tokensCss } = await readDesignSystem(dir);
   if (!designMd) throw new Error(`${dir}/DESIGN.md not found`);
   const manifest = JSON.parse((await readOptional(path.join(dir, 'manifest.json'))) ?? '{}') as { id?: string; name?: string };
-  const heading = /^#\s+(.+)$/m.exec(designMd)?.[1].replace(/^Design System (Inspired by )?/i, '').trim();
+  const heading = /^#\s+(.+)$/m.exec(designMd)?.[1].trim();
+  const inspiredBy = heading ? /^Design System Inspired by (.+)$/i.exec(heading)?.[1].trim() : undefined;
+  // A reference system ("<Name>-inspired" folder) keeps its suffix, as the from-URL skill names it.
+  const headingName = inspiredBy ? (/-inspired$/i.test(path.basename(dir)) ? `${inspiredBy}-inspired` : inspiredBy) : heading?.replace(/^Design System\s+/i, '');
   const result = toClaudeDesignSystem({
-    name: manifest.name ?? heading ?? path.basename(dir),
+    name: manifest.name ?? headingName ?? path.basename(dir),
     id: manifest.id ?? path.basename(dir),
     designMd,
     tokensCss,
     by,
   });
+  const { errors, warnings } = validateClaudeDesignSystem(result.files);
+  if (errors.length) throw new Error(`The export does not match Claude's Design System format:\n${errors.join('\n')}`);
   for (const [rel, text] of Object.entries(result.files)) {
     await fs.mkdir(path.dirname(path.join(out, rel)), { recursive: true });
     await fs.writeFile(path.join(out, rel), text);
   }
-  console.log(JSON.stringify({ wrote: Object.keys(result.files).map((f) => path.join(out, f)), notes: result.notes }, null, 2));
+  console.log(JSON.stringify({ wrote: Object.keys(result.files).map((f) => path.join(out, f)), notes: result.notes, warnings }, null, 2));
 }
 
 async function importCommand(dir: string, target: string, id?: string): Promise<void> {

@@ -8,12 +8,14 @@
 // Lossy by design, and every loss is reported in `notes`:
 //   - Claude's tokens.json rejects `var()` and `color-mix()`; colour `var()`
 //     references become `{alias}` tokens, other lengths/shadows are resolved
-//     to literals, and color-mix values are skipped.
+//     to literals, and color-mix values are computed to literal colours.
 //   - Claude has no motion family, so `--motion-*` / `--ease-*` are skipped.
 // Importing maps arbitrary Claude token names onto the Open Design token
 // contract by name heuristics, keeping the original names as well.
 
 import { TOKEN_SCHEMA } from '../vendored/designTokenSchema';
+import { contrastRatio, parseColor, resolveColorValue, resolveColorsIn } from './colorMix';
+import { contrastFindings } from './claudeDesignSystemFormat';
 import { isSafeCssValue, resolveTokenValue } from './designSystemTokens';
 
 // ---------- shared ----------
@@ -175,6 +177,12 @@ export interface ToClaudeDesignSystemInput {
   by?: string;
   /** ISO timestamp; defaults to now. */
   now?: string;
+  /** `lastChange.via`; defaults to "Open Design · <id>". */
+  via?: string;
+  /** `lastChange.note`; defaults to a one-off export note. */
+  note?: string;
+  /** tokens.json `meta` (a provenance note); defaults to the Open Design id and date. */
+  meta?: Record<string, unknown>;
 }
 
 export interface ClaudeDesignSystemFiles {
@@ -183,6 +191,14 @@ export interface ClaudeDesignSystemFiles {
   /** Everything that did not carry across, one line each. */
   notes: string[];
 }
+
+/** Usage notes for the contract's text colours, naming the grounds they read on so contrast can be checked. */
+const TEXT_GROUNDS: Record<string, string> = {
+  fg: 'Primary text on `bg` and `surface`.',
+  'fg-2': 'Secondary text on `bg` and `surface`.',
+  muted: 'Subtext and captions on `bg` and `surface`.',
+  'accent-on': 'Text and icons on `accent` fills.',
+};
 
 export function toClaudeDesignSystem(input: ToClaudeDesignSystemInput): ClaudeDesignSystemFiles {
   const now = input.now ?? new Date().toISOString();
@@ -197,35 +213,43 @@ export function toClaudeDesignSystem(input: ToClaudeDesignSystemInput): ClaudeDe
   }
   if (!input.tokensCss) notes.push('No tokens.css: only the README was exported.');
 
+  const lookupIn = (overlay?: Map<string, string>) => (name: string): string | undefined => overlay?.get(name) ?? base.get(name);
+  const baseLookup = lookupIn();
+  const darkLookup = lookupIn(dark);
   const resolvedBase = new Map([...base].map(([k, v]) => [`--${k}`, v]));
-  const literal = (name: string, overlay?: Map<string, string>): string | undefined => {
-    const set = new Map(resolvedBase);
-    if (overlay) for (const [k, v] of overlay) set.set(`--${k}`, v);
-    return resolveTokenValue(set, `--${name}`);
-  };
+  const literal = (name: string): string | undefined => resolveTokenValue(resolvedBase, `--${name}`);
 
-  // A token is a colour when its value is a plain colour, or an alias chain ending in one.
+  // A token is a colour when its value is a colour, a color-mix(), or an alias chain ending in one.
   const colorNames = new Set<string>();
   const isColorName = (name: string, seen = new Set<string>()): boolean => {
     const v = base.get(name) ?? dark.get(name);
     if (v === undefined || seen.has(name)) return false;
-    if (isPlainColor(v) || /^color-mix\(/i.test(v)) return true;
+    if (isPlainColor(v) || parseColor(v) || /^color-mix\(/i.test(v)) return true;
     const ref = VAR_ONLY.exec(v)?.[1];
     return ref ? isColorName(ref, new Set([...seen, name])) : false;
   };
   for (const name of new Set([...base.keys(), ...dark.keys()])) if (isColorName(name)) colorNames.add(name);
+  // An alias survives only when its target is emitted too; otherwise its value is resolved.
+  const aliasable = (ref: string): boolean => colorNames.has(ref) && CLAUDE_NAME.test(ref) && resolveColorValue(`var(--${ref})`, baseLookup) !== undefined;
 
-  const toColorValue = (name: string, v: string | undefined): string | undefined => {
+  const mixed: string[] = [];
+  const toColorValue = (name: string, v: string | undefined, lookup: (n: string) => string | undefined): string | undefined => {
     if (v === undefined) return undefined;
-    if (isPlainColor(v)) return v.startsWith('#') ? v.toLowerCase() : v;
+    if (HEX.test(v)) return v.toLowerCase();
+    if (isPlainColor(v)) return v;
     const ref = VAR_ONLY.exec(v)?.[1];
-    if (ref && colorNames.has(ref)) return `{${ref}}`;
-    notes.push(`--${name}: ${v} skipped (Claude tokens cannot hold var() or color-mix()).`);
-    return undefined;
+    if (ref && aliasable(ref)) return `{${ref}}`;
+    const resolved = resolveColorValue(v, lookup);
+    if (resolved === undefined) {
+      notes.push(`--${name}: ${v} skipped (it does not resolve to a colour).`);
+      return undefined;
+    }
+    if (/color-mix\(/i.test(v) && !mixed.includes(name)) mixed.push(name);
+    return resolved;
   };
 
   const bg = base.get('bg');
-  const firstThemeDark = bg !== undefined && (lightness(bg) ?? 1) < 0.5;
+  const firstThemeDark = bg !== undefined && (lightness(resolveColorValue(bg, baseLookup) ?? bg) ?? 1) < 0.5;
   const themes = firstThemeDark
     ? [{ id: 'dark', name: 'Dark' }]
     : dark.size > 0
@@ -234,18 +258,30 @@ export function toClaudeDesignSystem(input: ToClaudeDesignSystemInput): ClaudeDe
   if (firstThemeDark && dark.size > 0) notes.push('Dark-mode overrides skipped: the base theme is already dark.');
   const hasDarkTheme = themes.length === 2;
 
-  const colorTokens: ClaudeToken[] = [];
-  for (const name of colorNames) {
+  // Every family but type shares one name space on the page; a second use drops.
+  const used = new Set<string>();
+  const claim = (name: string): boolean => {
     if (!CLAUDE_NAME.test(name)) {
       notes.push(`--${name} skipped: name is not valid in Claude tokens.`);
-      continue;
+      return false;
     }
-    const first = toColorValue(name, base.get(name));
-    const second = hasDarkTheme && dark.has(name) ? toColorValue(name, dark.get(name)) : undefined;
+    if (used.has(name)) {
+      notes.push(`--${name} skipped: the name is already used by another token.`);
+      return false;
+    }
+    used.add(name);
+    return true;
+  };
+
+  const colorTokens: ClaudeToken[] = [];
+  for (const name of colorNames) {
+    const first = toColorValue(name, base.get(name), baseLookup);
+    const second = hasDarkTheme && dark.has(name) ? toColorValue(name, dark.get(name), darkLookup) : undefined;
     if (first === undefined && second === undefined) continue;
+    if (!claim(name)) continue;
     // A token with no dark override stays a plain string: Claude reuses the first theme's value.
     const value: ClaudeToken['value'] = second !== undefined && first !== undefined && second !== first ? { [themes[0].id]: first, dark: second } : first ?? second!;
-    colorTokens.push({ name, value, usage: contractDescription(name) ?? 'Brand-specific colour from Open Design.' });
+    colorTokens.push({ name, value, usage: TEXT_GROUNDS[name] ?? contractDescription(name) ?? 'Brand-specific colour from Open Design.' });
   }
 
   const spacing: ClaudeToken[] = [];
@@ -261,30 +297,36 @@ export function toClaudeDesignSystem(input: ToClaudeDesignSystemInput): ClaudeDe
     const usage = contractDescription(name) ?? 'Brand-specific token from Open Design.';
     const fontKey = /^font-(.+)$/.exec(name)?.[1];
     if (fontKey) {
-      if (/[;{}<>\\()]/.test(value) || value.length > 200) notes.push(`--${name} skipped: font stack has characters Claude rejects.`);
-      else families[fontKey.toLowerCase()] = value;
+      const stack = fitFontStack(value);
+      if (stack === undefined) notes.push(`--${name} skipped: font stack has characters Claude rejects.`);
+      else {
+        if (stack !== value) notes.push(`--${name} shortened to Claude's 200-character limit: ${stack}.`);
+        families[fontKey.toLowerCase()] = stack;
+      }
     } else if (/^text-/.test(name)) {
       textSizes.set(name, value);
     } else if (/^(leading|tracking)-/.test(name)) {
-      typeMetrics.push({ name, value, usage });
+      if (claim(name)) typeMetrics.push({ name, value, usage });
     } else if (/^(motion|ease|duration)-/.test(name)) {
       notes.push(`--${name} skipped: Claude design systems have no motion family.`);
-    } else if (/^(elev|shadow)-|^focus-ring$/.test(name)) {
-      if (/var\(|color-mix\(/i.test(value)) {
+    } else if (/(^|-)(elev|shadow)(-|$)|^focus-ring$/.test(name)) {
+      const first = resolveColorsIn(raw, baseLookup);
+      if (first === undefined) {
         notes.push(`--${name}: ${raw} skipped (unresolvable reference).`);
         continue;
       }
-      const darkValue = hasDarkTheme && dark.has(name) ? literal(name, dark) : undefined;
-      shadow.push({
-        name,
-        value: darkValue && darkValue !== value && !/var\(|color-mix\(/i.test(darkValue) ? { [themes[0].id]: value, dark: darkValue } : value,
-        usage,
-      });
+      if (/color-mix\(/i.test(raw) && !mixed.includes(name)) mixed.push(name);
+      const darkValue = hasDarkTheme ? resolveColorsIn(dark.get(name) ?? raw, darkLookup) : undefined;
+      if (!claim(name)) continue;
+      shadow.push({ name, value: darkValue && darkValue !== first ? { [themes[0].id]: first, dark: darkValue } : first, usage });
     } else if (LENGTH.test(value)) {
-      (/radius|rounded/.test(name) ? radius : spacing).push({ name, value, usage });
+      if (claim(name)) (/radius|rounded/.test(name) ? radius : spacing).push({ name, value, usage });
     } else {
       notes.push(`--${name}: ${raw} skipped (no matching Claude token family).`);
     }
+  }
+  if (mixed.length) {
+    notes.push(`Written as literal colours computed from color-mix(): ${mixed.map((n) => `--${n}`).join(', ')}. They won't follow later edits to the colours they mix.`);
   }
 
   const body = families.body ? 'body' : Object.keys(families)[0];
@@ -318,7 +360,7 @@ export function toClaudeDesignSystem(input: ToClaudeDesignSystemInput): ClaudeDe
   const tokens: ClaudeTokensJson = {
     name: input.name,
     version: 1,
-    meta: { source: 'open-design', id: input.id, synced: now.slice(0, 10) },
+    meta: input.meta ?? { source: 'open-design', id: input.id, synced: now.slice(0, 10) },
     color: { themes, tokens: colorTokens },
     type: { fonts: [], families, groups },
     spacing: { tokens: spacing },
@@ -326,8 +368,13 @@ export function toClaudeDesignSystem(input: ToClaudeDesignSystemInput): ClaudeDe
     ...(shadow.length ? { shadow: { tokens: shadow } } : {}),
     ...(typeMetrics.length ? { [TYPE_METRICS_FAMILY]: { note: 'Line heights and tracking from the Open Design token contract.', tokens: typeMetrics } } : {}),
   };
+  // A brand's own failing pair stays exact; its usage note says so (craft.md, "Legible in every theme").
+  for (const f of contrastFindings(tokens as Record<string, unknown>)) {
+    const t = colorTokens.find((c) => c.name === f.token);
+    if (t) t.usage = `${t.usage} Below 4.5:1 on \`${f.ground}\`${themes.length > 1 ? ` in ${f.theme}` : ''} (${f.ratio}:1), as the brand has it.`;
+  }
 
-  const readme = `${input.designMd.trim()}\n\n## Not synced from Open Design\n\n${
+  const readme = `${brandBook(input.designMd)}\n\n## Not synced from Open Design\n\n${
     notes.length ? notes.map((n) => `- ${n}`).join('\n') : '- Everything in tokens.css carried across.'
   }\n- Fonts are named by family only (hosted faces); no font files were copied.\n- No components or assets: Open Design design systems carry tokens and guidance only.\n`;
 
@@ -343,18 +390,51 @@ export function toClaudeDesignSystem(input: ToClaudeDesignSystemInput): ClaudeDe
     assetGroups: {},
     blobs: {},
     docs: { sections: [] },
-    lastChange: { by: input.by ?? 'Claude', at: now, via: `Open Design · ${input.id}`, note: 'One-off export from Open Design.' },
+    lastChange: { by: input.by ?? 'Claude', at: now, via: input.via ?? `Open Design · ${input.id}`, note: input.note ?? 'One-off export from Open Design.' },
   };
 
   return {
     files: {
       'project/README.md': readme,
       'project/tokens.json': `${JSON.stringify(tokens, null, 2)}\n`,
-      'project/components/Cover/preview.html': coverHtml(input.name, summaryOf(input.designMd), colorTokens, families, display),
+      'project/components/Cover/preview.html': coverHtml({
+        name: input.name,
+        tagline: summaryOf(input.designMd),
+        colors: colorTokens,
+        families,
+        displayKey: display,
+        radiusLg: toPx(literal('radius-lg')),
+        hasRadius: (n: string) => radius.some((r) => r.name === n),
+      }),
       'project/design-system.json': `${JSON.stringify(index, null, 2)}\n`,
     },
     notes,
   };
+}
+
+/** A font stack Claude accepts (≤200 characters, no functions): long fallback lists keep their head and generic family. */
+function fitFontStack(stack: string): string | undefined {
+  if (/[;{}<>\\()]/.test(stack)) return undefined;
+  if (stack.length <= 200) return stack;
+  const parts = stack.split(',').map((s) => s.trim()).filter(Boolean);
+  const generic = /^(serif|sans-serif|monospace|cursive|fantasy|system-ui|ui-[a-z-]+)$/.test(parts[parts.length - 1] ?? '') ? parts.pop()! : undefined;
+  const kept: string[] = [];
+  for (const p of parts) {
+    if ([...kept, p, ...(generic ? [generic] : [])].join(', ').length > 200) break;
+    kept.push(p);
+  }
+  return kept.length ? [...kept, ...(generic ? [generic] : [])].join(', ') : undefined;
+}
+
+/** DESIGN.md as a Claude brand book: no `#` title (the page shows the name) and no provenance lines. */
+function brandBook(designMd: string): string {
+  const lines = designMd.replace(/\r\n/g, '\n').trim().split('\n');
+  const first = lines.findIndex((l) => l.trim() !== '');
+  if (first >= 0 && /^#\s/.test(lines[first])) lines.splice(first, 1);
+  return lines
+    .filter((l) => !/^\s*>\s*Category:/i.test(l))
+    .join('\n')
+    .trim();
 }
 
 function namespaceOf(name: string): string {
@@ -380,67 +460,178 @@ function summaryOf(designMd: string): string {
 
 const escapeHtml = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-/** The cover per the type's cover brief: colour blocks right of x=480, one dot-grid pattern, the name bottom-left. */
-function coverHtml(name: string, tagline: string, colors: ClaudeToken[], families: Record<string, string>, displayKey: string | undefined): string {
-  const has = (n: string): boolean => colors.some((t) => t.name === n);
+interface CoverInput {
+  name: string;
+  tagline: string;
+  colors: ClaudeToken[];
+  families: Record<string, string>;
+  displayKey: string | undefined;
+  radiusLg: number | undefined;
+  hasRadius: (name: string) => boolean;
+}
+
+type CoverPattern = 'pills' | 'dots' | 'rules' | 'tiles';
+
+/** cover.md's pattern rows, picked from what the tokens say about the brand. */
+function coverPattern(families: Record<string, string>, displayKey: string | undefined, radiusLg: number | undefined): { row: CoverPattern; why: string } {
+  const first = (stack: string | undefined): string => (stack ?? '').split(',')[0].replace(/["']/g, '').trim().toLowerCase();
+  const bodyStack = families.body ?? '';
+  const displayStack = (displayKey && families[displayKey]) ?? bodyStack;
+  if ((radiusLg ?? 0) >= 16) return { row: 'pills', why: `soft and friendly: radius-lg is ${radiusLg}px` };
+  if (/mono/.test(first(bodyStack)) || /monospace\s*$/i.test(bodyStack.trim())) return { row: 'dots', why: 'precise and technical: the body face is mono' };
+  if (/serif/i.test(displayStack) && !/sans-serif/i.test(displayStack.split(',').pop() ?? '')) return { row: 'rules', why: 'editorial: the display face is a serif' };
+  return { row: 'tiles', why: 'geometric and modular: tiles cut by the radius scale' };
+}
+
+/** The name's lines and size per cover.md: 120 down to 64px, longest line within 440px, two lines at most. */
+function coverName(name: string, displayStack: string): { lines: string[]; size: number; band: boolean } {
+  const em = /mono/i.test(displayStack) ? 0.62 : /serif/i.test(displayStack) && !/sans-serif/i.test(displayStack) ? 0.55 : 0.6;
+  const width = (s: string, size: number): number => s.length * em * size;
+  const fit = (lines: string[], maxWidth: number, min: number, max: number): number | undefined => {
+    // Height: lines × size × .95 + tagline (20) + two 24px steps must fit 288.
+    const byHeight = Math.floor((288 - 20 - 48) / (lines.length * 0.95));
+    for (let size = Math.min(max, byHeight); size >= min; size--) if (lines.every((l) => width(l, size) <= maxWidth)) return size;
+    return undefined;
+  };
+  const one = fit([name], 440, 64, 120);
+  if (one) return { lines: [name], size: one, band: false };
+  // Break once, at the space or hyphen nearest the middle.
+  const breaks = [...name.matchAll(/[ -]/g)].map((m) => m.index!);
+  if (breaks.length) {
+    const at = breaks.reduce((a, b) => (Math.abs(b - name.length / 2) < Math.abs(a - name.length / 2) ? b : a));
+    const lines = [name.slice(0, name[at] === '-' ? at + 1 : at), name.slice(at + 1)].map((l) => l.trim());
+    const two = fit(lines, 440, 64, 120);
+    if (two) return { lines, size: two, band: false };
+  }
+  // Too wide for its zone: the top-band skeleton, name full width beneath the band.
+  const lines = [name];
+  for (let size = 64; size >= 24; size--) if (width(name, size) <= 912) return { lines, size, band: true };
+  return { lines, size: 24, band: true };
+}
+
+/** The cover per the type's cover brief: colour blocks, one pattern chosen from the tokens, the name bottom-left. */
+function coverHtml(c: CoverInput): string {
+  const has = (n: string): boolean => c.colors.some((t) => t.name === n);
   const pick = (...names: string[]): string | undefined => names.find(has);
-  const brand = pick('accent', 'brand', 'primary') ?? colors[0]?.name ?? 'fg';
+  const brand = pick('accent', 'brand', 'primary') ?? c.colors[0]?.name ?? 'fg';
   const ink = pick('fg', 'ink', 'text') ?? brand;
-  const tint = pick('surface-warm', 'border-soft', 'surface', 'muted') ?? ink;
+  const ground = pick('bg', 'surface') ?? ink;
+  // A block within a few percent of the ground vanishes; take the next tint that shows.
+  const valueOf = (n: string, depth = 0): string | undefined => {
+    const v = c.colors.find((t) => t.name === n)?.value;
+    const s = typeof v === 'string' ? v : v ? Object.values(v)[0] : undefined;
+    const alias = s ? /^\{(.+)\}$/.exec(s)?.[1] : undefined;
+    return alias && depth < 16 ? valueOf(alias, depth + 1) : s;
+  };
+  const shows = (n: string): boolean => {
+    const a = valueOf(n);
+    const b = valueOf(ground);
+    return !a || !b || (contrastRatio(a, b) ?? 2) >= 1.08;
+  };
+  const tint = ['surface-warm', 'border-soft', 'surface', 'border', 'muted'].find((n) => has(n) && n !== ground && shows(n)) ?? ink;
   const signal = pick('success', 'warn', 'danger') ?? brand;
-  const ground = pick('bg', 'surface') ?? tint;
   const muted = pick('muted', 'fg-2') ?? ink;
-  const fontVar = displayKey ? `var(--font-${displayKey})` : 'system-ui, sans-serif';
-  // Size the name so its longest line fits 440px at ~0.6em a letter.
-  const longest = Math.max(...name.split(/\s+/).map((w) => w.length), 1);
-  const lines = name.length * 0.6 * 64 > 440 ? 2 : 1;
-  const perLine = lines === 1 ? name.length : Math.max(longest, Math.ceil(name.length / 2));
-  const size = Math.max(40, Math.min(120, Math.floor(440 / (perLine * 0.6))));
-  const dots: string[] = [];
-  for (let row = 0; row < 5; row++) for (let col = 0; col < 6; col++) dots.push(`<circle class="dot" cx="${196 + col * 24}" cy="${120 + row * 24}" r="3"/>`);
+  const hairline = pick('border', 'border-soft') ?? ink;
+  const fontVar = c.displayKey ? `var(--font-${c.displayKey})` : 'system-ui, sans-serif';
+  const displayStack = (c.displayKey && c.families[c.displayKey]) || '';
+  const { row, why } = coverPattern(c.families, c.displayKey, c.radiusLg);
+  const nameFit = coverName(c.name, displayStack);
+  const corner = (['radius-md', 'radius-sm', 'radius-lg'] as const).find(c.hasRadius);
+  const rx = corner ? `var(--${corner})` : '0';
+
+  // Blocks and pattern live in one box: x 480–960 beside the name, or a full-width band on top.
+  const W = nameFit.band ? 960 : 480;
+  const H = nameFit.band ? 112 : 288;
+  const shapes: string[] = [];
+  let blocksLine: string;
+  let patternLine: string;
+  if (nameFit.band) {
+    blocksLine = `${brand} 320×112 band · ${tint} 288×80 · ${ink} 160×112 off the right edge · ${signal} 96×24 once`;
+    shapes.push(`<rect class="brand blk" x="0" y="-16" width="320" height="128"/>`);
+    shapes.push(`<rect class="tint blk" x="336" y="16" width="288" height="80"/>`);
+    shapes.push(`<rect class="deep blk" x="816" y="0" width="160" height="112"/>`);
+    shapes.push(`<rect class="signal blk" x="640" y="72" width="96" height="24"/>`);
+  } else {
+    blocksLine = `${brand} 144×264 slab bled off the top · ${tint} 168×176 · ${ink} 128×208 off the right edge · ${signal} 64×16 once`;
+    shapes.push(`<rect class="brand blk" x="16" y="-24" width="144" height="264"/>`);
+    shapes.push(`<rect class="signal blk" x="16" y="248" width="64" height="16"/>`);
+    shapes.push(`<rect class="tint blk" x="176" y="88" width="168" height="176"/>`);
+    shapes.push(`<rect class="deep blk" x="360" y="56" width="136" height="208"/>`);
+  }
+  const [px, py, pw, ph] = nameFit.band ? [336, 16, 288, 80] : [176, 88, 168, 176];
+  if (row === 'pills') {
+    patternLine = `pills over the ${tint} block, half-round ends (${why})`;
+    for (let y = py + 16; y + 24 <= py + ph - 8; y += 40) {
+      for (let x = px + 16, i = 0; x + 40 <= px + pw - 8; i++) {
+        const w = i % 2 ? 40 : 64;
+        if (x + w > px + pw - 8) break;
+        shapes.push(`<rect class="${i % 3 === 1 ? 'deep' : 'brand'} pill" x="${x}" y="${y}" width="${w}" height="24"/>`);
+        x += w + 16;
+      }
+    }
+  } else if (row === 'dots') {
+    patternLine = `dot grid at a 24px pitch over the ${tint} block (${why})`;
+    for (let y = py + 16; y < py + ph - 8; y += 24) for (let x = px + 16; x < px + pw - 8; x += 24) shapes.push(`<circle class="dot" cx="${x}" cy="${y}" r="3"/>`);
+  } else if (row === 'rules') {
+    patternLine = `four ${hairline} hairlines crossing the blocks (${why})`;
+    for (let i = 0; i < 4; i++) {
+      const y = (nameFit.band ? 20 : 72) + i * (nameFit.band ? 24 : 48);
+      shapes.push(`<line class="rule" x1="0" y1="${y}" x2="${W}" y2="${y}"/>`);
+    }
+  } else {
+    patternLine = `tiles cut by the radius scale over the ${tint} block, some two-wide (${why})`;
+    let n = 0;
+    for (let y = py + 16; y + 24 <= py + ph - 8; y += 32) {
+      for (let x = px + 16; x + 24 <= px + pw - 8; n++) {
+        const wide = n % 5 === 2 && x + 56 <= px + pw - 8;
+        shapes.push(`<rect class="${n % 4 === 1 ? 'deep' : 'brand'} tile" x="${x}" y="${y}" width="${wide ? 56 : 24}" height="24"/>`);
+        x += (wide ? 56 : 24) + 8;
+      }
+    }
+  }
+  const words = nameFit.band ? 'left:var(--space-6, 24px); right:var(--space-6, 24px); bottom:var(--space-6, 24px);' : 'left:var(--space-6, 24px); bottom:var(--space-6, 24px); max-width:440px;';
   return `<!-- @dsCard height=288 -->
 <!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>${escapeHtml(name)}</title>
+<title>${escapeHtml(c.name)}</title>
 <style>
   html, body { margin:0; height:100%; }
   body { background:var(--${ground}); color:var(--${ink}); font-family:${fontVar}; overflow:hidden; }
   .cover { position:relative; height:288px; overflow:hidden; }
-  .art { position:absolute; top:0; left:480px; width:480px; height:288px; overflow:hidden; }
-  .art svg { display:block; width:480px; height:288px; }
+  .art { position:absolute; top:0; left:${nameFit.band ? 0 : 480}px; width:${W}px; height:${H}px; overflow:hidden; }
+  .art svg { display:block; width:${W}px; height:${H}px; }
   .brand { fill:var(--${brand}); }
   .deep { fill:var(--${ink}); }
   .tint { fill:var(--${tint}); }
   .signal { fill:var(--${signal}); }
   .dot { fill:var(--${brand}); }
-  .blk { rx:var(--radius-md, 8px); }
-  .words { position:absolute; left:var(--space-6, 24px); bottom:var(--space-6, 24px); max-width:440px; }
-  .name { margin:0; font-size:${size}px; line-height:.95; font-weight:600; letter-spacing:-.02em; color:var(--${ink}); }
-  .tag { margin:var(--space-2, 8px) 0 0 2px; font-size:14px; line-height:20px; color:var(--${muted}); }
+  .rule { stroke:var(--${hairline}); stroke-width:1; }
+  .blk { rx:${rx}; }
+  .tile { rx:${corner === 'radius-sm' || !c.hasRadius('radius-sm') ? rx : 'var(--radius-sm)'}; }
+  .pill { rx:12px; }
+  .words { position:absolute; ${words} }
+  .name { margin:0; font-size:${nameFit.size}px; line-height:${nameFit.lines.length > 1 ? '.95' : '.92'}; font-weight:600; letter-spacing:-.02em; color:var(--${ink}); }
+  .tag { margin:${Math.max(8, Math.round(nameFit.size * 0.18))}px 0 0 2px; font-size:14px; line-height:20px; color:var(--${muted}); }
 </style>
 </head>
 <body>
 <div class="cover">
 <div class="art" aria-hidden="true">
-<svg viewBox="0 0 480 288" width="480" height="288">
+<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
 <!--
-  blocks      ${brand} 144×264 slab bled off the top · ${tint} 168×176 tint · ${ink} 128×208 off the right edge · ${signal} 64×24 once
-  arrangement one tall brand slab with satellites, bottoms on one line space-6 above the edge
-  pattern     dot grid at a space-6 pitch over the tint, generated by the Open Design exporter (not brand-specific)
-  scales      gutters space-4; pitch space-6; corners radius-md
+  blocks      ${blocksLine}
+  arrangement ${nameFit.band ? 'a strip of unequal bands across the top, the name beneath it' : 'one tall brand slab with satellites, bottoms on one line'}
+  pattern     ${patternLine}
+  scales      gaps space-4; corners ${corner ?? 'square'}${row === 'pills' ? '; pills 24px tall, rx half of that' : ''}
 -->
-<rect class="brand blk" x="16" y="-24" width="144" height="264"/>
-<rect class="signal blk" x="16" y="248" width="64" height="16"/>
-<rect class="tint blk" x="176" y="88" width="168" height="176"/>
-<rect class="deep blk" x="360" y="56" width="136" height="208"/>
-${dots.join('\n')}
+${shapes.join('\n')}
 </svg>
 </div>
 <div class="words">
-<h1 class="name">${escapeHtml(name)}</h1>
-${tagline ? `<p class="tag">${escapeHtml(tagline)}</p>` : ''}
+<h1 class="name">${nameFit.lines.map(escapeHtml).join('<br>')}</h1>
+${c.tagline ? `<p class="tag">${escapeHtml(c.tagline)}</p>` : ''}
 </div>
 </div>
 </body>
@@ -660,6 +851,8 @@ function designMdFrom(title: string, readme: string, mapping: string[], notes: s
   const hasQuote = firstBody >= 0 && afterHeading[firstBody].trim().startsWith('>');
   let out: string;
   if (hasHeading && hasQuote) out = text;
+  // Our own exports drop the title (Claude's brand-book rule) but keep the summary quote.
+  else if (hasQuote) out = `# ${title}\n\n> Category: Imported from Claude Design\n${text}`;
   else {
     const para = afterHeading.join('\n').split(/\n\s*\n/).map((p) => p.trim()).find((p) => p && !p.startsWith('#')) ?? '';
     const summary = (/^[^.!?]*[.!?]/.exec(para.replace(/\s+/g, ' '))?.[0] ?? para.replace(/\s+/g, ' ')).slice(0, 240);
