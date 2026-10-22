@@ -195,6 +195,9 @@ describe('extractSite in a browser', function () {
     assert.strictEqual(t['--bg'], '#ffffff');
     assert.strictEqual(t['--fg'], '#3c3c3c');
     assert.strictEqual(t['--surface'], '#f7f7f7');
+    // White copy over the photo band is long but unreadable on the page, so it's neither text role.
+    assert.strictEqual(t['--muted'], '#777777');
+    assert.ok(!Object.values(t).includes('2px'), 'a 2px nudge is not a spacing step');
     assert.match(t['--font-body'], /^"?Nunito"?, Arial/);
     assert.strictEqual(t['--text-base'], '15px');
     assert.strictEqual(t['--text-4xl'], '48px');

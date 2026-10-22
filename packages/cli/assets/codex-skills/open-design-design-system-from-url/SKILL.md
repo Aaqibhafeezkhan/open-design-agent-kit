@@ -36,7 +36,8 @@ Call `create_open_design_design_system` with a `name` (for a reference site, "<N
 
 Write `DESIGN.md` at `suggestedEntryPath` and `tokens.css` beside it, **both from the same draft**:
 
-- **`tokens.css`**: start from `draftCss`. Keep every measured value exactly as measured. For an `unmeasured` token, leave it out so the contract fallback applies, or derive it from measured ones (a `color-mix()` of `--accent` for a missing hover); never make one up.
+- **`tokens.css`**: start from `draftCss`. Keep every measured value exactly as measured. For an `unmeasured` token, leave it out so the contract fallback applies, or derive it from measured ones (a `color-mix()` of `--accent` for a missing hover); never make one up, and don't fill two steps with the same value.
+- **Sanity-check each role against the screenshot first.** If a measured value plainly can't be that role (text that would be unreadable on `--bg`, a hairline as a spacing step), drop it and say so; don't write prose to explain it away.
 - **`DESIGN.md`**: the values it names (primary colour, surface, text, the font families, the type scale) must be the same values as `tokens.css`. Write the prose (atmosphere, layout, components, voice, do and don't) from the screenshots. For a reference site, say near the top that it is inspired by the site and name it.
 - **Marks**: for the user's own brand, copy the files in the result's `marks` into an `assets/` folder beside `DESIGN.md` and mention them there. For a reference site, copy none.
 
