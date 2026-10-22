@@ -23,6 +23,8 @@ export const OVERLAY_MARKER = '.od-local-overlay';
 export const SURFACES_FILE = 'surfaces.json';
 /** Trusted third-party MCP servers (openspec add-integration-registry): local/integrations.json, copied to the assets root. */
 export const INTEGRATIONS_FILE = 'integrations.json';
+/** Curated design-system descriptors (openspec add-design-system-matching): local/design-system-descriptors.json, copied to the assets root. */
+export const DESCRIPTORS_FILE = 'design-system-descriptors.json';
 /** Third-party licence notices for ported content (openspec add-mobile-design-systems): local/notices/*, copied to the assets' notices/. */
 export const NOTICES_DIR = 'notices';
 // The files an overlay may contribute to an EXISTING upstream design system,
@@ -88,6 +90,7 @@ export async function listOverlayFiles(localRoot = LOCAL_ROOT) {
   for (const name of await listFiles(path.join(localRoot, NOTICES_DIR))) files.push(path.join(NOTICES_DIR, name));
   if (await pathExists(path.join(localRoot, SURFACES_FILE))) files.push(SURFACES_FILE);
   if (await pathExists(path.join(localRoot, INTEGRATIONS_FILE))) files.push(INTEGRATIONS_FILE);
+  if (await pathExists(path.join(localRoot, DESCRIPTORS_FILE))) files.push(DESCRIPTORS_FILE);
   for (const id of await listDirs(path.join(localRoot, 'design-systems'))) {
     const names = new Set(await listFiles(path.join(localRoot, 'design-systems', id)));
     if (isOverrideShape(names)) {
@@ -253,6 +256,11 @@ export async function applyLocalOverlay(targetRoot, localRoot = LOCAL_ROOT) {
   const hasIntegrations = await pathExists(path.join(localRoot, INTEGRATIONS_FILE));
   if (hasIntegrations) await fs.copyFile(path.join(localRoot, INTEGRATIONS_FILE), path.join(targetRoot, INTEGRATIONS_FILE));
   else await fs.rm(path.join(targetRoot, INTEGRATIONS_FILE), { force: true });
+
+  // design-system-descriptors.json likewise has no upstream counterpart.
+  const hasDescriptors = await pathExists(path.join(localRoot, DESCRIPTORS_FILE));
+  if (hasDescriptors) await fs.copyFile(path.join(localRoot, DESCRIPTORS_FILE), path.join(targetRoot, DESCRIPTORS_FILE));
+  else await fs.rm(path.join(targetRoot, DESCRIPTORS_FILE), { force: true });
 
   // Drop overrides from a previous run that local/ no longer has, so a
   // standalone re-apply after deleting one doesn't leave it in effect.

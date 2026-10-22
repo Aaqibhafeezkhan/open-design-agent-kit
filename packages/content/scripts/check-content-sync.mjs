@@ -14,6 +14,7 @@ import { LOCAL_ROOT, findRedundantOverrides, listOverlayFiles } from './apply-lo
 import { checkSurfaces } from './surfaces.mjs';
 import { checkIntegrations } from './integrations.mjs';
 import { checkPorts } from './ports.mjs';
+import { checkDescriptors } from './designSystemDescriptors.mjs';
 import { SCAFFOLD_MARKERS, findUnreviewedScaffolds } from './scaffoldGuard.mjs';
 import { checkConsistency } from './audit-design-system-consistency.mjs';
 
@@ -115,6 +116,15 @@ async function checkIntegrationRegistry() {
   }
 }
 
+// Every bundled design system has curated descriptors in vocabulary (openspec add-design-system-matching).
+async function checkDesignSystemDescriptors() {
+  const problems = await checkDescriptors(assetsRoot);
+  if (problems.length > 0) {
+    console.error(`Design-system descriptor problems (packages/content/local/design-system-descriptors.json):\n- ${problems.join('\n- ')}`);
+    process.exit(1);
+  }
+}
+
 async function checkUnreviewedScaffolds() {
   const found = await findUnreviewedScaffolds(LOCAL_ROOT);
   if (found.length > 0) {
@@ -140,6 +150,7 @@ async function main() {
   await checkUnreviewedScaffolds();
   await checkSurfaceCatalog();
   await checkIntegrationRegistry();
+  await checkDesignSystemDescriptors();
   await checkPortProvenance();
   await checkRedundantOverrides();
   await checkDesignSystemConsistency();

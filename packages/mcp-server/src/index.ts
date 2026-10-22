@@ -25,10 +25,15 @@ import {
   appOnlyToolMeta,
   clientSupportsMcpApps,
   ContentIndex,
+  DESIGN_INDUSTRIES,
+  DESIGN_MOODS,
+  DESIGN_SURFACES,
+  DESIGN_THEMES,
   FORMAT_IDS,
   MCP_APP_MIME_TYPE,
   PREVIEW_APP_URI,
   previewAppToolMeta,
+  type DesignProfile,
   type ListSkillsInput,
 } from '@feimacode/open-design-agent-kit-core';
 import { getAssetsRoot, getDefaultWorkspace, getFigmaToken, getOutputDirectory, getWorkspaceRootOverride, isDesktopExtension, isPluginLaunched, workspaceRootFromArg, workspaceRootFromClientRoots } from './env';
@@ -112,6 +117,28 @@ const TOOL_DEFS: ToolDef[] = [
     },
     handler: (ctx, args) =>
       tools.listDesignSystems(ctx, args as { query?: string; category?: string }).then((r) => JSON.stringify(r, null, 2)),
+  },
+  {
+    tool: {
+      name: 'recommend_open_design_design_systems',
+      description:
+        "Recommends 3 to 5 Open Design design systems for a design, ranked the same way every time, each with a one-line reason and its look (light or dark, accent, display type, corner shape). Use it before prepare_open_design_brief when the user hasn't named a design system or a look, no design system is active, and they want a new design (not an edit, remix or export). Fill the profile from the request, the conversation and the workspace; leave out what you don't know. If the result includes `questions`, ask them once, in one message, and accept \"you pick\" (then use the first recommendation). Otherwise use the first recommendation, say which one you used and that they can switch. Does NOT change the active design system: pass the chosen id to prepare_open_design_brief. Product-named looks (Stripe, Linear…) are recommended only when the user names that product, via likeBrands or the brief.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          industries: { type: 'array', items: { type: 'string', enum: [...DESIGN_INDUSTRIES] }, description: 'What the design is for.' },
+          moods: { type: 'array', items: { type: 'string', enum: [...DESIGN_MOODS] }, description: 'How it should feel, most important first.' },
+          theme: { type: 'string', enum: [...DESIGN_THEMES], description: 'Light or dark, only if the user said or the context makes it clear.' },
+          surface: { type: 'string', enum: [...DESIGN_SURFACES], description: 'Where it will be seen.' },
+          likeBrands: { type: 'array', items: { type: 'string' }, description: "Products or sites the user wants it to feel like, e.g. ['Notion']." },
+          avoid: { type: 'array', items: { type: 'string' }, description: 'Design system ids or moods to leave out.' },
+          brief: { type: 'string', description: "The request in the user's words." },
+          limit: { type: 'number', description: 'How many to return, 3 to 5 (default 5).' },
+        },
+      },
+    },
+    handler: (ctx, args) =>
+      tools.recommendDesignSystems(ctx, args as DesignProfile & { limit?: number }).then((r) => JSON.stringify(r, null, 2)),
   },
   {
     tool: {

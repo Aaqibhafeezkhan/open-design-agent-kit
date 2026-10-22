@@ -142,6 +142,9 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
       fluid: canvasFormat ? canvas.fluid : undefined,
       designSystemId: designSystem ? designSystemId : undefined,
       designSystemName: designSystem?.name,
+      designSystemHint: designSystem
+        ? undefined
+        : "No design system was used. If the user wants a look but hasn't named one, call recommend_open_design_design_systems with what you know about the design, then prepare the brief again with the chosen designSystemId.",
       outlinePath: sources.context?.outlinePath,
       sources: sources.context?.sources.map((s) => ({ path: s.path, markdownPath: s.markdownPath, kind: s.kind })),
     };
