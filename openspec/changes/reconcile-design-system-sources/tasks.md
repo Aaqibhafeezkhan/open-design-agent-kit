@@ -7,7 +7,7 @@
 
 ## 2. Decisions
 
-- [ ] 2.1 Run the audit; confirm all rows in one review pass; record a reason for every `conflict` (`lingo` and `agentic` first). Rows are written as suggestions, awaiting review
+- [x] 2.1 Run the audit; confirm all rows in one review pass; record a reason for every `conflict` (`lingo` and `agentic` first)
 - [x] 2.2 Fold the 8 existing overrides into decisions and regenerate them
 
 ## 3. Overlays

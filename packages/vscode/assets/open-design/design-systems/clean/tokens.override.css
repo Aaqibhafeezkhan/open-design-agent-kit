@@ -1,5 +1,5 @@
 /* generated from DESIGN.md by audit-design-system-consistency.mjs; do not edit. */
-/* suggested: color design-placeholder, type tokens-placeholder */
+/* colour: DESIGN.md has the placeholder; type: tokens.css has the placeholder (reviewed 2026-10-22) */
 :root {
   --font-body: Roboto, system-ui, sans-serif;
   --font-display: Poppins, system-ui, sans-serif;
