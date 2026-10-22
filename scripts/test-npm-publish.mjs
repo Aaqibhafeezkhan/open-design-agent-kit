@@ -264,7 +264,14 @@ async function testMcpServerResolution(scratchDir) {
     // The managed-workspace tools are listed only in a chat with no folder (home
     // folder, no roots); this test starts the server in a scratch project folder.
     const folderlessOnly = ['use_open_design_managed_workspace', 'write_open_design_file'];
-    const expected = [...source.matchAll(/^ {6}name: '([a-z_]+)',$/gm)].map((m) => m[1]).filter((n) => !folderlessOnly.includes(n)).sort();
+    // Each TOOL_DEFS entry starts with `{` (maybe a comment) then `tool: {`. Entries marked appOnly or
+    // appsHostOnly are listed only to hosts that render MCP Apps, which this client doesn't.
+    const defs = source.split(/\n {2}\{\n(?: {4}\/\/.*\n)* {4}tool: \{\n/).slice(1);
+    const expected = defs
+      .filter((def) => !/^ {4}(appOnly|appsHostOnly): true,$/m.test(def.split(/\n {2}\},?\n/)[0]))
+      .map((def) => /^ {6}name: '([a-z0-9_]+)',$/m.exec(def)?.[1])
+      .filter((n) => n && !folderlessOnly.includes(n))
+      .sort();
     const actual = (list?.result?.tools ?? []).map((t) => t.name).sort();
     assert(expected.length > 0, 'found no tool names in packages/mcp-server/src/index.ts');
     assert(
