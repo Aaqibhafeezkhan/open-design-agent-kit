@@ -273,13 +273,27 @@ function measurePageInBrowser(): MeasuredPage {
   const surface = tally(cards, (el) => cs(el).backgroundColor, (el) => Math.sqrt(area(el)) * (/card|panel|tile/i.test(el.className.toString()) ? 3 : 1))[0];
   if (surface) setRole('surface', surface[0], surface[1].el, surface[1].count);
 
+  // Text roles count only colours readable on the page background: white
+  // copy over a hero photo or a coloured band is not the site's body text.
+  const luminance = (c: string): number => {
+    const [r, g, b] = (c.match(/[\d.]+/g) ?? []).slice(0, 3).map((n) => {
+      const v = Number(n) / 255;
+      return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * (r ?? 0) + 0.7152 * (g ?? 0) + 0.0722 * (b ?? 0);
+  };
+  const contrastOnPage = (c: string): number => {
+    const [hi, lo] = [luminance(c), luminance(pageBg)].sort((x, y) => y - x);
+    return (hi + 0.05) / (lo + 0.05);
+  };
+  const readable = ([c]: [string, unknown]): boolean => contrastOnPage(c) >= 3;
   const textEls = all('p, li, td, dd, blockquote');
   const textWeight = (el: Element) => (el.textContent ?? '').trim().length;
-  const fg = tally(textEls, (el) => cs(el).color, textWeight)[0] ?? tally([doc.body], (el) => cs(el).color)[0];
+  const fg = tally(textEls, (el) => cs(el).color, textWeight).find(readable) ?? tally([doc.body], (el) => cs(el).color)[0];
   if (fg) setRole('fg', fg[0], fg[1].el, fg[1].count);
 
   const mutedEls = all('small, figcaption, time, [class*="muted" i], [class*="secondary" i], [class*="caption" i], [class*="subtitle" i], [class*="meta" i], p, li');
-  const muted = tally(mutedEls, (el) => cs(el).color, textWeight).find(([c]) => c !== fg?.[0]);
+  const muted = tally(mutedEls, (el) => cs(el).color, textWeight).find((entry) => entry[0] !== fg?.[0] && readable(entry));
   if (muted) setRole('muted', muted[0], muted[1].el, muted[1].count);
 
   const bordered = all('div, section, article, input, hr, li, table, td, th, header, nav, aside, button').filter((el) => parseFloat(cs(el).borderTopWidth) > 0 || parseFloat(cs(el).borderBottomWidth) > 0);
@@ -410,7 +424,8 @@ function measurePageInBrowser(): MeasuredPage {
   const spacingTally = new Map<number, number>();
   const snap = (v: string) => {
     const n = parseFloat(v);
-    if (!(n > 0) || n > 200) return;
+    // Under 4px is a hairline nudge, not a spacing step.
+    if (!(n >= 4) || n > 200) return;
     const s = Math.round(n / 2) * 2;
     spacingTally.set(s, (spacingTally.get(s) ?? 0) + 1);
   };

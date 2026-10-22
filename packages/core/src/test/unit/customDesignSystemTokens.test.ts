@@ -45,6 +45,16 @@ describe('composeCustomDesignSystemInstructions', () => {
     assert.match(instructions, /After writing both files/);
   });
 
+  it('does not repeat "inspired" in the heading of an "<Name>-inspired" system', () => {
+    const instructions = composeCustomDesignSystemInstructions({
+      name: 'Dating.com-inspired',
+      brief: 'A dating site.',
+      suggestedEntryPath: '.open-design/design-systems/dating-com-inspired/DESIGN.md',
+      id: 'user:dating-com-inspired',
+    });
+    assert.match(instructions, /# Design System Inspired by Dating\.com\n/);
+  });
+
   it('derives tokens.css beside DESIGN.md', () => {
     assert.strictEqual(tokensPathFor('out/design-systems/x/DESIGN.md'), 'out/design-systems/x/tokens.css');
   });
