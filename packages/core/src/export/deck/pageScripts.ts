@@ -141,8 +141,10 @@ export function showSlide(slideSelector: string, cloneSelector: string, index: n
     const placeholder = document.getElementById('__od_export_active_slide_placeholder');
     const liveSlide = layer.firstElementChild?.firstElementChild;
     if (placeholder?.parentNode && liveSlide) {
-      if (typeof placeholder.parentNode.moveBefore === 'function') placeholder.parentNode.moveBefore(liveSlide, placeholder);
-      else placeholder.parentNode.insertBefore(liveSlide, placeholder);
+      // Not moveBefore back into a shadow host (a <deck-stage>): Chrome 155 hangs the page on it.
+      const parent = placeholder.parentNode;
+      if (typeof parent.moveBefore === 'function' && !parent.shadowRoot) parent.moveBefore(liveSlide, placeholder);
+      else parent.insertBefore(liveSlide, placeholder);
       placeholder.remove();
       for (const { name, priority, value } of layer.__odSourceStyles ?? []) {
         if (value) liveSlide.style.setProperty(name, value, priority);
@@ -187,7 +189,8 @@ export function showSlide(slideSelector: string, cloneSelector: string, index: n
  */
 export function restackActiveSlide(slideSelector: string, cloneSelector: string, index: number, w: number, h: number): boolean | undefined {
   function move(parent: any, node: any, before: any): boolean {
-    if (typeof parent.moveBefore === 'function') {
+    // Not moveBefore into a shadow host (a <deck-stage>): Chrome 155 hangs the page on it.
+    if (typeof parent.moveBefore === 'function' && !parent.shadowRoot) {
       parent.moveBefore(node, before);
       return true;
     }

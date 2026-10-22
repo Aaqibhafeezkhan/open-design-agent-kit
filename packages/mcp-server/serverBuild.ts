@@ -8,7 +8,7 @@ export const MCP_SDK_PACKAGE = '@modelcontextprotocol/sdk';
 /**
  * The esbuild options for the MCP server's one-file bundle, shared by the npm
  * package's build (.esbuild.ts) and the Claude Desktop extension's
- * (packages/desktop-extension/scripts/build-mcpb.mjs), so the two can't drift.
+ * (packages/desktop-extension/scripts/build-mcpb.ts), so the two can't drift.
  * `external` decides what stays a runtime dependency.
  */
 export function serverBuildOptions(input: { outfile: string; external: string[] }): esbuild.BuildOptions {
