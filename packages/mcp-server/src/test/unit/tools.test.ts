@@ -107,6 +107,22 @@ describe('mcp-server tools', () => {
     assert.strictEqual(await ctx.store.get(), 'acme', 'explicit designSystemId should become sticky');
   });
 
+  it('prepareBrief hints at the recommend tool only when no design system was used', async () => {
+    const ctx = await makeContext();
+    const without = JSON.parse(await tools.prepareBrief(ctx, { skillId: 'od:prototype:landing-page', brief: 'A page' }));
+    assert.match(without.designSystemHint, /recommend_open_design_design_systems/);
+    const withOne = JSON.parse(await tools.prepareBrief(ctx, { skillId: 'od:prototype:landing-page', designSystemId: 'acme', brief: 'A page' }));
+    assert.strictEqual(withOne.designSystemHint, undefined);
+  });
+
+  it('recommendDesignSystems ranks without changing the active design system', async () => {
+    const ctx = await makeContext();
+    const result = (await tools.recommendDesignSystems(ctx, { likeBrands: ['Acme'] })) as { recommendations: Array<{ id: string }>; activeDesignSystemId?: string };
+    assert.strictEqual(result.recommendations[0].id, 'acme');
+    assert.strictEqual(result.activeDesignSystemId, undefined);
+    assert.strictEqual(await ctx.store.get(), undefined);
+  });
+
   it('prepareBrief reports an unknown skillId clearly', async () => {
     const ctx = await makeContext();
     const raw = await tools.prepareBrief(ctx, { skillId: 'nope', brief: 'anything' });

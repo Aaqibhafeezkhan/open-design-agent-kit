@@ -3,6 +3,7 @@ import type { ContentIndex } from '@feimacode/open-design-agent-kit-core';
 import type { ILogService } from '../extension/log/logService';
 import { ListSkillsTool } from './listSkillsTool';
 import { ListDesignSystemsTool } from './listDesignSystemsTool';
+import { RecommendDesignSystemsTool } from './recommendDesignSystemsTool';
 import { PrepareBriefTool } from './prepareBriefTool';
 import { RegisterArtifactTool } from './registerArtifactTool';
 import { GetArtifactTool } from './getArtifactTool';
@@ -36,6 +37,7 @@ export function registerTools(
   const registrations: Array<[string, vscode.LanguageModelTool<any>]> = [
     ['list_open_design_skills', new ListSkillsTool(contentIndex)],
     ['list_open_design_design_systems', new ListDesignSystemsTool(contentIndex)],
+    ['recommend_open_design_design_systems', new RecommendDesignSystemsTool(contentIndex)],
     ['read_open_design_source', new ReadSourceTool()],
     ['prepare_open_design_brief', new PrepareBriefTool(contentIndex)],
     ['prepare_open_design_exploration', new PrepareExplorationTool(contentIndex)],

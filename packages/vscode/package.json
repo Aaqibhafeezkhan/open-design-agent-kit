@@ -135,6 +135,113 @@
         }
       },
       {
+        "name": "recommend_open_design_design_systems",
+        "displayName": "Recommend Open Design Design Systems",
+        "modelDescription": "Recommends 3 to 5 Open Design design systems for a design, ranked the same way every time, each with a one-line reason and its look (light or dark, accent, display type, corner shape). Use it before prepare_open_design_brief when the user hasn't named a design system or a look, no design system is active, and they want a new design (not an edit, remix or export). Fill the profile from the request, the conversation and the workspace; leave out what you don't know. If the result includes `questions`, ask them once, in one message, and accept \"you pick\" (then use the first recommendation). Otherwise use the first recommendation, say which one you used and that they can switch (or browse with the 'OpenDesign: Browse Design Systems' command). Does NOT change the active design system: pass the chosen id to prepare_open_design_brief. Product-named looks (Stripe, Linear…) are recommended only when the user names that product, via likeBrands or the brief.",
+        "userDescription": "Recommend a design system for what you're making",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "od-recommend-design-system",
+        "icon": "$(sparkle)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "industries": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "saas",
+                  "developer",
+                  "ai",
+                  "finance",
+                  "commerce",
+                  "consumer",
+                  "media",
+                  "editorial",
+                  "brand",
+                  "creative",
+                  "dashboard",
+                  "enterprise",
+                  "wellness",
+                  "education",
+                  "automotive",
+                  "travel",
+                  "food",
+                  "social",
+                  "gaming"
+                ]
+              },
+              "description": "What the design is for."
+            },
+            "moods": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "minimal",
+                  "calm",
+                  "warm",
+                  "friendly",
+                  "playful",
+                  "bold",
+                  "premium",
+                  "elegant",
+                  "technical",
+                  "editorial",
+                  "retro",
+                  "futuristic",
+                  "corporate",
+                  "artistic"
+                ]
+              },
+              "description": "How it should feel, most important first."
+            },
+            "theme": {
+              "type": "string",
+              "enum": [
+                "light",
+                "dark",
+                "either"
+              ],
+              "description": "Light or dark, only if the user said or the context makes it clear."
+            },
+            "surface": {
+              "type": "string",
+              "enum": [
+                "web",
+                "mobile",
+                "slides",
+                "document",
+                "dashboard"
+              ],
+              "description": "Where it will be seen."
+            },
+            "likeBrands": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Products or sites the user wants it to feel like, e.g. ['Notion']."
+            },
+            "avoid": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Design system ids or moods to leave out."
+            },
+            "brief": {
+              "type": "string",
+              "description": "The request in the user's words."
+            },
+            "limit": {
+              "type": "number",
+              "description": "How many to return, 3 to 5 (default 5)."
+            }
+          }
+        }
+      },
+      {
         "name": "read_open_design_source",
         "displayName": "Read Open Design Source",
         "modelDescription": "Converts a workspace document (DOCX, PPTX, XLSX, PDF, Markdown, text or CSV) into Markdown under the output directory's sources/ folder, extracts its embedded images, and returns an outline (headings with line ranges and sizes), never the full text. Read the returned markdownPath yourself, by line range, for the sections you need. Cached by content hash. Use it to look into a source before deciding how to use it; prepare_open_design_brief with `sources` calls it for you. PDFs need `pdftotext` (poppler); without it the result says to read the PDF with your own tools.",

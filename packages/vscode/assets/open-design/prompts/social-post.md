@@ -31,7 +31,7 @@ For several platforms at once, run steps 2–4 once per format and keep each one
 
 ## 2. Generate
 
-Call `prepare_open_design_brief` with the row's `skillId`, the brief, and `format` set to the row's preset id (leave it out for the X post mock and YouTube video). Call `list_open_design_design_systems` first only if the user names a brand or visual direction. For the X post mock, say in the brief that it is one card element.
+Call `prepare_open_design_brief` with the row's `skillId`, the brief, and `format` set to the row's preset id (leave it out for the X post mock and YouTube video). Call `list_open_design_design_systems` first if the user names a brand or visual direction, or `recommend_open_design_design_systems` if they name none and no design system is active. For the X post mock, say in the brief that it is one card element.
 
 Author the files yourself with your own file-editing tools, following the returned instructions, and add these rules for social posts:
 
