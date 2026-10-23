@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { ContentIndex } from '../../content/contentIndex';
-import { LIST_SKILLS_FULL_LIMIT, listSkillsPayload } from '../../content/listSkillsPayload';
+import { LIST_SKILLS_FULL_LIMIT, LIST_SKILLS_PAGE_SIZE, listSkillsPayload } from '../../content/listSkillsPayload';
 
 const ASSETS = path.resolve(__dirname, '..', '..', '..', '..', 'content', 'assets', 'open-design');
 
@@ -51,13 +51,28 @@ describe('surfaces and stubs (shipped catalog)', () => {
     assert.strictEqual(free.find((e) => e.id === 'od:prototype:threejs')?.stub, true);
   });
 
-  it('lists the whole catalog compactly, small enough for one tool result', async () => {
-    const all = (await listSkillsPayload(index, {})) as { total: number; note: string; entries: Array<Record<string, unknown>> };
-    assert.ok(all.total > LIST_SKILLS_FULL_LIMIT);
-    assert.strictEqual(all.entries.length, all.total);
-    assert.match(all.note, /query, mode, source or surface/);
-    assert.ok(all.entries.every((e) => !('examplePrompt' in e) && !('description' in e)));
-    assert.ok(all.entries.some((e) => e.remixable === true));
-    assert.ok(JSON.stringify(all, null, 2).length < 100_000);
+  it('pages the whole catalog compactly, each page small enough for one tool result', async () => {
+    type Page = { total: number; offset: number; nextOffset?: number; modes: Record<string, number>; note: string; entries: Array<Record<string, unknown>> };
+    const first = (await listSkillsPayload(index, {})) as Page;
+    assert.ok(first.total > LIST_SKILLS_PAGE_SIZE);
+    assert.strictEqual(first.offset, 0);
+    assert.strictEqual(first.entries.length, LIST_SKILLS_PAGE_SIZE);
+    assert.strictEqual(first.nextOffset, LIST_SKILLS_PAGE_SIZE);
+    assert.strictEqual(Object.values(first.modes).reduce((a, b) => a + b, 0), first.total);
+    assert.match(first.note, /query, mode, source or surface/);
+    assert.match(first.note, /offset 100/);
+    const ids = new Set<unknown>();
+    let page: Page | undefined = first;
+    while (page) {
+      // Claude's limit for one tool result is about 25K tokens, roughly 100K characters of this JSON.
+      assert.ok(JSON.stringify(page, null, 2).length < 50_000);
+      assert.ok(page.entries.every((e) => !('examplePrompt' in e) && !('description' in e) && !('triggers' in e)));
+      assert.ok(page.entries.every((e) => typeof e.summary !== 'string' || e.summary.length <= 91));
+      for (const e of page.entries) ids.add(e.id);
+      page = page.nextOffset === undefined ? undefined : ((await listSkillsPayload(index, { offset: page.nextOffset })) as Page);
+    }
+    assert.strictEqual(ids.size, first.total);
+    const remixable = (await listSkillsPayload(index, { remixableOnly: true })) as Page;
+    assert.ok(remixable.entries.every((e) => e.remixable === true));
   });
 });

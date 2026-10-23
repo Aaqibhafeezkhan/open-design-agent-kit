@@ -10,15 +10,31 @@ export interface ListSkillsInput {
   remixableOnly?: boolean;
   /** A surface id for its entries, or "list" for the surfaces themselves. */
   surface?: string;
+  /** Where a compact listing's page starts (its nextOffset). */
+  offset?: number;
 }
 
 /** Above this many matches the free listing drops each entry's long fields, so it fits in one tool result. */
 export const LIST_SKILLS_FULL_LIMIT = 40;
+/** Entries per page of the compact listing. The whole compact catalog (about 500 entries) is still more than Claude reads in one result. */
+export const LIST_SKILLS_PAGE_SIZE = 100;
+const SUMMARY_LENGTH = 90;
+
+function summarize(description: string | undefined): string | undefined {
+  const text = description?.replace(/\s+/g, ' ').trim();
+  if (!text) return undefined;
+  if (text.length <= SUMMARY_LENGTH) return text;
+  const cut = text.slice(0, SUMMARY_LENGTH);
+  const space = cut.lastIndexOf(' ');
+  return `${(space > SUMMARY_LENGTH / 2 ? cut.slice(0, space) : cut).replace(/[\s,;:.—-]+$/, '')}…`;
+}
 
 function compactPayload(s: SkillSummary): Record<string, unknown> {
+  const summary = summarize(s.description);
   return {
     id: s.id,
     name: s.name,
+    ...(summary && summary !== s.name ? { summary } : {}),
     mode: s.mode,
     source: s.source,
     ...(s.category ? { category: s.category } : {}),
@@ -63,10 +79,22 @@ export async function listSkillsPayload(index: ContentIndex, input: ListSkillsIn
   }
   const skills = await index.listSkills(input.query, input.mode, input.source, input.remixableOnly);
   if (skills.length <= LIST_SKILLS_FULL_LIMIT) return skills.map(entryPayload);
-  // The whole catalog is several hundred thousand characters, more than a host passes to the model in one result.
+  // The whole catalog is several hundred thousand characters, more than a host passes to the model in one result,
+  // and even without descriptions it is about 25K tokens, Claude's limit for one result. So it comes in pages.
+  const offset = Math.min(Math.max(0, Math.floor(Number(input.offset) || 0)), skills.length);
+  const page = skills.slice(offset, offset + LIST_SKILLS_PAGE_SIZE);
+  const nextOffset = offset + page.length < skills.length ? offset + page.length : undefined;
+  const modes: Record<string, number> = {};
+  for (const s of skills) modes[s.mode] = (modes[s.mode] ?? 0) + 1;
   return {
     total: skills.length,
-    note: `${skills.length} matches, listed without descriptions, triggers or example prompts. Call again with a query, mode, source or surface (at most ${LIST_SKILLS_FULL_LIMIT} matches) for the full entries.`,
-    entries: skills.map(compactPayload),
+    offset,
+    ...(nextOffset !== undefined ? { nextOffset } : {}),
+    modes,
+    note:
+      `${skills.length} matches; entries ${offset + 1}–${offset + page.length}, each with a one-line summary instead of its description, triggers and example prompt.` +
+      ` Narrow with a query, mode, source or surface (at most ${LIST_SKILLS_FULL_LIMIT} matches) for the full entries` +
+      (nextOffset !== undefined ? `, or call again with offset ${nextOffset} for the next page.` : '.'),
+    entries: page.map(compactPayload),
   };
 }

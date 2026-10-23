@@ -102,7 +102,7 @@ Lists the skill catalog: skills (task recipes), design templates (rendering styl
 - A non-empty `exampleArtifactPath` means the entry can be remixed.
 - `stub: true` marks a catalog stub: an entry that only advertises an upstream skill and has no instructions of its own. The agent never picks one.
 
-With more than 40 matches (the whole catalog is about 500 entries), the result is `{ total, note, entries }` instead, and each entry has only `{ id, name, mode, source, category?, remixable?, stub? }`. A narrower call returns the full entries. Without this, the full catalog was several hundred thousand characters, more than Claude reads in one tool result.
+With more than 40 matches (the whole catalog is about 500 entries), the result is `{ total, offset, nextOffset?, modes, note, entries }` instead: one page of at most 100 entries, each with only `{ id, name, summary?, mode, source, category?, remixable?, stub? }`, where `summary` is the description cut to one line. `modes` counts every match by mode, so the agent knows which filter to narrow with. Pass `nextOffset` as `offset` for the next page; a narrower call returns the full entries. Without paging the full catalog was over 200,000 characters, and even without descriptions about 25,000 tokens, more than Claude reads in one tool result.
 
 This tool, `list_open_design_design_systems` and the two pickers read only the bundled catalog, so in Claude Desktop they work before Claude has named a folder.
 
