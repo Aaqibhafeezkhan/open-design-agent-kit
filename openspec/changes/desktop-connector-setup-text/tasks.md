@@ -2,7 +2,7 @@
 
 - [x] 1.1 Read `clientInfo.name` (and version) from the Desktop probe report (`~/od-probe-report.plain.json` on the test machine) or rerun the od-cowork-probe in Desktop Chat with a folder; record it in `/mnt/project-files/cowork-spike/FINDINGS.md` (captured 2026-10-23: `local-agent-mode-plugin:od-cowork-probe:od-probe`, version 1.0.0, no "claude" in it; `agentFromClientName` now matches the `local-agent-mode` prefix)
 - [ ] 1.2 If reachable, capture the name a claude.ai web or Cowork cloud session sends too
-- [ ] 1.3 Check how connector tools are named in Desktop's tool list (`mcp__claude_ai_<Connector>__*`, `mcp__<Connector>__*` or other) and adjust the hints
+- [x] 1.3 Check how connector tools are named in Desktop's tool list (`mcp__claude_ai_<Connector>__*`, `mcp__<Connector>__*` or other) and adjust the hints (2026-10-23, Desktop Chat on Linux: `mcp__Canva__create-design` and so on, matching the `mcp__<Connector>__*` hint; the local Open Design server's tools showed as `mcp__remote-devices__Open_Design__*`)
 
 ## 2. Core
 

@@ -7,6 +7,7 @@ import {
   INTEGRATION_AGENTS,
   INTEGRATION_CONSENT_RULES,
   installableOn,
+  integrationStatus,
   parseIntegrationRegistry,
   renderInstall,
   resolveIntegrations,
@@ -80,6 +81,12 @@ describe('integration registry', () => {
     const text = t.steps.join('\n');
     assert.ok(!text.includes('claude mcp add') && !text.includes('mcpServers') && !text.includes('/mcp'), text);
     assert.ok(installableOn(entry('canva'), 'claude-desktop'));
+  });
+
+  it('sees Canva as connected from the tool names Desktop lists', () => {
+    const input = { toolNames: ['mcp__Canva__create-design'], configuredServers: [], agent: 'claude-desktop' as const };
+    assert.strictEqual(integrationStatus(entry('canva'), input), 'connected');
+    assert.strictEqual(integrationStatus(entry('figma'), input), 'not-installed');
   });
 
   it('Buffer on Claude Desktop is manual only, with no snippet and no key', () => {

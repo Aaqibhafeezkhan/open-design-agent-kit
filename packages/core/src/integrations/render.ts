@@ -5,7 +5,8 @@
 //
 // Naming rules behind the hints (verified 2026-10-07):
 //   Claude Code  mcp__claude_ai_<Connector>__<tool> (claude.ai connector) or mcp__<name>__<tool>
-//   Claude Desktop: unverified; assumed to follow Claude Code, plus mcp__<Connector>__<tool>.
+//   Claude Desktop mcp__<Connector>__<tool> (claude.ai connector, seen 2026-10-23 as mcp__Canva__*);
+//                mcp__claude_ai_<Connector>__<tool> kept in case another route uses Claude Code's form.
 //   Codex        mcp__<name>__<tool>
 //   VS Code      mcp_<server name, lowercased, max 13 chars>_<tool>
 //   Cursor and other clients: unverified, so only "a tool named <tool>".
