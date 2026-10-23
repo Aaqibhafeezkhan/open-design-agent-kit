@@ -511,11 +511,11 @@ VS Code only. Composes instructions to package a finished artifact as a new entr
 
 ### publish_open_design_artifact_to_canva
 
-Composes instructions to get a finished artifact into Canva. **It writes nothing and never talks to Canva itself.** The agent exports the artifact (`pdf`, or `pptx` for a registered deck), then checks whether your Canva MCP server is connected ([`list_open_design_integrations`](#list_open_design_integrations)):
+Composes instructions to get a finished artifact into Canva. **It writes nothing, and talks to Canva only to send a private upload you chose.** The agent exports the artifact (`pdf`, or `pptx` for a registered deck), then checks whether your Canva MCP server is connected ([`list_open_design_integrations`](#list_open_design_integrations)):
 
 - **Canva connected:** it explains two routes, recommends the first and waits for your choice.
   - **Editable design.** The export is hosted briefly on a public link through [`publish_open_design_artifact`](#publish_open_design_artifact) with `includeFiles`, after that tool's own confirmation (`cloudflare-temporary` or your own host, never `netlify-temporary`, whose links are password-protected). Canva's `import-design-from-url` then converts it into a design, and the agent checks it with `read-design` and gives you the edit link. It publishes a Brand Template with `publish-brand-template` only if you say yes.
-  - **Private upload.** The file goes straight into your Canva **Uploads** (`create-upload-url` plus one `curl` POST), and you open it there to edit. Nothing goes public.
+  - **Private upload.** The file goes straight into your Canva **Uploads**, and you open it there to edit. Nothing goes public. The agent gets a single-use URL from Canva's `create-upload-url` and calls this tool again with `filePath` and `uploadUrl`. The Open Design server then sends the file from the machine it's on, so the agent doesn't need a terminal (Claude Desktop Chat may not have one ready). The server only uploads a file from the artifact's `exports/` folder, and only to an https `canva.com` URL.
 - **Canva not connected:** the agent offers to connect it once. If you decline, it hands you the file with Canva's own **Import a file** steps.
 
 The import passes a Canva design type when one fits the artifact: a deck becomes `presentation`, an `ig-square`/`ig-portrait` card `instagram_post`, `story` `your_story`, `x-image` `twitter_post`, `yt-thumbnail` `youtube_thumbnail`, `a4` `a4`, `letter` `us_letter`, and larger print sizes `poster`. Public Creator templates on Canva's marketplace stay a manual step in Canva.
@@ -523,8 +523,10 @@ The import passes a Canva design type when one fits the artifact: a deck becomes
 | Argument | Type | Required | Meaning |
 |---|---|---|---|
 | `entryPath` | string | yes | The artifact to get into Canva. |
+| `filePath` | string | no | The exported file for a private upload, as [`export_open_design_artifact`](#export_open_design_artifact) returned it. Give it with `uploadUrl`. |
+| `uploadUrl` | string | no | The single-use URL from Canva's `create-upload-url`. With `filePath`, the tool uploads the file and returns its `fileId` instead of instructions. |
 
-**Result:** the instructions text.
+**Result:** the instructions text, or with `filePath` and `uploadUrl`, the upload's outcome.
 
 ### pull_open_design_figma_frame
 

@@ -48,11 +48,12 @@ describe('composePublishCanvaTemplateInstructions', () => {
     assert.match(result, /Missing scopes/);
   });
 
-  it('route B uploads raw bytes and never claims a design was created', () => {
+  it('route B has the server upload the bytes and never claims a design was created', () => {
     const result = composePublishCanvaTemplateInstructions(base);
     assert.match(result, /`create-upload-url`/);
-    assert.match(result, /Content-Type: application\/octet-stream/);
-    assert.match(result, /--data-binary @/);
+    assert.match(result, /Call `publish_open_design_artifact_to_canva` again with `entryPath: "[^"]+"`, `filePath`[^\n]*`uploadUrl`/);
+    assert.ok(!/curl/.test(result), 'no terminal step');
+    assert.match(result, /never retry the same URL/);
     assert.match(result, /Don't claim a design was created/);
   });
 

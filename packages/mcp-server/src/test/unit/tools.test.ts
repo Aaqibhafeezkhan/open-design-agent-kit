@@ -586,6 +586,13 @@ describe('publish_open_design_artifact_to_canva', () => {
       composePublishCanvaTemplateInstructions({ artifactEntryPath: entryPath, artifactContent: '<!doctype html><h1>Poster</h1>', manifestTitle: 'Poster', manifestKind: 'html', manifestFormat: 'a3' }),
     );
     assert.match(await tools.publishToCanva(ctx, { entryPath: '.open-design/nope/nope.html' }), /No artifact found/);
+
+    // Route B: the server sends the bytes, but only with both inputs and only to canva.com.
+    assert.match(await tools.publishToCanva(ctx, { entryPath, uploadUrl: 'https://www.canva.com/_blob/upload' }), /needs both uploadUrl[\s\S]*Nothing was uploaded/);
+    assert.match(
+      await tools.publishToCanva(ctx, { entryPath, filePath: '.open-design/poster/exports/poster.pdf', uploadUrl: 'https://example.com/upload' }),
+      /canva\.com URL[\s\S]*Nothing was uploaded/,
+    );
   });
 });
 
