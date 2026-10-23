@@ -26,6 +26,6 @@ If no design system is active and the request names no look, also call `recommen
 ## 3. Build it
 
 - If the surface has a `prompt` (for example `open-design-poster` or `open-design-social-post`), follow that flow from its first step with the user's request as the brief. In Copilot Chat it's the `/` command of the same name; in Claude Code and Codex it's the skill of the same name.
-- Otherwise pick the entry that best fits the request. Entries come in curated order: the recipe first, then its remixable example when there is one. To start from a rendered example (an entry with an `exampleArtifactPath`), call `remix_open_design_example`; otherwise call `prepare_open_design_brief` with its id, the brief and any recommended `designSystemId`, and follow the general Open Design flow: write the files, register the artifact, then check it with `check_open_design_artifact` before saying it's done.
+- Otherwise pick the entry that best fits the request. Entries come in curated order: the recipe first, then its remixable example when there is one. To start from a rendered example (an entry with `remixable: true`), call `remix_open_design_example`; otherwise call `prepare_open_design_brief` with its id, the brief and any recommended `designSystemId`, and follow the general Open Design flow: write the files, register the artifact, then check it with `check_open_design_artifact` before saying it's done.
 
 Never pick an entry marked `stub: true`.
