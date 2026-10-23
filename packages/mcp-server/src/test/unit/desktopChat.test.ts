@@ -140,6 +140,19 @@ describe('Claude Desktop chats over MCP', function () {
       assert.deepStrictEqual(await fs.readdir(designs), []);
     });
 
+    it('lists the bundled catalog before a folder is set, without writing', async () => {
+      const skills = await client.callTool({ name: 'list_open_design_skills', arguments: { surface: 'list' } });
+      assert.notStrictEqual(skills.isError, true, text(skills));
+      const systems = await client.callTool({ name: 'list_open_design_design_systems', arguments: { query: 'stripe' } });
+      assert.notStrictEqual(systems.isError, true, text(systems));
+      const examples = await client.callTool({ name: 'get_open_design_preview_state', arguments: { view: 'examples' } });
+      assert.notStrictEqual(examples.isError, true, text(examples));
+      const design = await client.callTool({ name: 'get_open_design_preview_state', arguments: { entryPath: '.open-design/p/p.html' } });
+      assert.strictEqual(design.isError, true);
+      assert.match(text(design), /set_open_design_workspace/);
+      assert.deepStrictEqual(await fs.readdir(designs), []);
+    });
+
     it('lets a connected folder win over the default', async () => {
       const connected = await tmp('od-connected-');
       await client.callTool({ name: 'set_open_design_workspace', arguments: { path: connected } });

@@ -61,6 +61,8 @@ interface ToolDef {
   appOnly?: boolean;
   /** Writes on the agent's behalf: refused outside a managed workspace (openspec add-folderless-chat-support). */
   managedOnly?: boolean;
+  /** Reads only the bundled catalog, so it runs before the agent names a folder. A function decides from the call's arguments. */
+  catalogOnly?: boolean | ((args: Record<string, unknown>) => boolean);
   /** A model-visible picker (openspec add-mcp-app-pickers): listed only to clients that render MCP Apps, since elsewhere a list_* tool says the same. */
   appsHostOnly?: boolean;
 }
@@ -101,6 +103,7 @@ const TOOL_DEFS: ToolDef[] = [
     },
     handler: (ctx, args) =>
       tools.listSkills(ctx, args as ListSkillsInput).then((r) => JSON.stringify(r, null, 2)),
+    catalogOnly: true,
   },
   {
     tool: {
@@ -117,6 +120,7 @@ const TOOL_DEFS: ToolDef[] = [
     },
     handler: (ctx, args) =>
       tools.listDesignSystems(ctx, args as { query?: string; category?: string }).then((r) => JSON.stringify(r, null, 2)),
+    catalogOnly: true,
   },
   {
     tool: {
@@ -445,6 +449,7 @@ const TOOL_DEFS: ToolDef[] = [
     },
     handler: (ctx, args) => tools.showExamples(ctx, args as tools.ShowExamplesInput),
     appsHostOnly: true,
+    catalogOnly: true,
   },
   {
     tool: {
@@ -463,6 +468,7 @@ const TOOL_DEFS: ToolDef[] = [
     },
     handler: (ctx, args) => tools.showDesignSystems(ctx, args as tools.ShowDesignSystemsInput),
     appsHostOnly: true,
+    catalogOnly: true,
   },
   {
     tool: {
@@ -489,6 +495,8 @@ const TOOL_DEFS: ToolDef[] = [
     },
     handler: (ctx, args) => tools.previewAppState(ctx, args as tools.PreviewStateInput),
     appOnly: true,
+    // The gallery and the design-system tiles, not a design in the workspace.
+    catalogOnly: (args) => args.view === 'examples' || args.view === 'design-systems' || typeof args.exampleId === 'string' || typeof args.designSystemId === 'string',
   },
   {
     tool: {
@@ -1408,12 +1416,14 @@ async function main(): Promise<void> {
         true,
       );
     }
-    if (needsFolderFromAgent({ root: ctx.workspaceRoot, source, desktopExtension })) {
+    const args = (request.params.arguments as Record<string, unknown>) ?? {};
+    const catalogOnly = typeof def.catalogOnly === 'function' ? def.catalogOnly(args) : def.catalogOnly === true;
+    if (!catalogOnly && needsFolderFromAgent({ root: ctx.workspaceRoot, source, desktopExtension })) {
       return textResult(workspaceGuardMessage({ root: ctx.workspaceRoot, source, toolName: name, managedToolListed: folderless(), managedRoot: getManagedRoot() }), true);
     }
     try {
       const callCtx = { ...ctx, figmaToken: getFigmaToken(), clientName: server.getClientVersion()?.name, rendersMcpApps: rendersMcpApps() };
-      const out = await def.handler(callCtx, (request.params.arguments as Record<string, unknown>) ?? {});
+      const out = await def.handler(callCtx, args);
       const structuredContent = typeof out === 'string' ? undefined : out.structuredContent;
       return { content: tools.toCallToolContent(out), ...(structuredContent ? { structuredContent } : {}) };
     } catch (err) {
