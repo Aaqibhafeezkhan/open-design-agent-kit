@@ -120,6 +120,18 @@ describe('visual check (real browser; skipped when none is installed)', function
     assert.deepStrictEqual(result.findings.filter((f) => f.check === 'horizontal-scroll'), []);
   });
 
+  it('does not flag a scrolling code block inside a rounded overflow: hidden box, a © sign, or contrast just under 4.5 as 4.5', async () => {
+    const code = '<div class="code-box" style="overflow:hidden;border-radius:8px;width:300px"><pre style="overflow-x:auto;margin:0"><span>// project root — commit it so your team gets the same server config</span></pre></div>';
+    // #777 on white is 4.48:1.
+    const root = await workspace(page(`${code}<p>© 2026 Open Design contributors</p><p>Party 🎉</p><span style="color:#777">2 viewports</span>`));
+    const result = ok(await check(root, { maxImages: 0 }));
+    assert.deepStrictEqual(result.findings.filter((f) => f.check === 'overflow'), []);
+    const emoji = result.findings.filter((f) => f.check === 'emoji');
+    assert.ok(emoji.length > 0 && emoji.every((f) => /Party/.test(f.message) && !/©/.test(f.message)), JSON.stringify(emoji));
+    const contrast = result.findings.filter((f) => f.check === 'contrast');
+    assert.ok(contrast.some((f) => /2 viewports" has a contrast ratio of 4\.4\d:1/.test(f.message)), JSON.stringify(contrast));
+  });
+
   it('caps images on a tall page and lists what was left out', async () => {
     const root = await workspace(page('<div style="height:6000px;background:linear-gradient(#fff,#ccc)"></div>'));
     const result = ok(await check(root));

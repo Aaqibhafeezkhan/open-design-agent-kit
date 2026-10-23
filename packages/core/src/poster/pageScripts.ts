@@ -38,7 +38,8 @@ export async function collectPreflight(opts: PagePreflightOptions): Promise<Page
   const cardEls = Array.prototype.slice.call(document.querySelectorAll(opts.cardSelector));
   const cards = cardEls.length > 0 ? cardEls : [document.body];
   const multi = cards.length > 1;
-  const emoji = /\p{Extended_Pictographic}/u;
+  // Only what renders as an emoji: ©, ®, ™ and arrows are Extended_Pictographic but draw as text unless followed by U+FE0F.
+  const emoji = /\p{Emoji_Presentation}|\p{Extended_Pictographic}\uFE0F/u;
 
   const describe = (el: any): string => {
     let s = String(el.tagName || '').toLowerCase();
@@ -109,25 +110,31 @@ export async function collectPreflight(opts: PagePreflightOptions): Promise<Page
 
       // overflow: clipped by an ancestor (up to and including the card), or outside the card.
       let clipped = false;
+      // What can be seen: past a scroll container, only the container's own box (its content scrolls into view).
+      let seen = r;
       for (let a = el; a; a = a.parentElement) {
         const acs = getComputedStyle(a);
         // Only hidden/clip cut text off; a scroll container (auto/scroll) lets it be scrolled into view.
         if (acs.overflowX === 'hidden' || acs.overflowX === 'clip' || acs.overflowY === 'hidden' || acs.overflowY === 'clip') {
-          if (outside(r, a.getBoundingClientRect(), 1)) {
+          if (outside(seen, a.getBoundingClientRect(), 1)) {
             clipped = true;
             add({ check: 'overflow', severity: 'error', message: name + (a === card ? ' runs past the edge of the card and is cut off.' : ' is clipped by its container ' + describe(a).split(' "')[0] + ' — the text is longer than its box.'), selector: name });
             break;
           }
         }
         if (a === card) break;
+        if (acs.overflowX === 'auto' || acs.overflowX === 'scroll' || acs.overflowY === 'auto' || acs.overflowY === 'scroll') {
+          const sr = a.getBoundingClientRect();
+          seen = { left: Math.max(seen.left, sr.left), top: Math.max(seen.top, sr.top), right: Math.min(seen.right, sr.right), bottom: Math.min(seen.bottom, sr.bottom) };
+        }
       }
-      if (!clipped && outside(r, box, 1)) add({ check: 'overflow', severity: 'error', message: name + ' extends outside the card.', selector: name });
+      if (!clipped && outside(seen, box, 1)) add({ check: 'overflow', severity: 'error', message: name + ' extends outside the card.', selector: name });
 
       // safe-area
-      if (!clipped && !outside(r, box, 1)) {
-        if (opts.bleedPx > 0 && outside(r, trim, 0.5)) {
+      if (!clipped && !outside(seen, box, 1)) {
+        if (opts.bleedPx > 0 && outside(seen, trim, 0.5)) {
           add({ check: 'safe-area', severity: 'error', message: name + ' is inside the bleed and will be cut off when the print is trimmed.', selector: name });
-        } else if (outside(r, safe, 0.5)) {
+        } else if (outside(seen, safe, 0.5)) {
           add({ check: 'safe-area', severity: 'warning', message: name + ' is outside the safe area (keep text ' + Math.round(opts.safeInsetPx) + 'px' + (opts.bleedPx > 0 ? ' inside the trim' : ' from the edge') + ').', selector: name });
         }
       }
@@ -170,8 +177,9 @@ export async function collectPreflight(opts: PagePreflightOptions): Promise<Page
           const ratio = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
           const large = px >= 24 || (px >= 18.66 && Number(cs.fontWeight) >= 700);
           const need = large ? 3 : 4.5;
+          // Rounded down, so a ratio just under the bar never reads as meeting it (4.495 showed as 4.5).
           if (ratio < need) {
-            add({ check: 'contrast', severity: 'warning', message: name + ' has a contrast ratio of ' + Math.round(ratio * 100) / 100 + ':1 against its background (needs ' + need + ':1 for ' + (large ? 'large' : 'body') + ' text).', selector: name });
+            add({ check: 'contrast', severity: 'warning', message: name + ' has a contrast ratio of ' + Math.floor(ratio * 100) / 100 + ':1 against its background (needs ' + need + ':1 for ' + (large ? 'large' : 'body') + ' text).', selector: name });
           }
         }
       }
