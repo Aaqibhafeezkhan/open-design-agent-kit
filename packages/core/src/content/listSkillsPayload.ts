@@ -12,6 +12,21 @@ export interface ListSkillsInput {
   surface?: string;
 }
 
+/** Above this many matches the free listing drops each entry's long fields, so it fits in one tool result. */
+export const LIST_SKILLS_FULL_LIMIT = 40;
+
+function compactPayload(s: SkillSummary): Record<string, unknown> {
+  return {
+    id: s.id,
+    name: s.name,
+    mode: s.mode,
+    source: s.source,
+    ...(s.category ? { category: s.category } : {}),
+    ...(s.exampleArtifactPath ? { remixable: true } : {}),
+    ...(s.stub ? { stub: true } : {}),
+  };
+}
+
 function entryPayload(s: SkillSummary): Record<string, unknown> {
   return {
     id: s.id,
@@ -47,5 +62,11 @@ export async function listSkillsPayload(index: ContentIndex, input: ListSkillsIn
     };
   }
   const skills = await index.listSkills(input.query, input.mode, input.source, input.remixableOnly);
-  return skills.map(entryPayload);
+  if (skills.length <= LIST_SKILLS_FULL_LIMIT) return skills.map(entryPayload);
+  // The whole catalog is several hundred thousand characters, more than a host passes to the model in one result.
+  return {
+    total: skills.length,
+    note: `${skills.length} matches, listed without descriptions, triggers or example prompts. Call again with a query, mode, source or surface (at most ${LIST_SKILLS_FULL_LIMIT} matches) for the full entries.`,
+    entries: skills.map(compactPayload),
+  };
 }

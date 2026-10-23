@@ -7,6 +7,7 @@ In a Claude Desktop **Chat** conversation, Open Design shows the design right in
 | Plugin install: a Cowork session on your computer, or a Chat with a [connected folder](../getting-started/claude-desktop.md#chat-with-a-folder) | The inline pages: the design with Comment, Ask Claude to apply, export buttons and Fullscreen, and the pickers below |
 | Plain Chat (no folder) with the server added to Desktop's local MCP config, as the [Open Design desktop extension](../getting-started/claude-desktop.md#install-the-desktop-extension) (`.mcpb`), or as a remote server | The inline pages, for designs saved in a [managed folder](../getting-started/claude-desktop.md#chat-without-a-folder) |
 | Plain Chat with only the plugin | Nothing from Open Design: Chat ignores a plugin's local MCP servers, so the server isn't running there |
+| A Chat where Claude runs in the cloud and reaches your computer's tools through the device link (its tool names start with `remote-devices`) | No inline pages, even though the tools are listed and return the right result: that route passes tool results through but doesn't draw MCP Apps (seen in Claude Desktop on Linux, October 2026). Claude falls back to the text result; ask it to open the [browser preview](browser-preview.md) |
 | Claude Desktop's Code tab, the Claude Code terminal, Codex | A text summary (title, path, open comments); the agent opens the [browser preview](browser-preview.md). The picker tools aren't listed there |
 
 ## Show a design

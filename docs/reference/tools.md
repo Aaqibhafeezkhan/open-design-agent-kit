@@ -102,6 +102,10 @@ Lists the skill catalog: skills (task recipes), design templates (rendering styl
 - A non-empty `exampleArtifactPath` means the entry can be remixed.
 - `stub: true` marks a catalog stub: an entry that only advertises an upstream skill and has no instructions of its own. The agent never picks one.
 
+With more than 40 matches (the whole catalog is about 500 entries), the result is `{ total, note, entries }` instead, and each entry has only `{ id, name, mode, source, category?, remixable?, stub? }`. A narrower call returns the full entries. Without this, the full catalog was several hundred thousand characters, more than Claude reads in one tool result.
+
+This tool, `list_open_design_design_systems` and the two pickers read only the bundled catalog, so in Claude Desktop they work before Claude has named a folder.
+
 #### Surfaces
 
 A surface is a kind of thing to make, such as a wireframe, a poster or a diagram. Each one maps to curated entries in the catalog, and catalog stubs never appear. The ready surfaces are:

@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { ContentIndex } from '../../content/contentIndex';
-import { listSkillsPayload } from '../../content/listSkillsPayload';
+import { LIST_SKILLS_FULL_LIMIT, listSkillsPayload } from '../../content/listSkillsPayload';
 
 const ASSETS = path.resolve(__dirname, '..', '..', '..', '..', 'content', 'assets', 'open-design');
 
@@ -49,5 +49,15 @@ describe('surfaces and stubs (shipped catalog)', () => {
     assert.match(unknown.error, /Unknown surface "nope"\. Valid surfaces: .*diagram/);
     const free = (await listSkillsPayload(index, { query: 'threejs' })) as Array<{ id: string; stub?: boolean }>;
     assert.strictEqual(free.find((e) => e.id === 'od:prototype:threejs')?.stub, true);
+  });
+
+  it('lists the whole catalog compactly, small enough for one tool result', async () => {
+    const all = (await listSkillsPayload(index, {})) as { total: number; note: string; entries: Array<Record<string, unknown>> };
+    assert.ok(all.total > LIST_SKILLS_FULL_LIMIT);
+    assert.strictEqual(all.entries.length, all.total);
+    assert.match(all.note, /query, mode, source or surface/);
+    assert.ok(all.entries.every((e) => !('examplePrompt' in e) && !('description' in e)));
+    assert.ok(all.entries.some((e) => e.remixable === true));
+    assert.ok(JSON.stringify(all, null, 2).length < 100_000);
   });
 });
