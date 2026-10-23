@@ -147,7 +147,9 @@ describe('integration registry', () => {
     assert.strictEqual(agentFromClientName('Visual Studio Code - Insiders'), 'vscode');
     assert.strictEqual(agentFromClientName('Cursor'), 'cursor');
     assert.strictEqual(agentFromClientName('some-other-client'), 'generic');
-    // Claude Desktop's name isn't captured yet: any Claude client other than Claude Code.
+    // Claude Desktop Chat with a folder, captured 2026-10-23 from the od-cowork-probe plugin.
+    assert.strictEqual(agentFromClientName('local-agent-mode-plugin:od-cowork-probe:od-probe'), 'claude-desktop');
+    assert.strictEqual(agentFromClientName('local-agent-mode-plugin:open-design:open-design'), 'claude-desktop');
     assert.strictEqual(agentFromClientName('claude-ai'), 'claude-desktop');
     assert.strictEqual(agentFromClientName('Claude Desktop'), 'claude-desktop');
     assert.strictEqual(agentFromClientName('Claude Code'), 'claude-code');

@@ -391,9 +391,10 @@ export async function registerArtifact(
   }
 }
 
-/** Claude Code and Claude Desktop ("claude-ai") identify with a name containing "claude". */
+/** Claude Code or Claude Desktop (whose Chat sends "local-agent-mode-plugin:<plugin>:<server>"), by the same rule as the integration setup text. */
 export function isClaudeClient(clientName: string | undefined): boolean {
-  return /claude/i.test(clientName ?? '');
+  const agent = agentFromClientName(clientName);
+  return agent === 'claude-code' || agent === 'claude-desktop';
 }
 
 /** One line suggesting the private artifact preview, for Claude clients on a design that has none yet (openspec add-artifact-preview). */
