@@ -74,7 +74,7 @@ const TOOL_DEFS: ToolDef[] = [
     tool: {
       name: 'list_open_design_skills',
       description:
-        "Lists available Open Design skills, design templates, and remixable examples — reusable design-task recipes, rendering styles, and (for 'example' entries) actual starting artifacts bundled with this server. Each result's id is namespaced as 'od:<mode>:<name>' (e.g. 'od:deck:guizang-ppt') — pass this full id as skillId to prepare_open_design_brief or remix_open_design_example. Each result's 'source' field is 'skill', 'design-template', or 'example'. Some results include an 'examplePrompt' — prefer it (or lightly adapt it) over inventing your own brief when it closely fits. A result with a non-empty 'exampleArtifactPath' has an actual rendered starting artifact — prefer remix_open_design_example over prepare_open_design_brief for those. Optionally filter by a free-text query, an exact mode, an exact source, and/or remixableOnly to see only entries with a rendered starting artifact. SURFACES: when the user names a kind of thing to make — a prototype or landing page, mobile app, slides, document, wireframe, animation, résumé, research synthesis, data report, poster or flier, social post, diagram — call this tool with surface set to that surface's id first (call with surface \"list\" to see the ids) and pick from its entries; if the surface names a prompt, follow that flow. STUBS: an entry with stub: true only advertises an upstream skill and has no instructions here — never pick one; choose a non-stub entry instead. PAGING: with more than 40 matches the result is { total, offset, nextOffset, modes, note, entries }, 100 compact entries (id, name, one-line summary, mode, source) per page; narrow with mode, source, query or surface for the full entries, or pass nextOffset as offset for the next page. If a query returns few or no results, call this tool again with a broader query or no arguments at all to browse the full catalog — do NOT search the filesystem, grep, or read any file (this catalog is not stored anywhere as a single readable file such as a content.json, index, or schema file; it exists only inside this server's own runtime and is reachable exclusively through this tool).",
+        "Lists available Open Design skills, design templates, and remixable examples — reusable design-task recipes, rendering styles, and (for 'example' entries) actual starting artifacts bundled with this server. Each result's id is namespaced as 'od:<mode>:<name>' (e.g. 'od:deck:guizang-ppt') — pass this full id as skillId to prepare_open_design_brief or remix_open_design_example. Each result's 'source' field is 'skill', 'design-template', or 'example'. Some results include an 'examplePrompt' — prefer it (or lightly adapt it) over inventing your own brief when it closely fits. A result with remixable: true has an actual rendered starting artifact, bundled inside this server and never a file you can find on disk — prefer remix_open_design_example (which copies it into the workspace for you) over prepare_open_design_brief for those. Optionally filter by a free-text query, an exact mode, an exact source, and/or remixableOnly to see only entries with a rendered starting artifact. SURFACES: when the user names a kind of thing to make — a prototype or landing page, mobile app, slides, document, wireframe, animation, résumé, research synthesis, data report, poster or flier, social post, diagram — call this tool with surface set to that surface's id first (call with surface \"list\" to see the ids) and pick from its entries; if the surface names a prompt, follow that flow. STUBS: an entry with stub: true only advertises an upstream skill and has no instructions here — never pick one; choose a non-stub entry instead. PAGING: with more than 40 matches the result is { total, offset, nextOffset, modes, note, entries }, 100 compact entries (id, name, one-line summary, mode, source) per page; narrow with mode, source, query or surface for the full entries, or pass nextOffset as offset for the next page. If a query returns few or no results, call this tool again with a broader query or no arguments at all to browse the full catalog — do NOT search the filesystem, grep, or read any file (this catalog is not stored anywhere as a single readable file such as a content.json, index, or schema file; it exists only inside this server's own runtime and is reachable exclusively through this tool).",
       inputSchema: {
         type: 'object',
         properties: {
@@ -96,7 +96,7 @@ const TOOL_DEFS: ToolDef[] = [
           },
           remixableOnly: {
             type: 'boolean',
-            description: 'Optional: when true, only return entries with a non-empty exampleArtifactPath (i.e. an actual rendered starting artifact to remix).',
+            description: 'Optional: when true, only return entries with remixable: true (an actual rendered starting artifact to remix).',
           },
           offset: {
             type: 'integer',
@@ -627,10 +627,10 @@ const TOOL_DEFS: ToolDef[] = [
     tool: {
       name: 'remix_open_design_example',
       description:
-        "Copies a curated Open Design example artifact (identified by its skillId, which must have a non-empty 'exampleArtifactPath') into the workspace as a starting point, registers it, and returns instructions to MODIFY the copied file rather than regenerate it from scratch.",
+        "Copies a curated Open Design example artifact (identified by its skillId, which must have remixable: true) into the workspace as a starting point, registers it, and returns instructions to MODIFY the copied file rather than regenerate it from scratch.",
       inputSchema: {
         type: 'object',
-        properties: { skillId: { type: 'string', description: "A skillId whose 'exampleArtifactPath' is non-empty." } },
+        properties: { skillId: { type: 'string', description: "A skillId with remixable: true." } },
         required: ['skillId'],
       },
     },

@@ -53,7 +53,8 @@ function entryPayload(s: SkillSummary): Record<string, unknown> {
     mode: s.mode,
     source: s.source,
     examplePrompt: s.examplePrompt,
-    exampleArtifactPath: s.exampleArtifactPath,
+    // Not the bundled file's path: agents went looking for it on disk.
+    ...(s.exampleArtifactPath ? { remixable: true } : {}),
     ...(s.stub ? { stub: true } : {}),
   };
 }

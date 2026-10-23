@@ -95,11 +95,11 @@ Lists the skill catalog: skills (task recipes), design templates (rendering styl
 | `remixableOnly` | boolean | no | Only entries with a rendered example to remix. |
 | `surface` | string | no | A [surface](#surfaces) id: returns that surface's entries instead. `"list"` returns the surfaces themselves. Ignores the other filters. |
 
-**Result:** a list of `{ id, name, description, triggers, category, mode, source, examplePrompt?, exampleArtifactPath? }`.
+**Result:** a list of `{ id, name, description, triggers, category, mode, source, examplePrompt?, remixable? }`.
 
 - `id` is namespaced `od:<mode>:<name>`, e.g. `od:deck:guizang-ppt`. When an example shares a name with a skill, the example gets a suffix: `od:deck:deck-guizang-editorial:example`.
 - `examplePrompt` is a ready-made brief. Prefer it when it fits the request.
-- A non-empty `exampleArtifactPath` means the entry can be remixed.
+- `remixable: true` means the entry has a rendered example to remix. The example is bundled inside the server, so the result names no file path: agents that saw one searched the disk for it.
 - `stub: true` marks a catalog stub: an entry that only advertises an upstream skill and has no instructions of its own. The agent never picks one.
 
 With more than 40 matches (the whole catalog is about 500 entries), the result is `{ total, offset, nextOffset?, modes, note, entries }` instead: one page of at most 100 entries, each with only `{ id, name, summary?, mode, source, category?, remixable?, stub? }`, where `summary` is the description cut to one line. `modes` counts every match by mode, so the agent knows which filter to narrow with. Pass `nextOffset` as `offset` for the next page; a narrower call returns the full entries. Without paging the full catalog was over 200,000 characters, and even without descriptions about 25,000 tokens, more than Claude reads in one tool result.
@@ -363,7 +363,7 @@ Copies a real example into the workspace (with its assets), registers it, and re
 
 | Argument | Type | Required | Meaning |
 |---|---|---|---|
-| `skillId` | string | yes | An id whose `exampleArtifactPath` is non-empty. |
+| `skillId` | string | yes | An id with `remixable: true`. |
 
 **Result:** `{ entryPath, instructions, manifest }`. Remixed artifacts are registered as kind `html` with `sourceSkillId` set, which is enough for [deck export](../guides/export-decks.md#how-decks-are-detected) to recognize remixed decks.
 

@@ -60,9 +60,11 @@ describe('mcp-server tools', () => {
     const examples = (await tools.listSkills(ctx, { source: 'example' })) as Array<{ source: string }>;
     assert.deepStrictEqual(examples.map((s) => s.source), ['example']);
 
-    const remixable = (await tools.listSkills(ctx, { remixableOnly: true })) as Array<{ exampleArtifactPath?: string }>;
+    const remixable = (await tools.listSkills(ctx, { remixableOnly: true })) as Array<Record<string, unknown>>;
     assert.strictEqual(remixable.length, 1);
-    assert.ok(remixable[0].exampleArtifactPath);
+    assert.strictEqual(remixable[0].remixable, true);
+    // A path-looking field sent agents searching the disk for the bundled file.
+    assert.ok(!JSON.stringify(remixable).includes('example.html'));
   });
 
   it('listRemixablePrompts returns exactly the remixable-example set with hyphenated names', async () => {

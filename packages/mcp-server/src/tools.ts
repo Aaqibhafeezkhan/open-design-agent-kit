@@ -743,7 +743,7 @@ export async function remixExample(ctx: ToolContext, input: { skillId: string })
     return `Unknown skillId "${input.skillId}". Call list_open_design_skills to see available ids. A few available ids: ${available.join(', ')}`;
   }
   if (!skill.exampleArtifactPath) {
-    return `"${input.skillId}" has no remixable starting artifact. Check each result's 'exampleArtifactPath' field via list_open_design_skills, or use prepare_open_design_brief to generate from scratch instead.`;
+    return `"${input.skillId}" has no remixable starting artifact. Pick an entry with remixable: true from list_open_design_skills, or use prepare_open_design_brief to generate from scratch instead.`;
   }
 
   const slug = slugify(skill.name);
