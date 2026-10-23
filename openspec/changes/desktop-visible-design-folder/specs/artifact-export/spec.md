@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Readable Export Names in the Visible Layout
-In the visible layout, exports SHALL be written in the design's own folder instead of an `exports/` subfolder, named `<design>-<size>.<ext>`, where `<size>` is the format's `fileLabel` from the format registry (for example `A4`, `instagram-post`, `story`), or `<design>.<ext>` when the export has no size. In the classic layout, export paths SHALL stay as they are.
+In the visible layout, exports SHALL be written in the design's own folder instead of an `exports/` subfolder, named `<design>-<size>.<ext>`, where `<size>` is the format's `fileLabel` from the format registry (for example `A4`, `instagram-portrait`, `story`), or `<design>.<ext>` when the export has no size. In the classic layout, export paths SHALL stay as they are.
 
 #### Scenario: Print PDF in the visible layout
 - **WHEN** the user exports `Open Design/seed-swap-flyer/seed-swap-flyer.html` as a PDF with preset `a4`
@@ -9,7 +9,7 @@ In the visible layout, exports SHALL be written in the design's own folder inste
 
 #### Scenario: One file per spreadsheet row
 - **WHEN** the user exports name badges with `data` and `nameField: "name"`, and a row's name is "Ana Lopez"
-- **THEN** that row's image SHALL be named `name-badge-Ana-Lopez.png` in the design's folder
+- **THEN** that row's image SHALL be named `name-badge-ana-lopez.png` (the row name made file-safe) in the design's folder
 
 #### Scenario: Classic layout unchanged
 - **WHEN** the same export runs in a Claude Code project

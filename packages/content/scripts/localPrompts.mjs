@@ -6,10 +6,11 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import matter from 'gray-matter';
+import { VOICE_PLACEHOLDER, loadVoice } from './voice.mjs';
 
 export const BRIEF_PLACEHOLDER = '{{brief}}';
 
-/** Every prompt under `<assetsRoot>/prompts/`, sorted by name. */
+/** Every prompt under `<assetsRoot>/prompts/`, sorted by name, with the shared voice block filled in. */
 export async function loadLocalPrompts(assetsRoot) {
   const dir = path.join(assetsRoot, 'prompts');
   let names;
@@ -18,6 +19,7 @@ export async function loadLocalPrompts(assetsRoot) {
   } catch {
     return [];
   }
+  const voice = await loadVoice(assetsRoot);
   const prompts = [];
   for (const file of names.sort()) {
     const { data, content } = matter(await fs.readFile(path.join(dir, file), 'utf8'));
@@ -25,6 +27,7 @@ export async function loadLocalPrompts(assetsRoot) {
       throw new Error(`prompts/${file} needs string "name" and "description" frontmatter.`);
     }
     if (!content.includes(BRIEF_PLACEHOLDER)) throw new Error(`prompts/${file} must contain ${BRIEF_PLACEHOLDER}.`);
+    if (!content.includes(VOICE_PLACEHOLDER)) throw new Error(`prompts/${file} must contain ${VOICE_PLACEHOLDER}.`);
     prompts.push({
       name: data.name,
       description: data.description,
@@ -34,7 +37,7 @@ export async function loadLocalPrompts(assetsRoot) {
       placeholder: typeof data.placeholder === 'string' ? data.placeholder : 'Describe what you want.',
       // Hosts that get this prompt (vscode, claude, codex, mcp); all when absent.
       hosts: Array.isArray(data.hosts) ? data.hosts.map(String) : undefined,
-      body: content.trim(),
+      body: content.split(VOICE_PLACEHOLDER).join(voice).trim(),
     });
   }
   return prompts;

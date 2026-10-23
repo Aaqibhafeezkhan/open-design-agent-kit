@@ -138,25 +138,37 @@ async function isDirectory(p: string): Promise<boolean> {
   }
 }
 
+/** The visible designs folder Claude Desktop saves into (openspec desktop-visible-design-folder). */
+const VISIBLE_DESIGNS_DIR = 'Open Design';
+
 /**
  * The workspace an artifact belongs to: an explicit --workspace, else the
  * nearest ancestor of the entry file that contains an `.open-design/`
- * directory, else the current directory.
+ * directory, else the nearest `Open Design/` folder Claude Desktop saved it
+ * in (its parent when that holds `.open-design/`), else the current directory.
  */
 export async function resolveWorkspaceRoot(entryPath: string, explicit: string | undefined, cwd: string): Promise<string> {
-  if (explicit) return path.resolve(cwd, explicit);
+  return (await resolveWorkspace(entryPath, explicit, cwd)).root;
+}
+
+/** The workspace and, for a visible `Open Design/` folder, its designs folder relative to it. */
+export async function resolveWorkspace(entryPath: string, explicit: string | undefined, cwd: string): Promise<{ root: string; visible: boolean; designsDir?: string }> {
+  if (explicit) return { root: path.resolve(cwd, explicit), visible: false };
   let dir = path.dirname(path.resolve(cwd, entryPath));
   for (;;) {
-    if (await isDirectory(path.join(dir, '.open-design'))) return dir;
+    if (await isDirectory(path.join(dir, '.open-design'))) return { root: dir, visible: false };
     const parent = path.dirname(dir);
-    if (parent === dir) return cwd;
+    if (path.basename(dir) === VISIBLE_DESIGNS_DIR) {
+      return (await isDirectory(path.join(parent, '.open-design'))) ? { root: parent, visible: true, designsDir: VISIBLE_DESIGNS_DIR } : { root: dir, visible: true, designsDir: '.' };
+    }
+    if (parent === dir) return { root: cwd, visible: false };
     dir = parent;
   }
 }
 
 export async function runExport(entryArg: string, flags: ExportCliOptions, cwd = process.cwd()): Promise<number> {
   const options = parseExportFlags(flags);
-  const workspaceRoot = await resolveWorkspaceRoot(entryArg, flags.workspace, cwd);
+  const { root: workspaceRoot, visible, designsDir } = await resolveWorkspace(entryArg, flags.workspace, cwd);
   const entryPath = path.relative(workspaceRoot, path.resolve(cwd, entryArg));
   if (options.data !== undefined) options.data = path.relative(workspaceRoot, path.resolve(cwd, options.data));
   const contentIndex = new ContentIndex(getContentAssetsRoot());
@@ -165,6 +177,8 @@ export async function runExport(entryArg: string, flags: ExportCliOptions, cwd =
     ...options,
     workspaceRoot,
     entryPath,
+    // Saved by Claude Desktop in a visible folder: images, PDFs and slides go beside the design, as there.
+    ...(visible ? { layout: 'visible' as const, outputDir: designsDir } : {}),
     lookupAspectHint: async (id) => (await contentIndex.getSkill(id))?.aspectHint,
   });
   if (!result.ok) {

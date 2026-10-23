@@ -10,6 +10,8 @@ Recurring Open Design jobs: one job file describes what to make each period, and
 
 Request: {{brief}}
 
+{{voice}}
+
 If the request names a job file (".open-design/jobs/<id>.job.md", usually "Run the Open Design job …"), go to **Run**. Otherwise go to **Set up**.
 
 If `start_open_design_job_run` isn't one of your tools (VS Code has no scheduler, so it doesn't offer it), you can still write the job file in **Set up**, but say that scheduled runs need Claude Code or Claude Desktop with the Open Design MCP server, and stop there.

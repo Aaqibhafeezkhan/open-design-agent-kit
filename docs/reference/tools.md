@@ -61,7 +61,7 @@ It also wins over [`OPEN_DESIGN_DEFAULT_WORKSPACE`](settings-and-env.md#open_des
 
 MCP only, and listed only when the server has no folder of its own: it runs in your home folder (or as the [desktop extension](../getting-started/claude-desktop.md#install-the-desktop-extension)), with no `OPEN_DESIGN_WORKSPACE_ROOT` and no MCP roots. That's a Claude Desktop chat with no connected folder, where Claude's own file tools (if it has any) write into a cloud sandbox the server can't see.
 
-It creates, or reopens, `~/Open Design/<name>/` and makes it the workspace for the rest of the session. The folder sits under [`OPEN_DESIGN_MANAGED_ROOT`](settings-and-env.md#open_design_managed_root) when that is set, else under the extension's default design folder when one is set. Using the same name in a later chat continues the same design. Claude tells you the folder's path the first time.
+It makes the managed folder, `~/Documents/Open Design/`, the workspace for the rest of the session and creates, or reopens, one subfolder per design, `<name>/`, which the first design's files go in (no `.open-design/` level). The managed folder is [`OPEN_DESIGN_MANAGED_ROOT`](settings-and-env.md#open_design_managed_root) when that is set, else the extension's default design folder when one is set, else `~/Documents/Open Design/`, or `~/Open Design/` when there is no Documents folder. Using the same name in a later chat continues the same design. A per-design folder from an earlier release (`~/Open Design/<name>/` with designs in its `.open-design/`) is reopened where it is, as its own workspace. Claude tells you the folder's path the first time.
 
 | Argument | Required | Description |
 |---|---|---|
@@ -71,7 +71,7 @@ It creates, or reopens, `~/Open Design/<name>/` and makes it the workspace for t
 
 MCP only, and only in a folder opened with `use_open_design_managed_workspace`. Everywhere else Claude writes design files with its own tools and this tool refuses. It is the one exception to "the agent writes the files": Claude still writes every byte, and the server only saves them where it can't. The file is written exactly as sent; the result gives its path, size and SHA-256.
 
-Limits: the path must be under the output directory (`.open-design/` by default), with no `..` or link leading out of it; only `.html .htm .css .js .mjs .json .svg .md .txt .csv` as text and `.png .jpg .jpeg .webp .gif .woff .woff2` as base64; at most 5 MiB per file. Manifests (`*.artifact.json`), comments (`*.comments.json`), `config.json`, anything in an `exports/` folder and check screenshots belong to other tools and are refused. It never deletes or moves anything.
+Limits: the path must be under the designs folder (the managed folder itself, or `.open-design/` in a folder from an earlier release), with no `..` or link leading out of it; only `.html .htm .css .js .mjs .json .svg .md .txt .csv` as text and `.png .jpg .jpeg .webp .gif .woff .woff2` as base64; at most 5 MiB per file. Manifests (`*.artifact.json`), comments (`*.comments.json`), `config.json`, anything in an `exports/` folder and check screenshots belong to other tools and are refused. It never deletes or moves anything.
 
 | Argument | Required | Description |
 |---|---|---|
@@ -93,7 +93,8 @@ Lists the skill catalog: skills (task recipes), design templates (rendering styl
 | `mode` | `prototype` · `deck` · `design-system` · `image` · `video` · `template` · `utility` · `audio` · `other` | no | Exact mode filter. |
 | `source` | `skill` · `design-template` · `example` · `community` | no | Exact source filter. `community` entries come from the unreviewed [awesome-open-design](https://github.com/feimacode/awesome-open-design) catalog (VS Code only). |
 | `remixableOnly` | boolean | no | Only entries with a rendered example to remix. |
-| `surface` | string | no | A [surface](#surfaces) id: returns that surface's entries instead. `"list"` returns the surfaces themselves. Ignores the other filters. |
+| `surface` | string | no | A [surface](#surfaces) id: returns that surface's entries instead. `"list"` returns the surfaces themselves, plus the goals (see below). Ignores the other filters. |
+| `goal` | string | no | A goal id from the `"list"` result, such as `get-hired`: returns the goal and the ready surfaces it leads to, the first marked `default: true`. An unknown id returns `{ error }` naming the valid goals. Ignored when `surface` is given. |
 
 **Result:** a list of `{ id, name, description, triggers, category, mode, source, examplePrompt?, remixable? }`.
 
@@ -103,6 +104,8 @@ Lists the skill catalog: skills (task recipes), design templates (rendering styl
 - `stub: true` marks a catalog stub: an entry that only advertises an upstream skill and has no instructions of its own. The agent never picks one.
 
 With more than 40 matches (the whole catalog is about 500 entries), the result is `{ total, offset, nextOffset?, modes, note, entries }` instead: one page of at most 100 entries, each with only `{ id, name, summary?, mode, source, category?, remixable?, stub? }`, where `summary` is the description cut to one line. `modes` counts every match by mode, so the agent knows which filter to narrow with. Pass `nextOffset` as `offset` for the next page; a narrower call returns the full entries. Without paging the full catalog was over 200,000 characters, and even without descriptions about 25,000 tokens, more than Claude reads in one tool result.
+
+**Goals.** `surface: "list"` also returns `goals: [{ id, label, description, surfaces }]`: what the user wants to get done, in their words ("Promote an event", "Get hired", "Show an idea"), each leading to a few surfaces. Claude leads a first design with these instead of the surface list, takes the goal that fits the request or asks "What's it for?", then calls again with `goal` and offers the `default` surface first. Goals live in `surfaces.json` beside the surfaces, and the content build fails when one names a surface that is missing or not ready.
 
 This tool, `list_open_design_design_systems` and the two pickers read only the bundled catalog, so in Claude Desktop they work before Claude has named a folder.
 

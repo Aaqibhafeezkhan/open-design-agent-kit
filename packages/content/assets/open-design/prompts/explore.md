@@ -10,6 +10,8 @@ Explore several deliberately different design directions with Open Design, compa
 
 Brief: {{brief}}
 
+{{voice}}
+
 ## 1. Plan the directions
 
 If the brief is empty, ask the user what to design before doing anything else.

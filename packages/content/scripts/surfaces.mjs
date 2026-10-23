@@ -68,5 +68,27 @@ export async function checkSurfaces(assetsRoot) {
     }
     if (s.prompt !== undefined && !prompts.has(s.prompt)) problems.push(`${s.id}: prompt "${s.prompt}" doesn't exist`);
   }
+  problems.push(...checkGoals(catalog));
+  return problems;
+}
+
+/** Problems with the catalog's goals (openspec desktop-first-run-welcome): each must lead to ready surfaces. */
+export function checkGoals(catalog) {
+  const problems = [];
+  const ready = new Set((Array.isArray(catalog.surfaces) ? catalog.surfaces : []).filter((s) => s && s.status === 'ready').map((s) => s.id));
+  const ids = new Set();
+  for (const g of Array.isArray(catalog.goals) ? catalog.goals : []) {
+    if (!g || typeof g.id !== 'string' || !g.id) {
+      problems.push('a goal has no id');
+      continue;
+    }
+    if (ids.has(g.id)) problems.push(`goal ${g.id}: id used twice`);
+    ids.add(g.id);
+    if (typeof g.label !== 'string' || typeof g.description !== 'string') problems.push(`goal ${g.id}: needs a label and a description`);
+    if (!Array.isArray(g.surfaces) || g.surfaces.length === 0) problems.push(`goal ${g.id}: needs at least one surface`);
+    for (const surface of Array.isArray(g.surfaces) ? g.surfaces : []) {
+      if (!ready.has(surface)) problems.push(`goal ${g.id}: surface "${surface}" doesn't exist or isn't ready`);
+    }
+  }
   return problems;
 }

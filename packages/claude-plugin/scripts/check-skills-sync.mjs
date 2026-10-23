@@ -13,6 +13,7 @@ import { collectCuratedEntries } from '../../content/scripts/curatedEntries.mjs'
 import { loadLocalPrompts, promptIsForHost, renderPromptBody } from '../../content/scripts/localPrompts.mjs';
 import { buildRemixableExamplesReference } from '../../content/scripts/remixableExamplesReference.mjs';
 import { checkIntegrationUsage } from '../../content/scripts/integrations.mjs';
+import { loadVoice, voiceRegionIsCurrent } from '../../content/scripts/voice.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const pluginRoot = path.resolve(__dirname, '..');
@@ -180,6 +181,18 @@ async function main() {
       else problems.push(`missing overview ${path.relative(repoRoot, file)}`);
     }
     problems.push(...checkIntegrationUsage(registry, skills, overviews));
+  }
+
+  // Every overview carries the shared voice block (openspec plain-language-replies).
+  const voice = await loadVoice(assetsRoot);
+  for (const file of [
+    path.join(committedSkillsDir, 'open-design', 'SKILL.md'),
+    path.join(repoRoot, '.agents', 'skills', 'open-design', 'SKILL.md'),
+    path.join(repoRoot, 'packages', 'cli', 'assets', 'claude-skills', 'open-design', 'SKILL.md'),
+    path.join(repoRoot, 'packages', 'cli', 'assets', 'codex-skills', 'open-design', 'SKILL.md'),
+    path.join(repoRoot, 'packages', 'vscode', 'instructions', 'open-design.instructions.md'),
+  ]) {
+    if ((await pathExists(file)) && !voiceRegionIsCurrent(await fs.readFile(file, 'utf8'), voice)) problems.push(`stale or missing voice block in ${path.relative(repoRoot, file)}`);
   }
 
   // Skills name tools by their bare names, so they work with the plugin's server

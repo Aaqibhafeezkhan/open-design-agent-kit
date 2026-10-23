@@ -13,7 +13,7 @@ import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import { ARTIFACT_MAX_BYTES, artifactPreflight } from '../export/artifactPreflight';
 import { declaredRemoteAssets, type BinaryFetch } from '../export/embedAssets';
-import { exportArtifact, formatExportResult } from '../export/exportArtifact';
+import { exportArtifact, formatExportResult, isExportOfEntry } from '../export/exportArtifact';
 import { readArtifact, writeArtifactManifest } from '../vendored/artifactCreate';
 import type { JsonRecord } from '../vendored/artifactManifest';
 import { collectSyncBundle, encodeSyncBlock, injectSyncBlock } from '../workspace/artifactSync';
@@ -281,7 +281,7 @@ async function resolveIncludedFiles(
   const names = new Set<string>();
   for (const raw of requested) {
     const rel = path.posix.normalize(raw.replace(/\\/g, '/'));
-    if (!rel.startsWith(`${exportsDir}/`) || rel.startsWith(`${exportsDir}/site/`) || rel.includes('/../')) {
+    if (!isExportOfEntry(entryPath, rel, false)) {
       return { ok: false, error: `includeFiles: ${raw} is not in this artifact's exports folder (${exportsDir}/). Export the file first, then pass its path.` };
     }
     const name = path.posix.basename(rel);

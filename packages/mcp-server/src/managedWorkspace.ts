@@ -6,7 +6,7 @@
 // unchanged, only under the output directory, only design file types, and
 // never a file another tool owns.
 import { createHash } from 'node:crypto';
-import { promises as fs } from 'node:fs';
+import { promises as fs, statSync } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { getDefaultWorkspace, settingFromEnv } from './env';
@@ -14,20 +14,32 @@ import { getDefaultWorkspace, settingFromEnv } from './env';
 /**
  * Where managed folders live: OPEN_DESIGN_MANAGED_ROOT, else the desktop
  * extension's default design folder (OPEN_DESIGN_DEFAULT_WORKSPACE), else
- * ~/Open Design.
+ * "Open Design" in the user's Documents folder (where Finder and File Explorer
+ * show it), else ~/Open Design when there is no Documents folder.
  */
-export function getManagedRoot(env: NodeJS.ProcessEnv = process.env): string {
+export function getManagedRoot(env: NodeJS.ProcessEnv = process.env, home: string = os.homedir()): string {
   const explicit = settingFromEnv(env.OPEN_DESIGN_MANAGED_ROOT);
   if (explicit && path.isAbsolute(explicit)) return path.resolve(explicit);
-  return getDefaultWorkspace(env) ?? path.join(os.homedir(), 'Open Design');
+  const configured = getDefaultWorkspace(env);
+  if (configured) return configured;
+  const documents = path.join(home, 'Documents');
+  try {
+    if (statSync(documents).isDirectory()) return path.join(documents, 'Open Design');
+  } catch {
+    // no Documents folder
+  }
+  return LEGACY_MANAGED_ROOT(home);
 }
+
+/** The managed root before openspec desktop-visible-design-folder: one workspace per design under ~/Open Design. */
+const LEGACY_MANAGED_ROOT = (home: string): string => path.join(home, 'Open Design');
 
 /** The folder name for a design name: lower-case words joined by hyphens. */
 export function managedFolderName(name: unknown): string {
   if (typeof name !== 'string' || !name.trim()) throw new Error('name is required: a short name for the design or project, e.g. "Coffee poster"');
   const slug = name
     .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
@@ -37,19 +49,65 @@ export function managedFolderName(name: unknown): string {
   return slug;
 }
 
-/** Creates the folder for `name` under the managed root, or reopens it as it is. Returns its absolute path. */
-export async function openManagedWorkspace(name: unknown, managedRoot: string = getManagedRoot()): Promise<{ root: string; created: boolean }> {
-  const root = path.join(managedRoot, managedFolderName(name));
+/** Whether `dir` holds a registered artifact (a *.artifact.json), looking a few levels down. */
+export async function holdsRegisteredArtifact(dir: string, depth = 4): Promise<boolean> {
+  let entries;
+  try {
+    entries = await fs.readdir(dir, { withFileTypes: true });
+  } catch {
+    return false;
+  }
+  for (const entry of entries) {
+    if (entry.isFile() && entry.name.endsWith('.artifact.json')) return true;
+  }
+  if (depth <= 0) return false;
+  for (const entry of entries) {
+    if (entry.isDirectory() && entry.name !== 'node_modules' && (await holdsRegisteredArtifact(path.join(dir, entry.name), depth - 1))) return true;
+  }
+  return false;
+}
+
+export interface ManagedWorkspace {
+  /** The workspace root: the managed root, or a legacy per-design folder. */
+  root: string;
+  /** The design's own folder, absolute. */
+  designFolder: string;
+  /** The design folder's name, which the first design's files should use. */
+  slug: string;
+  created: boolean;
+  /** A per-design folder from an earlier release, reopened as its own workspace in the classic layout. */
+  legacy: boolean;
+}
+
+/**
+ * Opens the design folder for `name` (openspec desktop-visible-design-folder):
+ * the managed root is the workspace and each design gets `<root>/<slug>/`.
+ * A folder made by an earlier release, whose `.open-design/` already holds
+ * designs, is reopened where it is as its own workspace, including one under
+ * the old default root ~/Open Design.
+ */
+export async function openManagedWorkspace(name: unknown, managedRoot: string = getManagedRoot(), legacyRoots: string[] = defaultLegacyRoots(managedRoot)): Promise<ManagedWorkspace> {
+  const slug = managedFolderName(name);
+  for (const base of [managedRoot, ...legacyRoots]) {
+    const candidate = path.join(base, slug);
+    if (await holdsRegisteredArtifact(path.join(candidate, '.open-design'))) return { root: candidate, designFolder: candidate, slug, created: false, legacy: true };
+  }
+  const designFolder = path.join(managedRoot, slug);
   let created = false;
   try {
-    const stat = await fs.stat(root);
-    if (!stat.isDirectory()) throw new Error(`${root} exists and is not a folder; pass another name`);
+    const stat = await fs.stat(designFolder);
+    if (!stat.isDirectory()) throw new Error(`${designFolder} exists and is not a folder; pass another name`);
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
-    await fs.mkdir(root, { recursive: true });
+    await fs.mkdir(designFolder, { recursive: true });
     created = true;
   }
-  return { root, created };
+  return { root: managedRoot, designFolder, slug, created, legacy: false };
+}
+
+function defaultLegacyRoots(managedRoot: string): string[] {
+  const legacy = LEGACY_MANAGED_ROOT(os.homedir());
+  return path.resolve(legacy) === path.resolve(managedRoot) ? [] : [legacy];
 }
 
 export const TEXT_EXTENSIONS = ['.html', '.htm', '.css', '.js', '.mjs', '.json', '.svg', '.md', '.txt', '.csv'];

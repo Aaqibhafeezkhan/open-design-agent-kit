@@ -6,6 +6,7 @@
 // to Canva, and only to a canva.com URL the agent got from Canva itself.
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import { isExportOfEntry } from '../export/exportArtifact';
 
 export interface CanvaUploadOptions {
   workspaceRoot: string;
@@ -46,7 +47,7 @@ export async function uploadToCanva(options: CanvaUploadOptions): Promise<CanvaU
   }
   const exportsDir = path.posix.join(path.posix.dirname(options.entryPath.replace(/\\/g, '/')), 'exports');
   const rel = path.posix.normalize(options.filePath.replace(/\\/g, '/'));
-  if (!rel.startsWith(`${exportsDir}/`) || rel.includes('/../')) {
+  if (!isExportOfEntry(options.entryPath, rel)) {
     return { ok: false, text: `filePath ${options.filePath} is not in this artifact's exports folder (${exportsDir}/). Export the file first with export_open_design_artifact, then pass the path it returned. Nothing was uploaded.` };
   }
   let bytes: Buffer;

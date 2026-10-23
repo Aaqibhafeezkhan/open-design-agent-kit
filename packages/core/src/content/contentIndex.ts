@@ -137,6 +137,7 @@ interface LoadedContent {
   designSystems: Map<string, DesignSystemDetail>;
   craft: CraftSection[];
   surfaces: Surface[];
+  goals: Goal[];
   descriptors: Map<string, DesignSystemDescriptor>;
 }
 
@@ -152,6 +153,16 @@ export interface Surface {
   /** Catalog directory ids; each expands to every non-stub entry with that id. */
   entries: string[];
   questions: string[];
+}
+
+/** A plain-language aim that routes to ready surfaces, in order (openspec desktop-first-run-welcome). */
+export interface Goal {
+  id: string;
+  label: string;
+  description: string;
+  icon?: string;
+  /** Surface ids, the first being the default. */
+  surfaces: string[];
 }
 
 /** Mirrors packages/content/scripts/surfaces.mjs (the build guard): keep the two in step. */
@@ -187,6 +198,24 @@ async function loadSurfaces(assetsRoot: string): Promise<Surface[]> {
       entries: normalizeStringArray(s.entries),
       questions: normalizeStringArray(s.questions),
     });
+  }
+  return out;
+}
+
+async function loadGoals(assetsRoot: string): Promise<Goal[]> {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(await fs.readFile(path.join(assetsRoot, 'surfaces.json'), 'utf8'));
+  } catch {
+    return [];
+  }
+  const list = raw && typeof raw === 'object' && Array.isArray((raw as { goals?: unknown }).goals) ? ((raw as { goals: unknown[] }).goals) : [];
+  const out: Goal[] = [];
+  for (const item of list) {
+    if (!item || typeof item !== 'object') continue;
+    const g = item as Record<string, unknown>;
+    if (typeof g.id !== 'string' || typeof g.label !== 'string' || typeof g.description !== 'string') continue;
+    out.push({ id: g.id, label: g.label, description: g.description, icon: typeof g.icon === 'string' ? g.icon : undefined, surfaces: normalizeStringArray(g.surfaces) });
   }
   return out;
 }
@@ -566,12 +595,14 @@ export class ContentIndex {
         loadDesignSystems(this.assetsRoot),
         loadCraft(this.assetsRoot),
         loadSurfaces(this.assetsRoot),
+        loadGoals(this.assetsRoot),
         loadDesignSystemDescriptors(this.assetsRoot),
-      ]).then(([skills, templates, examples, designSystems, craft, surfaces, descriptors]) => ({
+      ]).then(([skills, templates, examples, designSystems, craft, surfaces, goals, descriptors]) => ({
         skills: mergeSkillPools(skills, templates, examples),
         designSystems,
         craft,
         surfaces,
+        goals,
         descriptors,
       }));
     }
@@ -629,6 +660,18 @@ export class ContentIndex {
     const out: Array<Surface & { entryCount: number }> = [];
     for (const s of surfaces) if (s.status === 'ready') out.push({ ...s, entryCount: (await this.surfaceEntries(s.id))?.length ?? 0 });
     return out;
+  }
+
+  /** The goals, each with only its ready surfaces; goals left with none are dropped. */
+  async listGoals(): Promise<Goal[]> {
+    const { surfaces, goals } = await this.ensureLoaded();
+    const ready = new Set(surfaces.filter((s) => s.status === 'ready').map((s) => s.id));
+    return goals.map((g) => ({ ...g, surfaces: g.surfaces.filter((id) => ready.has(id)) })).filter((g) => g.surfaces.length > 0);
+  }
+
+  /** A goal by id (with only its ready surfaces), or undefined. */
+  async getGoal(id: string): Promise<Goal | undefined> {
+    return (await this.listGoals()).find((g) => g.id === id.trim());
   }
 
   /** A ready surface by id, or undefined. */

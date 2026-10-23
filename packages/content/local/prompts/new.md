@@ -9,12 +9,16 @@ Start a new design with Open Design.
 
 Request: {{brief}}
 
+{{voice}}
+
 ## 1. Pick the surface
 
-Call `list_open_design_skills` with `surface: "list"` to get the kinds of thing Open Design can make (each with an id, label and description).
+Call `list_open_design_skills` with `surface: "list"` to get the kinds of thing Open Design can make (`surfaces`, each with an id, label and description) and the `goals`, plain-language aims such as "Promote an event" or "Get hired", each with the surfaces it leads to.
 
-- If the request starts with or clearly names one of them (by id or label, e.g. "wireframe", "diagram", "a poster"), use that surface.
-- If it names none, or is empty, show the user the surfaces as a short list (label and description) and ask which one. Stop until they answer.
+- If the request starts with or clearly names a surface (by id or label, e.g. "wireframe", "diagram", "a poster"), use that surface.
+- If it says what the design is for but names no surface ("help me get a UX job"), take the goal that fits.
+- If it is empty or too vague to tell, show the user the goals (label and description) and ask one question: "What's it for?". Stop until they answer. Show the surfaces instead only if they ask what kinds of thing you can make.
+- Once you have a goal, call `list_open_design_skills` with `goal` set to its id and use the surface marked `default`, unless the request points at another of that goal's surfaces. Ask which one only when the goal leads to several and you can't tell.
 
 ## 2. Ask what's missing
 
@@ -22,7 +26,7 @@ Call `list_open_design_skills` with `surface` set to the chosen id. The result h
 
 Ask only the questions the request doesn't already answer, all at once, in one short message. If the request answers them all, don't ask anything.
 
-If no design system is active and the request names no look, also call `recommend_open_design_design_systems` with what you know (the surface, what it's for, how it should feel). If its result has `questions`, add the ones the request doesn't answer to that same message, and accept "you pick". Use its first recommendation as the `designSystemId` in step 3, and say which one you used and that the user can switch.
+If no design system is active and the request names no look, also call `recommend_open_design_design_systems` with what you know (the surface, what it's for, how it should feel). If its result has `questions`, add the ones the request doesn't answer to that same message, and accept "you pick". Use its first recommendation as the `designSystemId` in step 3, and say which style you used and that they can pick another.
 
 ## 3. Build it
 

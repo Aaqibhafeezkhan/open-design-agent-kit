@@ -10,6 +10,8 @@ Build a deck (or a one-pager) from existing documents with Open Design, storylin
 
 Request: {{brief}}
 
+{{voice}}
+
 ## 1. Find the sources
 
 Identify the workspace files the request is based on. If it names none, ask which documents to use before doing anything else. Repository files count: `CHANGELOG.md` for a release deck, `docs/adr/*.md` for an architecture review, a metrics CSV or spreadsheet for a board update. Use up to 10 files; for a folder, pick the relevant files.

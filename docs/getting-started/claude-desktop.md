@@ -6,7 +6,7 @@ Claude Desktop runs Open Design through the same plugin as [Claude Code](claude-
 |---|---|---|
 | **Code tab** | Yes | Everything Claude Code does, plus the Browser pane for looking at designs and leaving comments |
 | **Chat with a folder** | Yes | Skills and tools run on your machine and write into the folder you connected |
-| **Chat without a folder** | With the [desktop extension](#install-the-desktop-extension) | Designs are saved in a folder the server keeps for each one, `~/Open Design/<name>/`. With the plugin alone, Claude can only make a single page as a Claude artifact |
+| **Chat without a folder** | With the [desktop extension](#install-the-desktop-extension) | Designs are saved in `~/Documents/Open Design/`, one folder per design. With the plugin alone, Claude can only make a single page as a Claude artifact |
 
 The plugin brings the skills (everywhere, including Chat) and its own copy of the tools (Code tab, Chat with a folder). The extension brings the tools on Desktop's own Node, with a settings form, and also works in Chat without a folder. Use the plugin alone, or both together.
 
@@ -82,6 +82,15 @@ If you set the project up with `npx @feimacode/open-design-agent-kit init --tool
 
 Then ask Claude to "start open-design-preview in the Browser pane". If it fails to start because `npx` isn't found (common when Node comes from nvm), set `runtimeExecutable` to the full path that `which npx` prints in a terminal. Comments you leave there are saved next to the design, the same as in any other browser. The pane has no chat box of its own, so when you're done, tell Claude in the Code tab "apply my comments on the coffee poster".
 
+## Your first design
+
+If you've just installed the plugin, start a new Chat and say what you need, for example "a flyer for our seed swap". When Claude has nowhere to save your design yet, it says so in plain words and offers two ways on:
+
+1. Connect a folder: click **+** in the chat, then **Add folder**.
+2. Install the Open Design extension for Claude Desktop, which keeps a folder for you in Documents.
+
+Then it asks one question, "What's it for?", with a few goals to pick from (promote an event, run a shop, get hired, show an idea), and picks a fitting kind of design from your answer.
+
 ## Chat with a folder
 
 1. Start a new Chat and connect a folder (Claude asks for one, or use the chat's **+** menu).
@@ -89,7 +98,7 @@ Then ask Claude to "start open-design-preview in the Browser pane". If it fails 
 
    > Make an A3 poster for our coffee tasting night, warm and editorial.
 
-The plugin's MCP server runs on your machine, not in Claude's sandbox. It starts in your home folder, so the first thing Claude does is call `set_open_design_workspace` with the connected folder's path. You don't need to do anything for that. Designs are written under `.open-design/` in that folder.
+The plugin's MCP server runs on your machine, not in Claude's sandbox. It starts in your home folder, so the first thing Claude does is call `set_open_design_workspace` with the connected folder's path. You don't need to do anything for that. Designs are written in a visible `Open Design/` folder inside it, one folder per design, and Claude tells you once where that is. A folder that already holds designs under `.open-design/` (from an earlier release, or Claude Code) keeps using it.
 
 With the plugin alone, the first start downloads the server package once (about 12 MB), so it needs the network that time. npm caches it afterwards. The extension needs no download.
 
@@ -105,7 +114,7 @@ For Figma without Figma's own connector, enter a token in the [extension's setti
 
 Connecting a folder is still the best setup: your designs live in your project, and Claude edits them with its own tools. Without one, it depends on what's installed.
 
-**With the desktop extension.** Ask for a design as usual. Claude opens a folder for it, `~/Open Design/<name>/` (or under your default design folder), tells you the path, and saves each file through the extension's `write_open_design_file` tool, since its own file tools can't reach your disk from here. Everything else works as in a Chat with a folder: the inline preview with comments, checks and exports, which land in the same folder. Ask again in a later chat with the same name ("continue the coffee poster") to keep working on it. A Claude artifact of the design is published from the page itself, up to 2 MiB.
+**With the desktop extension.** Ask for a design as usual. Claude opens a folder for it, `~/Documents/Open Design/<name>/` (or under your default design folder; `~/Open Design/` when there is no Documents folder), tells you the path, and saves each file through the extension's `write_open_design_file` tool, since its own file tools can't reach your disk from here. Everything else works as in a Chat with a folder: the inline preview with comments, checks and exports. Images, PDFs and slide files are saved next to the design with plain names such as `coffee-poster-A4.pdf` or `coffee-poster-instagram-portrait.png`; other exports go in its `exports/` folder. Ask again in a later chat with the same name ("continue the coffee poster") to keep working on it. A Claude artifact of the design is published from the page itself, up to 2 MiB. Designs made by an earlier release in `~/Open Design/<name>/` are reopened where they are.
 
 **With the plugin only.** Chat ignores the plugin's server, so Claude has the skills but no Open Design tools. It tells you what's missing (connect a folder, or install the extension) and, only if you want to go ahead, makes one self-contained page and publishes it as a Claude artifact, without design systems, checks or exports.
 

@@ -10,6 +10,8 @@ Design a social media post with Open Design and export files that are ready to u
 
 Brief: {{brief}}
 
+{{voice}}
+
 ## 1. Pick the platform and format
 
 If the brief names a platform or format, use it. Otherwise ask the user to pick one of the rows below before doing anything else. Don't guess.

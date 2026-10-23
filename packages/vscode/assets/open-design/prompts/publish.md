@@ -10,6 +10,8 @@ Share an Open Design artifact with people who don't have this project open.
 
 Request: {{brief}}
 
+{{voice}}
+
 ## 1. Find the artifact
 
 If the request names a design, find its entry file (`get_open_design_artifact`, or the `.open-design/` folder). If several match or none is named, ask the user which one. It must be registered; if it isn't, register it first with `register_open_design_artifact`.

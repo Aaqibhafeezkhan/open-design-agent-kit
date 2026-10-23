@@ -45,3 +45,20 @@ test('the shipped catalog passes against the shipped assets', async () => {
   const assets = path.join(import.meta.dirname, '..', '..', 'assets', 'open-design');
   assert.deepEqual(await checkSurfaces(assets), []);
 });
+
+test('goals must lead to ready surfaces', async () => {
+  const { checkGoals } = await import('../surfaces.mjs');
+  const surfaces = [{ id: 'poster', status: 'ready' }, { id: 'diagram', status: 'planned' }];
+  assert.deepEqual(checkGoals({ surfaces, goals: [{ id: 'promote-event', label: 'Promote an event', description: 'x', surfaces: ['poster'] }] }), []);
+  const problems = checkGoals({
+    surfaces,
+    goals: [
+      { id: 'a', label: 'A', description: 'x', surfaces: ['diagram', 'nope'] },
+      { id: 'a', label: 'A', description: 'x', surfaces: [] },
+    ],
+  });
+  assert.ok(problems.some((p) => p.includes('"diagram"')));
+  assert.ok(problems.some((p) => p.includes('"nope"')));
+  assert.ok(problems.some((p) => p.includes('id used twice')));
+  assert.ok(problems.some((p) => p.includes('at least one surface')));
+});
