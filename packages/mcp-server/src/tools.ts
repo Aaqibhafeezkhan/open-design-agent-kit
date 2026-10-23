@@ -93,6 +93,7 @@ import {
   formatQrCodeResult,
   agentFromClientName,
   composePublishCanvaTemplateInstructions,
+  uploadToCanva,
   preparePullFigmaFrame,
   prepareFigmaPush,
   formatIntegrations,
@@ -907,8 +908,15 @@ export async function writeDesignFile(ctx: ToolContext, input: Record<string, un
   return `Wrote ${written.path} (${written.bytes} bytes, sha256 ${written.sha256}) at ${written.absolutePath}. The file holds exactly the content you sent.`;
 }
 
-/** publish_open_design_artifact_to_canva: instructions to get an artifact into Canva (connector-aware); writes nothing. */
-export async function publishToCanva(ctx: ToolContext, input: { entryPath: string }): Promise<string> {
+/**
+ * publish_open_design_artifact_to_canva: instructions to get an artifact into Canva (connector-aware); writes nothing.
+ * With uploadUrl and filePath (route B), it sends the export to that canva.com upload URL instead.
+ */
+export async function publishToCanva(ctx: ToolContext, input: { entryPath: string; filePath?: string; uploadUrl?: string }): Promise<string> {
+  if (input.uploadUrl !== undefined || input.filePath !== undefined) {
+    if (!input.uploadUrl || !input.filePath) return "Route B needs both uploadUrl (from Canva's create-upload-url) and filePath (the exported file). Nothing was uploaded.";
+    return (await uploadToCanva({ workspaceRoot: ctx.workspaceRoot, entryPath: input.entryPath, filePath: input.filePath, uploadUrl: input.uploadUrl })).text;
+  }
   const artifact = await readArtifact({ workspaceRoot: ctx.workspaceRoot, entryPath: input.entryPath });
   if (!artifact) return `No artifact found at ${input.entryPath}. It may not have been written yet.`;
   const manifest = artifact.manifest as Record<string, unknown> | undefined;

@@ -1,26 +1,37 @@
 import * as vscode from 'vscode';
-import { getArtifact } from '../workspace/artifactWriter';
-import { composePublishCanvaTemplateInstructions } from '@feimacode/open-design-agent-kit-core';
+import { getArtifact, getWorkspaceRoot } from '../workspace/artifactWriter';
+import { composePublishCanvaTemplateInstructions, uploadToCanva } from '@feimacode/open-design-agent-kit-core';
 
 interface PublishCanvaTemplateInput {
   entryPath: string;
+  filePath?: string;
+  uploadUrl?: string;
 }
 
-// Composes instructions only — never writes files, never talks to Canva.
-// The model exports, then imports through the user's Canva MCP connector when
-// one is connected (openspec connect-canva-publish), or hands the file over
-// for Canva's manual import.
+// Composes instructions — never writes files. The model exports, then imports
+// through the user's Canva MCP connector when one is connected (openspec
+// connect-canva-publish), or hands the file over for Canva's manual import.
+// The one exception: with filePath and uploadUrl (route B, openspec
+// canva-upload-from-server) it POSTs the export to that canva.com upload URL.
 export class PublishCanvaTemplateTool implements vscode.LanguageModelTool<PublishCanvaTemplateInput> {
   async prepareInvocation(
     options: vscode.LanguageModelToolInvocationPrepareOptions<PublishCanvaTemplateInput>,
   ): Promise<vscode.PreparedToolInvocation> {
+    if (options.input.uploadUrl) return { invocationMessage: `Uploading ${options.input.filePath ?? options.input.entryPath} to Canva` };
     return { invocationMessage: `Preparing ${options.input.entryPath} for Canva` };
   }
 
   async invoke(
     options: vscode.LanguageModelToolInvocationOptions<PublishCanvaTemplateInput>,
   ): Promise<vscode.LanguageModelToolResult> {
-    const { entryPath } = options.input;
+    const { entryPath, filePath, uploadUrl } = options.input;
+
+    if (uploadUrl !== undefined || filePath !== undefined) {
+      const text = !uploadUrl || !filePath
+        ? "Route B needs both uploadUrl (from Canva's create-upload-url) and filePath (the exported file). Nothing was uploaded."
+        : (await uploadToCanva({ workspaceRoot: getWorkspaceRoot(), entryPath, filePath, uploadUrl })).text;
+      return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(text)]);
+    }
 
     const artifact = await getArtifact(entryPath);
     if (!artifact) {

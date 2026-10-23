@@ -1142,7 +1142,7 @@ const TOOL_DEFS: ToolDef[] = [
   {
     tool: {
       name: 'publish_open_design_artifact_to_canva',
-      description: "Gets a finished Open Design artifact into Canva. Composes instructions only: it writes nothing and never talks to Canva itself. The instructions have you export the artifact (PDF, or PPTX for a deck), check whether the user's Canva MCP server is connected (via list_open_design_integrations), and then: when Canva is connected, let the user choose between an editable import (the export is hosted briefly on a public link with publish_open_design_artifact, then Canva's import-design-from-url converts it into a design, optionally published as a Brand Template after their yes) and a private upload into their Canva Uploads; when it isn't, offer setup once and otherwise give them Canva's manual Import a file steps. Use when the user wants an artifact in Canva, as a Canva design or a Canva template.",
+      description: "Gets a finished Open Design artifact into Canva. Called with entryPath alone, it composes instructions and writes nothing. The instructions have you export the artifact (PDF, or PPTX for a deck), check whether the user's Canva MCP server is connected (via list_open_design_integrations), and then: when Canva is connected, let the user choose between an editable import (the export is hosted briefly on a public link with publish_open_design_artifact, then Canva's import-design-from-url converts it into a design, optionally published as a Brand Template after their yes) and a private upload into their Canva Uploads; when it isn't, offer setup once and otherwise give them Canva's manual Import a file steps. For the private upload, call it again with filePath (the export) and uploadUrl (from Canva's create-upload-url): the server then POSTs the file's bytes to that canva.com URL from the machine the file is on, so no terminal is needed, and returns the fileId. Use when the user wants an artifact in Canva, as a Canva design or a Canva template.",
       inputSchema: {
         type: 'object',
         properties: {
@@ -1150,11 +1150,19 @@ const TOOL_DEFS: ToolDef[] = [
             type: 'string',
             description: 'The workspace-relative path of the artifact to get into Canva (as passed to register_open_design_artifact).',
           },
+          filePath: {
+            type: 'string',
+            description: "The exported file to upload (route B), workspace-relative as export_open_design_artifact returned it; must be in the artifact's exports/ folder. Pass with uploadUrl.",
+          },
+          uploadUrl: {
+            type: 'string',
+            description: "The single-use upload URL from Canva's create-upload-url (https, canva.com). With filePath, the server uploads the file there instead of returning instructions.",
+          },
         },
         required: ['entryPath'],
       },
     },
-    handler: (ctx, args) => tools.publishToCanva(ctx, args as { entryPath: string }),
+    handler: (ctx, args) => tools.publishToCanva(ctx, args as { entryPath: string; filePath?: string; uploadUrl?: string }),
   },
   {
     tool: {
