@@ -128,7 +128,7 @@ Manifest sketch:
     "figma_token": { "type": "string", "title": "Figma access token", "description": "Optional. Only needed to pull Figma frames when Figma's own connector isn't connected.", "sensitive": true, "required": false },
     "workspace": { "type": "directory", "title": "Default design folder", "description": "Optional. Used when a chat has no connected folder.", "required": false }
   },
-  "compatibility": { "platforms": ["darwin", "win32"], "runtimes": { "node": ">=18" } }
+  "compatibility": { "platforms": ["darwin", "win32", "linux"], "runtimes": { "node": ">=18" } }
 }
 ```
 
