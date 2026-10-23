@@ -3,7 +3,8 @@ import { promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { findBrowser } from '../../export/browserDiscovery';
-import { captureWithinBudget, exportArtifact, exportFilePath, mergeExportRecords } from '../../export/exportArtifact';
+import { captureWithinBudget, exportArtifact, exportFilePath, exportFilePathWithSuffix, freeExportPath, isExportOfEntry, mergeExportRecords } from '../../export/exportArtifact';
+import { FORMATS } from '../../poster/formats';
 import { parseAspectHint, resolveExportSize } from '../../export/exportSize';
 import { writeArtifactManifest } from '../../vendored/artifactCreate';
 
@@ -33,6 +34,39 @@ describe('export output helpers', () => {
   it('names outputs under exports/, numbering per-element exports', () => {
     assert.strictEqual(exportFilePath('.open-design/launch/launch.html', undefined, 'png'), '.open-design/launch/exports/launch.png');
     assert.strictEqual(exportFilePath('.open-design/xhs/xhs.html', 3, 'jpeg'), '.open-design/xhs/exports/xhs-03.jpg');
+  });
+
+  it('names visible-layout outputs beside the design (openspec desktop-visible-design-folder)', () => {
+    assert.strictEqual(exportFilePath('Open Design/flyer/flyer.html', undefined, 'pdf', 'visible'), 'Open Design/flyer/flyer.pdf');
+    assert.strictEqual(exportFilePathWithSuffix('Open Design/flyer/flyer.html', 'A4', undefined, 'pdf', 'visible'), 'Open Design/flyer/flyer-A4.pdf');
+    assert.strictEqual(exportFilePathWithSuffix('flyer/flyer.html', 'story', 2, 'png', 'visible'), 'flyer/flyer-story-02.png');
+    assert.strictEqual(exportFilePathWithSuffix('.open-design/flyer/flyer.html', 'a4', undefined, 'pdf'), '.open-design/flyer/exports/flyer-a4.pdf');
+  });
+
+  it('gives every format a unique, file-name-safe size label', () => {
+    const labels = Object.values(FORMATS).map((f) => f.fileLabel);
+    assert.strictEqual(new Set(labels).size, labels.length);
+    for (const label of labels) assert.match(label, /^[A-Za-z0-9-]+$/);
+    assert.strictEqual(FORMATS.a4.fileLabel, 'A4');
+  });
+
+  it("recognises an entry's exports in exports/ and beside it", () => {
+    assert.ok(isExportOfEntry('Open Design/flyer/flyer.html', 'Open Design/flyer/flyer-A4.pdf'));
+    assert.ok(isExportOfEntry('Open Design/flyer/flyer.html', 'Open Design/flyer/flyer.png'));
+    assert.ok(isExportOfEntry('.open-design/flyer/flyer.html', '.open-design/flyer/exports/flyer.pdf'));
+    assert.ok(!isExportOfEntry('Open Design/flyer/flyer.html', 'Open Design/flyer/logo.png'));
+    assert.ok(!isExportOfEntry('Open Design/flyer/flyer.html', 'Open Design/flyer/flyer.html'));
+    assert.ok(!isExportOfEntry('.open-design/flyer/flyer.html', '.open-design/flyer/exports/site/index.html', false));
+    assert.ok(!isExportOfEntry('.open-design/flyer/flyer.html', '.open-design/flyer/exports/../../x.pdf'));
+  });
+
+  it('never overwrites a file the manifest does not record as an export', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'od-free-'));
+    await fs.mkdir(path.join(root, 'flyer'));
+    assert.strictEqual(await freeExportPath(root, 'flyer/flyer-A4.pdf', new Set()), 'flyer/flyer-A4.pdf');
+    await fs.writeFile(path.join(root, 'flyer', 'flyer-A4.pdf'), 'mine');
+    assert.strictEqual(await freeExportPath(root, 'flyer/flyer-A4.pdf', new Set()), 'flyer/flyer-A4-2.pdf');
+    assert.strictEqual(await freeExportPath(root, 'flyer/flyer-A4.pdf', new Set(['flyer/flyer-A4.pdf'])), 'flyer/flyer-A4.pdf');
   });
 
   it('replaces export records by path and keeps other metadata', () => {

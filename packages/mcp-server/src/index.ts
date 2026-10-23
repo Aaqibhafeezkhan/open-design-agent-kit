@@ -9,6 +9,7 @@
 // approach needs slightly more boilerplate (hand-written JSON Schemas,
 // mirrored 1:1 from packages/vscode's languageModelTools contributions for
 // parity) but compiles in well under a second.
+import * as path from 'node:path';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
@@ -38,6 +39,7 @@ import {
 } from '@feimacode/open-design-agent-kit-core';
 import { getAssetsRoot, getDefaultWorkspace, getFigmaToken, getOutputDirectory, getWorkspaceRootOverride, isDesktopExtension, isPluginLaunched, workspaceRootFromArg, workspaceRootFromClientRoots } from './env';
 import { DEFERRED_TO_EXTENSION_MESSAGE, extensionLockPath, holdExtensionLock, readLiveExtensionLock, shouldDeferToExtension, watchExtensionLock } from './extensionLock';
+import { desktopLayout, type WorkspaceLayout } from './layout';
 import { getManagedRoot, openManagedWorkspace } from './managedWorkspace';
 import { createFileActiveDesignSystemStore } from './store';
 import * as tools from './tools';
@@ -92,7 +94,12 @@ const TOOL_DEFS: ToolDef[] = [
           surface: {
             type: 'string',
             description:
-              "A kind of thing to make — returns that surface's entries in curated order (the recipe first, then its remixable example; never catalog stubs), plus the surface's own prompt and clarifying questions. Pass \"list\" to get the surfaces themselves (id, label, description, entryCount). Ignores the other filters.",
+              "A kind of thing to make — returns that surface's entries in curated order (the recipe first, then its remixable example; never catalog stubs), plus the surface's own prompt and clarifying questions. Pass \"list\" to get the surfaces themselves (id, label, description, entryCount) and the goals (plain-language aims such as \"Promote an event\", each with the surfaces it leads to). Ignores the other filters.",
+          },
+          goal: {
+            type: 'string',
+            description:
+              'A goal id from the "list" result (e.g. "promote-event", "get-hired"): returns the surfaces that goal leads to, in order, the first marked default. Use it when the user said what the design is for but not what kind of thing to make.',
           },
           remixableOnly: {
             type: 'boolean',
@@ -1302,12 +1309,17 @@ const SERVER_VERSION: string = require('../package.json').version;
 
 const FOLDERLESS_TOOLS = new Set([MANAGED_WORKSPACE_TOOL, WRITE_FILE_TOOL]);
 
-function buildContext(workspaceRoot: string, managed = false): ToolContext {
-  const outputDir = getOutputDirectory();
+function buildContext(workspaceRoot: string, options: { managed?: boolean; layout?: WorkspaceLayout; managedDesignSlug?: string } = {}): ToolContext {
+  const { layout, designsDir: outputDir } = options.layout ?? { layout: 'classic' as const, designsDir: getOutputDirectory() };
   const assetsRoot = getAssetsRoot();
-  const contentIndex = new ContentIndex(assetsRoot, () => `${workspaceRoot}/${outputDir}/design-systems`);
+  const contentIndex = new ContentIndex(assetsRoot, () => path.join(workspaceRoot, outputDir, 'design-systems'));
   const store = createFileActiveDesignSystemStore(workspaceRoot);
-  return { contentIndex, store, workspaceRoot, outputDir, assetsRoot, figmaToken: getFigmaToken(), managedWorkspace: managed };
+  return { contentIndex, store, workspaceRoot, outputDir, layout, assetsRoot, figmaToken: getFigmaToken(), managedWorkspace: options.managed === true, managedDesignSlug: options.managedDesignSlug };
+}
+
+/** Where a design lives, for a reply the agent can pass on: the folder's absolute path. */
+function designsFolderText(ctx: ToolContext): string {
+  return path.resolve(ctx.workspaceRoot, ctx.outputDir);
 }
 
 function textResult(text: string, isError = false) {
@@ -1399,9 +1411,13 @@ async function main(): Promise<void> {
     if (name === SET_WORKSPACE_TOOL) {
       try {
         const root = workspaceRootFromArg(request.params.arguments?.path);
-        ctx = buildContext(root);
+        ctx = buildContext(root, { layout: await desktopLayout(root, false) });
         source = 'agent';
-        return textResult(`Open Design now works in ${root}. Designs go under ${ctx.outputDir}/ there, and the paths other tools return are relative to that folder.`);
+        const where =
+          ctx.layout === 'visible'
+            ? `Designs go in the visible folder ${designsFolderText(ctx)} (${ctx.outputDir}/<design>/ in workspace paths), one folder per design, with saved PDFs and images beside each design. Tell the user once, in one sentence, that their designs will be saved in the "${ctx.outputDir}" folder inside the folder they connected.`
+            : `Designs go under ${ctx.outputDir}/ there, as they already do in this folder.`;
+        return textResult(`Open Design now works in ${root}. ${where} The paths other tools return are relative to ${root}.`);
       } catch (err) {
         return textResult(`Tool "${SET_WORKSPACE_TOOL}" failed: ${err instanceof Error ? err.message : String(err)}`, true);
       }
@@ -1411,11 +1427,18 @@ async function main(): Promise<void> {
         return textResult(`Tool "${MANAGED_WORKSPACE_TOOL}" is only for a chat with no folder. This server already has one (${ctx.workspaceRoot}); write design files with your own file tools there, or call ${SET_WORKSPACE_TOOL} for another folder.`, true);
       }
       try {
-        const { root, created } = await openManagedWorkspace(request.params.arguments?.name);
-        ctx = buildContext(root, true);
+        const opened = await openManagedWorkspace(request.params.arguments?.name);
+        const layout = opened.legacy ? { layout: 'classic' as const, designsDir: '.open-design' } : await desktopLayout(opened.root, true);
+        ctx = buildContext(opened.root, { managed: true, layout, managedDesignSlug: opened.legacy ? undefined : opened.slug });
         source = 'managed';
+        const state = opened.created ? 'a new folder' : 'reopened, with its existing files';
+        if (opened.legacy) {
+          return textResult(
+            `Open Design now works in ${opened.root} (${state}, made by an earlier version, so it keeps its layout). Tell the user this path once so they can open it. Save every design file with ${WRITE_FILE_TOOL}, using paths under ${ctx.outputDir}/ (for example ${ctx.outputDir}/${opened.slug}/${opened.slug}.html), then register, check, show and export it as usual. Show it with show_open_design_artifact; exports land in this folder too, so give the user their absolute paths.`,
+          );
+        }
         return textResult(
-          `Open Design now works in ${root} (${created ? 'a new folder' : 'reopened, with its existing files'}). Tell the user this path so they can open it. Save every design file with ${WRITE_FILE_TOOL}, using paths under ${ctx.outputDir}/ (for example ${ctx.outputDir}/<design>/<design>.html), then register, check, show and export it as usual. Show it with show_open_design_artifact; exports land in this folder too, so give the user their absolute paths.`,
+          `This design's folder is ${opened.designFolder} (${state}). Tell the user this path once, in one sentence, so they can open it. Save every file of this design with ${WRITE_FILE_TOOL} under ${opened.slug}/ (for example ${opened.slug}/${opened.slug}.html; workspace paths are relative to ${opened.root}, where every design gets its own folder), then register, check, show and export it as usual. Show it with show_open_design_artifact. Saved PDFs and images land beside the design, named like ${opened.slug}-A4.pdf.`,
         );
       } catch (err) {
         return textResult(`Tool "${MANAGED_WORKSPACE_TOOL}" failed: ${err instanceof Error ? err.message : String(err)}`, true);

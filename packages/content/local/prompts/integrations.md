@@ -10,6 +10,8 @@ Show the user Open Design's integrations and whether each one is connected here.
 
 Request: {{brief}}
 
+{{voice}}
+
 ## 1. Get the list
 
 Call `list_open_design_integrations` with no arguments. It returns every integration grouped by purpose, each with what it does, the tool names that show it's connected on this agent, whether it can be set up here, and how to manage without it.

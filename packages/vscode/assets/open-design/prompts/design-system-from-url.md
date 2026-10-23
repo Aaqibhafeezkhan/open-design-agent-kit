@@ -10,6 +10,8 @@ Make an Open Design design system from a website: measure the rendered site, wri
 
 Request: {{brief}}
 
+{{voice}}
+
 ## 1. Ask only what's missing
 
 Three things decide the run. Take each from the request when it says so, and ask only about the ones it leaves open, in one message:

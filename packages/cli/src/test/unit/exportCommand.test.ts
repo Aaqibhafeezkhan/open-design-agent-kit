@@ -109,6 +109,16 @@ describe('export command', () => {
     assert.strictEqual(await resolveWorkspaceRoot('x.html', undefined, elsewhere), elsewhere);
   });
 
+  it('resolves a design Claude Desktop saved in a visible Open Design/ folder', async () => {
+    const managed = path.join(await fs.mkdtemp(path.join(os.tmpdir(), 'od-cli-managed-')), 'Open Design');
+    await fs.mkdir(path.join(managed, 'coffee-poster'), { recursive: true });
+    assert.strictEqual(await resolveWorkspaceRoot('coffee-poster.html', undefined, path.join(managed, 'coffee-poster')), managed);
+    const project = await fs.mkdtemp(path.join(os.tmpdir(), 'od-cli-connected-'));
+    await fs.mkdir(path.join(project, 'Open Design', 'flyer'), { recursive: true });
+    await fs.mkdir(path.join(project, '.open-design'));
+    assert.strictEqual(await resolveWorkspaceRoot('Open Design/flyer/flyer.html', undefined, project), project);
+  });
+
   it('builds the HyperFrames render invocation', () => {
     assert.deepStrictEqual(buildRenderVideoArgs('.open-design/promo', '.open-design/promo/exports/promo.mp4', undefined), [
       '--yes',

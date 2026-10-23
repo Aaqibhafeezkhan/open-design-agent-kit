@@ -51,6 +51,18 @@ describe('surfaces and stubs (shipped catalog)', () => {
     assert.strictEqual(free.find((e) => e.id === 'od:prototype:threejs')?.stub, true);
   });
 
+  it('lists goals with "list" and resolves a goal to its surfaces, the first as default', async () => {
+    const list = (await listSkillsPayload(index, { surface: 'list' })) as { goals: Array<{ id: string; surfaces: string[] }> };
+    assert.ok(list.goals.some((g) => g.id === 'promote-event' && g.surfaces[0] === 'poster'));
+    const hired = (await listSkillsPayload(index, { goal: 'get-hired' })) as { goal: { label: string }; surfaces: Array<{ id: string; default?: boolean }> };
+    assert.strictEqual(hired.goal.label, 'Get hired');
+    assert.deepStrictEqual(hired.surfaces.map((s) => s.id), ['resume', 'document', 'social']);
+    assert.strictEqual(hired.surfaces[0].default, true);
+    assert.strictEqual(hired.surfaces[1].default, undefined);
+    const unknown = (await listSkillsPayload(index, { goal: 'nope' })) as { error: string };
+    assert.match(unknown.error, /Unknown goal "nope"\. Valid goals: .*get-hired/);
+  });
+
   it('pages the whole catalog compactly, each page small enough for one tool result', async () => {
     type Page = { total: number; offset: number; nextOffset?: number; modes: Record<string, number>; note: string; entries: Array<Record<string, unknown>> };
     const first = (await listSkillsPayload(index, {})) as Page;

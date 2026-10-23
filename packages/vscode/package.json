@@ -112,7 +112,11 @@
             },
             "surface": {
               "type": "string",
-              "description": "A kind of thing to make — returns that surface's entries in curated order (the recipe first, then its remixable example; never catalog stubs), plus the surface's own prompt and clarifying questions. Pass \"list\" to get the surfaces themselves (id, label, description, entryCount). Ignores the other filters."
+              "description": "A kind of thing to make — returns that surface's entries in curated order (the recipe first, then its remixable example; never catalog stubs), plus the surface's own prompt and clarifying questions. Pass \"list\" to get the surfaces themselves (id, label, description, entryCount) and the goals (plain-language aims such as \"Promote an event\", each with the surfaces it leads to). Ignores the other filters."
+            },
+            "goal": {
+              "type": "string",
+              "description": "A goal id from the \"list\" result (e.g. \"promote-event\", \"get-hired\"): returns the surfaces that goal leads to, in order, the first marked default. Use it when the user said what the design is for but not what kind of thing to make."
             }
           }
         }

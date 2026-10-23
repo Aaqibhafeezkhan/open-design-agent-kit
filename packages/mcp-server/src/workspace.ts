@@ -43,6 +43,9 @@ export function needsFolderFromAgent(input: { root: string; source: WorkspaceSou
   return isHomeFolder(input.root, input.home ?? os.homedir());
 }
 
+/** The refusal's first sentence, written so the agent can pass it to the user as is (openspec desktop-first-run-welcome). */
+export const GUARD_USER_SENTENCE = 'I need a folder to save your designs in.';
+
 /** The refusal tools give while the agent hasn't named a folder. */
 export function workspaceGuardMessage(input: { root: string; source: WorkspaceSource; toolName: string; managedToolListed: boolean; managedRoot: string }): string {
   const connected = `If the user connected a folder to this chat, call ${SET_WORKSPACE_TOOL} with that folder's absolute path on the machine this server runs on (in Claude Desktop, the one get_device_info lists under connectedFolders), then call ${input.toolName} again.`;
@@ -50,8 +53,8 @@ export function workspaceGuardMessage(input: { root: string; source: WorkspaceSo
     ? ` If the chat has no folder, call ${MANAGED_WORKSPACE_TOOL} with a short name for the design instead: it opens a folder for it under ${input.managedRoot} and you save files there with ${WRITE_FILE_TOOL}.`
     : '';
   if (input.source === 'default') {
-    return `Open Design doesn't know which folder this chat uses yet. ${connected} If no folder is connected, pass the default design folder, ${input.root}, to ${SET_WORKSPACE_TOOL} when you can write files there with your own tools.${managed}`;
+    return `${GUARD_USER_SENTENCE} (For you: Open Design doesn't know which folder this chat uses yet.) ${connected} If no folder is connected, pass the default design folder, ${input.root}, to ${SET_WORKSPACE_TOOL} when you can write files there with your own tools.${managed}`;
   }
   const where = isHomeFolder(input.root) ? `straight in the user's home folder (${input.root})` : `in ${input.root}, the folder this host started it in`;
-  return `Open Design would be working ${where}, which usually means this host didn't say which folder to use. ${connected} If the user really wants that folder, pass its path.${managed}`;
+  return `${GUARD_USER_SENTENCE} (For you: Open Design would be working ${where}, which usually means this host didn't say which folder to use.) ${connected} If the user really wants that folder, pass its path.${managed}`;
 }

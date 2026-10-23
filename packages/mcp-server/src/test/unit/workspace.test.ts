@@ -84,6 +84,13 @@ describe('home-folder guard', () => {
     assert.match(text, /use_open_design_managed_workspace/);
     assert.match(text, /write_open_design_file/);
   });
+
+  it('starts with a sentence the agent can relay to the user as is', () => {
+    for (const source of ['default', 'cwd'] as const) {
+      const text = workspaceGuardMessage({ root: os.homedir(), source, toolName: 'prepare_open_design_brief', managedToolListed: false, managedRoot: '/home/me/Open Design' });
+      assert.ok(text.startsWith('I need a folder to save your designs in. '), text);
+    }
+  });
 });
 
 describe('folderless listing rule', () => {
@@ -155,11 +162,14 @@ describe('desktop extension lock', () => {
 });
 
 describe('managed workspace', () => {
-  it('uses OPEN_DESIGN_MANAGED_ROOT, else the default design folder, else ~/Open Design', async () => {
+  it('uses OPEN_DESIGN_MANAGED_ROOT, else the default design folder, else Documents/Open Design, else ~/Open Design', async () => {
     const dir = await tmp('od-managed-');
     assert.strictEqual(getManagedRoot({ OPEN_DESIGN_MANAGED_ROOT: dir } as NodeJS.ProcessEnv), dir);
     assert.strictEqual(getManagedRoot({ OPEN_DESIGN_DEFAULT_WORKSPACE: dir } as NodeJS.ProcessEnv), dir);
-    assert.strictEqual(getManagedRoot({} as NodeJS.ProcessEnv), path.join(os.homedir(), 'Open Design'));
+    const home = await tmp('od-home-');
+    assert.strictEqual(getManagedRoot({} as NodeJS.ProcessEnv, home), path.join(home, 'Open Design'));
+    await fs.mkdir(path.join(home, 'Documents'));
+    assert.strictEqual(getManagedRoot({} as NodeJS.ProcessEnv, home), path.join(home, 'Documents', 'Open Design'));
   });
 
   it('names folders by slug and refuses a name with nothing to slug', () => {
@@ -169,14 +179,25 @@ describe('managed workspace', () => {
     assert.throws(() => managedFolderName('!!!'), /no letters or digits/);
   });
 
-  it('creates the folder, then reopens it without removing anything', async () => {
+  it('makes the managed root the workspace with a folder per design, and reopens it without removing anything', async () => {
     const managedRoot = await tmp('od-managed-');
-    const first = await openManagedWorkspace('Coffee poster', managedRoot);
-    assert.deepStrictEqual(first, { root: path.join(managedRoot, 'coffee-poster'), created: true });
-    await fs.writeFile(path.join(first.root, 'keep.txt'), 'x');
-    const again = await openManagedWorkspace('coffee poster', managedRoot);
+    const first = await openManagedWorkspace('Coffee poster', managedRoot, []);
+    assert.deepStrictEqual(first, { root: managedRoot, designFolder: path.join(managedRoot, 'coffee-poster'), slug: 'coffee-poster', created: true, legacy: false });
+    await fs.writeFile(path.join(first.designFolder, 'keep.txt'), 'x');
+    const again = await openManagedWorkspace('coffee poster', managedRoot, []);
     assert.strictEqual(again.created, false);
-    assert.strictEqual(await fs.readFile(path.join(again.root, 'keep.txt'), 'utf8'), 'x');
+    assert.strictEqual(await fs.readFile(path.join(again.designFolder, 'keep.txt'), 'utf8'), 'x');
+  });
+
+  it('reopens a per-design folder from an earlier release where it is, under the old root too', async () => {
+    const managedRoot = await tmp('od-managed-');
+    const oldRoot = await tmp('od-old-');
+    const legacy = path.join(oldRoot, 'coffee-poster', '.open-design', 'coffee-poster');
+    await fs.mkdir(legacy, { recursive: true });
+    await fs.writeFile(path.join(legacy, 'coffee-poster.html.artifact.json'), '{}');
+    const opened = await openManagedWorkspace('Coffee poster', managedRoot, [oldRoot]);
+    assert.deepStrictEqual(opened, { root: path.join(oldRoot, 'coffee-poster'), designFolder: path.join(oldRoot, 'coffee-poster'), slug: 'coffee-poster', created: false, legacy: true });
+    await assert.rejects(fs.access(path.join(managedRoot, 'coffee-poster')));
   });
 });
 

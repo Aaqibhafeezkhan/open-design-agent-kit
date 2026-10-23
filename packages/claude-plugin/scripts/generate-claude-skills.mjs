@@ -13,12 +13,15 @@ import { fileURLToPath } from 'node:url';
 import { collectCuratedEntries } from '../../content/scripts/curatedEntries.mjs';
 import { loadLocalPrompts, promptIsForHost, renderPromptBody } from '../../content/scripts/localPrompts.mjs';
 import { buildRemixableExamplesReference } from '../../content/scripts/remixableExamplesReference.mjs';
+import { fillVoiceRegion, loadVoice } from '../../content/scripts/voice.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const pluginRoot = path.resolve(__dirname, '..');
 const assetsRoot = path.resolve(pluginRoot, '..', 'content', 'assets', 'open-design');
 const skillsDir = path.join(pluginRoot, 'skills');
 const GENERATED_MARKER = '<!-- generated:curated-entry -->';
+// The hand-authored overviews whose voice region this script fills (openspec plain-language-replies).
+const VOICE_OVERVIEWS = [path.join(skillsDir, 'open-design', 'SKILL.md'), path.resolve(pluginRoot, '..', 'vscode', 'instructions', 'open-design.instructions.md')];
 
 function skillMdContent(entry) {
   const placeholder = entry.examplePrompt
@@ -107,6 +110,9 @@ async function main() {
   const referencesDir = path.join(skillsDir, 'open-design', 'references');
   await fs.mkdir(referencesDir, { recursive: true });
   await fs.writeFile(path.join(referencesDir, 'remixable-examples.md'), await buildRemixableExamplesReference(assetsRoot));
+
+  const voice = await loadVoice(assetsRoot);
+  for (const file of VOICE_OVERVIEWS) await fs.writeFile(file, fillVoiceRegion(await fs.readFile(file, 'utf8'), voice));
 
   console.log(`Generated ${entries.length} curated and ${localPrompts.length} local-prompt Open Design skills under ${path.relative(pluginRoot, skillsDir)}/.`);
 }

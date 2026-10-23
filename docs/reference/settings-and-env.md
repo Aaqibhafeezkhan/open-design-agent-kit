@@ -64,11 +64,13 @@ MCP server. A folder to use when nothing else names one: below a folder the agen
 
 ### OPEN_DESIGN_MANAGED_ROOT
 
-MCP server. Where [`use_open_design_managed_workspace`](tools.md#use_open_design_managed_workspace) makes a folder per design, for chats with no folder. Default: `OPEN_DESIGN_DEFAULT_WORKSPACE` when set, else `~/Open Design`.
+MCP server. Where [`use_open_design_managed_workspace`](tools.md#use_open_design_managed_workspace) keeps designs for chats with no folder: this folder is the workspace and each design gets a subfolder in it. Default: `OPEN_DESIGN_DEFAULT_WORKSPACE` when set, else `~/Documents/Open Design`, or `~/Open Design` when there is no Documents folder. Per-design folders an earlier release made under `~/Open Design` are still reopened by name.
 
 ### OPEN_DESIGN_OUTPUT_DIR
 
 MCP server. Default: `.open-design`. The MCP equivalent of [`openDesign.outputDirectory`](#opendesignoutputdirectory).
+
+In Claude Desktop, when this is unset, designs go in a visible folder instead: `Open Design/` inside a connected folder, or straight into the design's folder under [`OPEN_DESIGN_MANAGED_ROOT`](#open_design_managed_root). There, PNG, JPEG, PDF and PowerPoint exports are saved next to the design with plain names (`seed-swap-flyer-A4.pdf`, `seed-swap-flyer-instagram-portrait.png`, `-2` added instead of overwriting a file you made), and other exports go in `exports/`. A folder whose `.open-design/` already holds designs keeps the classic layout. Setting this variable always uses the classic layout, with the folder named here.
 
 ### OPEN_DESIGN_FIGMA_TOKEN
 

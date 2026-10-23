@@ -10,6 +10,8 @@ Build a campaign with Open Design: one message, one visual system, every channel
 
 Brief: {{brief}}
 
+{{voice}}
+
 ## 1. Agree the copy deck
 
 Before designing anything, agree the words with the user. Draft them from the brief and show them as a short table:

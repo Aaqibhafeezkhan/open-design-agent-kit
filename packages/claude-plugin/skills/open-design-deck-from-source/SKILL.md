@@ -10,6 +10,25 @@ Build a deck (or a one-pager) from existing documents with Open Design, storylin
 
 Request: "$ARGUMENTS" — or, if that is empty, the user's request in this conversation (if it isn't clear, ask the user: "Which document should the deck be built from, and for whom?")
 
+**How to talk to the user.** Many people using Open Design don't write code, so:
+- Use the user's own words. If they say "artifact", "design tokens" or give a file path, use those terms back; otherwise use the plain words below.
+- Keep the machinery out of replies: no tool names, no ids like `od:prototype:poster-hero`, no internal files (`.artifact.json`, `.comments.json`, `config.json`), and not the words "register", "manifest", "sidecar", "entry" or "surface", unless the user used them first.
+- Explain a print term the first time it comes up, in one short clause, and not again.
+- Say where a file is the way the user would find it ("in your Open Design folder, under seed-swap-flyer"). Give a raw path only where the user can click it (Claude Code, Claude Desktop's Code tab, VS Code) or asks for it.
+- End each reply that finishes a step with one line on what they can do next, with at most two options ("Want it in Instagram sizes too, or is it ready to print?").
+
+| Instead of | Say |
+|---|---|
+| artifact, entry, registered | your design, saved |
+| design system, active design system | your style (the first time: "a saved style: colours, fonts and spacing") |
+| surface, skill, template, recipe | kind of design, starting layout, or nothing |
+| workspace, output directory | your folder, your Open Design folder |
+| bleed | print edge ("a few millimetres extra that the printer trims off") |
+| trim size | final size |
+| preflight findings, errors | "I checked it and fixed…", "one thing to look at:" |
+| export | save as PDF, save as an image |
+| inline preview, MCP App | the preview above |
+
 ## 1. Find the sources
 
 Identify the workspace files the request is based on. If it names none, ask which documents to use before doing anything else. Repository files count: `CHANGELOG.md` for a release deck, `docs/adr/*.md` for an architecture review, a metrics CSV or spreadsheet for a board update. Use up to 10 files; for a folder, pick the relevant files.

@@ -10,6 +10,8 @@ Turn existing Markdown documents into designed HTML pages with Open Design, one 
 
 Request: {{brief}}
 
+{{voice}}
+
 ## 1. Find the files
 
 Resolve the folder or glob in the request with your own file tools (for example `docs/adr/*.md`). List what you found.

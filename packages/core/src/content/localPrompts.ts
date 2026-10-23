@@ -8,6 +8,8 @@ import * as path from 'node:path';
 import matter from 'gray-matter';
 
 export const BRIEF_PLACEHOLDER = '{{brief}}';
+/** Filled with `<assetsRoot>/voice.md`, the shared voice block (openspec plain-language-replies). */
+export const VOICE_PLACEHOLDER = '{{voice}}';
 
 export interface LocalPrompt {
   name: string;
@@ -30,6 +32,12 @@ export async function loadLocalPrompts(assetsRoot: string): Promise<LocalPrompt[
   } catch {
     return [];
   }
+  let voice = '';
+  try {
+    voice = (await fs.readFile(path.join(assetsRoot, 'voice.md'), 'utf8')).trim();
+  } catch {
+    // Older asset bundles have no voice block; the placeholder is then dropped.
+  }
   const prompts: LocalPrompt[] = [];
   for (const file of names) {
     const { data, content } = matter(await fs.readFile(path.join(dir, file), 'utf8'));
@@ -41,7 +49,7 @@ export async function loadLocalPrompts(assetsRoot: string): Promise<LocalPrompt[
       modelTrigger: typeof data.model_trigger === 'string' ? data.model_trigger : undefined,
       placeholder: typeof data.placeholder === 'string' ? data.placeholder : 'Describe what you want.',
       hosts: Array.isArray(data.hosts) ? data.hosts.map(String) : undefined,
-      body: content.trim(),
+      body: content.split(VOICE_PLACEHOLDER).join(voice).trim(),
     });
   }
   return prompts;

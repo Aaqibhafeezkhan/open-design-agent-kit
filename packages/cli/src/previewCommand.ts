@@ -3,7 +3,7 @@
 // server or for people who prefer it in its own terminal.
 import * as path from 'node:path';
 import { PreviewSession, type PreviewOutcome } from '@feimacode/open-design-agent-kit-core';
-import { ExportArgsError, resolveWorkspaceRoot } from './exportCommand';
+import { ExportArgsError, resolveWorkspace } from './exportCommand';
 
 export interface PreviewCliOptions {
   /** false with --no-open: print the URL only. */
@@ -58,13 +58,13 @@ function untilSignal(): Promise<void> {
 export async function runPreview(entryArg: string | undefined, flags: PreviewCliOptions, cwd = process.cwd(), deps: PreviewDeps = {}): Promise<number> {
   const port = parsePreviewPort(flags.port);
   // Without an entry, the workspace is found from the current directory (any name inside it works).
-  const workspaceRoot = await resolveWorkspaceRoot(entryArg ?? '.open-design', flags.workspace, cwd);
+  const { root: workspaceRoot, designsDir } = await resolveWorkspace(entryArg ?? '.open-design', flags.workspace, cwd);
   const entryPath = entryArg ? path.relative(workspaceRoot, path.resolve(cwd, entryArg)).split(path.sep).join('/') : undefined;
   if (entryPath && (entryPath.startsWith('..') || path.isAbsolute(entryPath))) throw new ExportArgsError(`${entryArg} is outside the workspace ${workspaceRoot}.`);
   const out = deps.out ?? ((line: string) => console.log(line));
   const err = deps.err ?? ((line: string) => console.error(line));
 
-  const session = (deps.createSession ?? ((o) => new PreviewSession(o)))({ workspaceRoot, browserPath: flags.browser, port, rootRedirect: flags.rootRedirect, log: err });
+  const session = (deps.createSession ?? ((o) => new PreviewSession(o)))({ workspaceRoot, ...(designsDir ? { outputDir: designsDir } : {}), browserPath: flags.browser, port, rootRedirect: flags.rootRedirect, log: err });
   try {
     const outcome = await session.open(entryPath, flags.open !== false);
     // stdout: the URL alone, for scripts; details to stderr.

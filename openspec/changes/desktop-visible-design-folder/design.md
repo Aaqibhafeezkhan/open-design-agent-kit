@@ -24,7 +24,6 @@ In a managed workspace the whole tree sits inside `~/Open Design/<name>/`, so th
 
 **Non-Goals**
 - Making sidecars invisible. They stay next to the entry; hiding them means changing every reader.
-- Picking a different managed root on macOS (for example `~/Documents/Open Design`). Noted as an open question.
 
 ## Decisions
 
@@ -36,11 +35,13 @@ In a managed workspace the whole tree sits inside `~/Open Design/<name>/`, so th
 
 Alternative considered: a user setting. Rejected for now: the people who need this are the ones least likely to find a setting. The env var remains the escape hatch.
 
-**2. Split designs from state.** `designsDir` is `Open Design` (visible) or `.open-design` (classic); `stateDir` is always `.open-design`. Config, saved design systems, jobs and check history read `stateDir`; entries, sidecars and exports read `designsDir`. In the classic layout the two are equal, so every current path is unchanged. Most core functions already take an `outputDir` option for the designs side; check history and design-system storage are the ones that move to `stateDir`.
+**2. One designs folder, carried with the layout.** The context's `outputDir` is the designs folder: `Open Design` in a connected folder, `.` in the managed folder, `.open-design` in the classic layout. Entries, sidecars, exports, saved design systems, jobs and the hidden `.checks/` all follow it, as they already do, so readers need no second directory. The active design system stays in `<workspace>/.open-design/config.json`, where the store has always written it. As built, this replaced an earlier plan to split a separate state folder out: it touched every reader for little gain, since saved design systems and jobs are things the user may want to see.
 
-**3. Managed workspace becomes `~/Open Design/` with a subfolder per design.** The workspace root is the managed root and `designsDir` is `.` there, so a design lands at `~/Open Design/seed-swap-flyer/seed-swap-flyer.html` and state at `~/Open Design/.open-design/`. Alternative: keep one workspace per design and put the entry at its root. Rejected: it needs a special entry-path rule and breaks "one folder per design" as soon as a second design is made in the same chat. Existing per-design managed folders are detected by rule 1.2 and reopened in the classic layout.
+**3. Managed workspace becomes `~/Documents/Open Design/` with a subfolder per design.** (Confirmed by Iven, 23 Oct 2026, together with the Documents location.) The workspace root is the managed root and `designsDir` is `.` there, so a design lands at `~/Documents/Open Design/seed-swap-flyer/seed-swap-flyer.html` and state at `~/Documents/Open Design/.open-design/`. Alternative: keep one workspace per design and put the entry at its root. Rejected: it needs a special entry-path rule and breaks "one folder per design" as soon as a second design is made in the same chat. Existing per-design managed folders are detected by rule 1.2 and reopened in the classic layout, including ones under the old default root `~/Open Design/`.
 
-**4. Exports in the design's folder, named by size.** Each format gets a `fileLabel` (`A4`, `A3`, `letter`, `instagram-post`, `instagram-portrait`, `story`, `x-image`, `linkedin`, `youtube-thumbnail`…). Names are `<design>-<fileLabel>.<ext>`; a format with no preset is `<design>.<ext>`; data-bound exports keep the row-name suffix; multi-image exports keep the `-NN` index. Check screenshots and shape sheets stay out of the design folder (`stateDir/.checks`), except the shape sheet, which the user asked for and is named `<design>-all-sizes.png`.
+**3a. Default managed root is `~/Documents/Open Design`.** The home folder isn't in the Finder or File Explorer sidebar; Documents is, on macOS, Windows and most Linux desktops. Order: `OPEN_DESIGN_MANAGED_ROOT`, then the extension's default design folder (`OPEN_DESIGN_DEFAULT_WORKSPACE`) when it names an existing folder, then `~/Documents/Open Design` when `~/Documents` exists, else `~/Open Design`. When asked for a design name that exists only under the old `~/Open Design/` root, that folder is reopened where it is.
+
+**4. Image, PDF and PowerPoint exports in the design's folder, named by size.** Each format gets a `fileLabel` (`A4`, `A3`, `letter`, `instagram-portrait`, `story`, `x-post`, `linkedin`, `youtube-thumbnail`…). Names are `<design>-<fileLabel>.<ext>`; an export with no size is `<design>.<ext>`; data-bound exports keep the row-name suffix; multi-image exports keep the `-NN` index; the shape sheet is `<design>-all-sizes.png`. These are the files a non-technical user sends to a printer or posts. Outputs that are themselves web pages or folders (standalone HTML, which would collide with the design's own `<design>.html`, the site bundle, email and paste HTML, Figma payloads, the exploration contact sheet, the campaign sheet) and video exports stay in `exports/`, as do check screenshots in the hidden `.checks/`. The Canva upload and the publish `includeFiles` check accept an export beside the design as well as one in `exports/`.
 
 Alternative: keep an `exports/` subfolder but visible. Simpler, but the user asked for files next to the design, and an extra folder is one more thing to open.
 
@@ -53,5 +54,4 @@ Alternative: keep an `exports/` subfolder but visible. Simpler, but the user ask
 
 ## Open Questions
 
-- Should the managed root default to `~/Documents/Open Design` on macOS and Windows, where the home folder isn't in the sidebar?
-- Should `fileLabel` follow the user's language (for example `A4` stays, but `instagram-post` translated)? Proposed: no, keep ASCII for safe file names.
+- Should `fileLabel` follow the user's language (for example `A4` stays, but `instagram-portrait` translated)? Proposed: no, keep ASCII for safe file names.

@@ -64,29 +64,62 @@ describe('Claude Desktop chats over MCP', function () {
       assert.match(text(refused), /your own file tools/);
     });
 
-    it('writes, registers and hands over a page to publish in ~/Open Design/<name>/', async () => {
+    it('writes, registers and hands over a page to publish in ~/Documents/Open Design/<name>/', async () => {
+      await fs.mkdir(path.join(home, 'Documents'));
       const opened = await client.callTool({ name: 'use_open_design_managed_workspace', arguments: { name: 'Coffee poster' } });
-      const root = path.join(home, 'Open Design', 'coffee-poster');
+      const managedRoot = path.join(home, 'Documents', 'Open Design');
+      const folder = path.join(managedRoot, 'coffee-poster');
       assert.ok(!opened.isError, text(opened));
-      assert.match(text(opened), new RegExp(root.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+      assert.match(text(opened), new RegExp(folder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+
+      const brief = await client.callTool({ name: 'prepare_open_design_brief', arguments: { skillId: 'od:prototype:poster-hero', brief: 'A3 poster for a tasting night' } });
+      assert.match(text(brief), /"suggestedEntryPath": "coffee-poster\/coffee-poster\.html"/);
 
       const html = '<!doctype html><html><head><title>Coffee poster</title></head><body><h1>Coffee ☕</h1></body></html>\n';
-      const written = await client.callTool({ name: 'write_open_design_file', arguments: { path: '.open-design/coffee-poster/coffee-poster.html', content: html } });
+      const written = await client.callTool({ name: 'write_open_design_file', arguments: { path: 'coffee-poster/coffee-poster.html', content: html } });
       assert.ok(!written.isError, text(written));
-      assert.strictEqual(await fs.readFile(path.join(root, '.open-design', 'coffee-poster', 'coffee-poster.html'), 'utf8'), html);
+      assert.strictEqual(await fs.readFile(path.join(folder, 'coffee-poster.html'), 'utf8'), html);
 
-      const sidecar = await client.callTool({ name: 'write_open_design_file', arguments: { path: '.open-design/coffee-poster/coffee-poster.html.artifact.json', content: '{}' } });
+      const sidecar = await client.callTool({ name: 'write_open_design_file', arguments: { path: 'coffee-poster/coffee-poster.html.artifact.json', content: '{}' } });
       assert.strictEqual(sidecar.isError, true);
 
-      const registered = await client.callTool({ name: 'register_open_design_artifact', arguments: { entryPath: '.open-design/coffee-poster/coffee-poster.html', kind: 'html', title: 'Coffee poster' } });
+      const registered = await client.callTool({ name: 'register_open_design_artifact', arguments: { entryPath: 'coffee-poster/coffee-poster.html', kind: 'html', title: 'Coffee poster' } });
       assert.match(text(registered), /Artifact registered/);
       assert.doesNotMatch(text(registered), /Artifact preview: if you have an Artifact tool/);
+      await fs.access(path.join(folder, 'coffee-poster.html.artifact.json'));
 
-      const published = await client.callTool({ name: 'publish_open_design_artifact', arguments: { entryPath: '.open-design/coffee-poster/coffee-poster.html', provider: 'claude-artifact' } });
+      const published = await client.callTool({ name: 'publish_open_design_artifact', arguments: { entryPath: 'coffee-poster/coffee-poster.html', provider: 'claude-artifact' } });
       const [instructions, page] = texts(published);
       assert.match(instructions, /second text item/);
       assert.doesNotMatch(instructions, /Call your Artifact tool with the file's path/);
       assert.match(page, /<h1>Coffee ☕<\/h1>/);
+    });
+  });
+
+  describe('a chat with a connected folder (set_open_design_workspace)', () => {
+    let client: Client;
+    let home: string;
+    before(async () => {
+      home = await tmp('od-home-');
+      client = await connect({ cwd: home, env: { HOME: home, USERPROFILE: home, XDG_CONFIG_HOME: path.join(home, '.config') } });
+    });
+    after(() => client?.close());
+
+    it('puts designs in a visible Open Design/ folder in a new folder', async () => {
+      const folder = await tmp('od-connected-');
+      const set = await client.callTool({ name: 'set_open_design_workspace', arguments: { path: folder } });
+      assert.match(text(set), /visible folder/);
+      const brief = await client.callTool({ name: 'prepare_open_design_brief', arguments: { skillId: 'od:prototype:poster-hero', brief: 'Seed swap flyer' } });
+      assert.match(text(brief), /"suggestedEntryPath": "Open Design\/seed-swap-flyer\/seed-swap-flyer\.html"/);
+    });
+
+    it('keeps .open-design/ in a folder that already has designs there', async () => {
+      const folder = await tmp('od-connected-');
+      await fs.mkdir(path.join(folder, '.open-design', 'old'), { recursive: true });
+      await fs.writeFile(path.join(folder, '.open-design', 'old', 'old.html.artifact.json'), '{}');
+      await client.callTool({ name: 'set_open_design_workspace', arguments: { path: folder } });
+      const brief = await client.callTool({ name: 'prepare_open_design_brief', arguments: { skillId: 'od:prototype:poster-hero', brief: 'Seed swap flyer' } });
+      assert.match(text(brief), /"suggestedEntryPath": "\.open-design\/seed-swap-flyer\/seed-swap-flyer\.html"/);
     });
   });
 

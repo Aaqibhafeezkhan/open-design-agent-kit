@@ -1,5 +1,5 @@
 {
-  "$comment": "Extension-owned 'what can I make' catalog (openspec add-surface-picker). Entries are catalog directory ids; each expands to every non-stub skill, design template and example with that id. Only 'ready' surfaces are shown. check-content-sync.mjs fails on missing or stub entries and unknown prompts.",
+  "$comment": "Extension-owned 'what can I make' catalog (openspec add-surface-picker). Entries are catalog directory ids; each expands to every non-stub skill, design template and example with that id. Only 'ready' surfaces are shown. check-content-sync.mjs fails on missing or stub entries and unknown prompts. Goals (openspec desktop-first-run-welcome) route a plain-language aim to ready surfaces, in order; the same check fails on a goal naming an unknown or planned surface.",
   "surfaces": [
     {
       "id": "prototype",
@@ -283,6 +283,86 @@
       "questions": [
         "What's the setting, and what must be in it?",
         "A still, a flythrough video, or both? Does it need to match a real place or photo?"
+      ]
+    }
+  ],
+  "goals": [
+    {
+      "id": "promote-event",
+      "label": "Promote an event",
+      "description": "A flyer, posts and a campaign for a meetup, sale, gig or open day.",
+      "icon": "megaphone",
+      "surfaces": [
+        "poster",
+        "social",
+        "campaign"
+      ]
+    },
+    {
+      "id": "run-a-shop",
+      "label": "Sell or run a small shop",
+      "description": "Menus, posters, posts and a newsletter for a café, shop or market stall.",
+      "icon": "tag",
+      "surfaces": [
+        "poster",
+        "social",
+        "campaign",
+        "email"
+      ]
+    },
+    {
+      "id": "show-an-idea",
+      "label": "Show an idea",
+      "description": "A landing page, phone screens or a short pitch to show people what you're building.",
+      "icon": "lightbulb",
+      "surfaces": [
+        "prototype",
+        "mobile",
+        "slides"
+      ]
+    },
+    {
+      "id": "get-hired",
+      "label": "Get hired",
+      "description": "A résumé, a one-page portfolio and posts about your work.",
+      "icon": "briefcase",
+      "surfaces": [
+        "resume",
+        "document",
+        "social"
+      ]
+    },
+    {
+      "id": "explain-something",
+      "label": "Explain something",
+      "description": "Slides, a one-pager, a diagram or a report that makes a topic clear.",
+      "icon": "book",
+      "surfaces": [
+        "slides",
+        "document",
+        "diagram",
+        "data-report"
+      ]
+    },
+    {
+      "id": "post-regularly",
+      "label": "Post regularly",
+      "description": "Social posts and thumbnails in the same style every week.",
+      "icon": "calendar",
+      "surfaces": [
+        "social",
+        "campaign"
+      ]
+    },
+    {
+      "id": "build-a-screen",
+      "label": "Build a product screen",
+      "description": "Prototypes, wireframes and app screens for a product team.",
+      "icon": "browser",
+      "surfaces": [
+        "prototype",
+        "mobile",
+        "wireframe"
       ]
     }
   ]

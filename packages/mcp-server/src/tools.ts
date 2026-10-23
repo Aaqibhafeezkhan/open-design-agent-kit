@@ -109,7 +109,8 @@ import {
   type FinishJobRunInput,
 } from '@feimacode/open-design-agent-kit-core';
 import { figmaTokenFilePath } from './env';
-import { writeManagedFile } from './managedWorkspace';
+import type { DesignLayout } from './layout';
+import { holdsRegisteredArtifact, writeManagedFile } from './managedWorkspace';
 
 export interface ToolContext {
   contentIndex: ContentIndex;
@@ -124,6 +125,10 @@ export interface ToolContext {
   rendersMcpApps?: boolean;
   /** True in a folder opened by use_open_design_managed_workspace, for a chat with no folder of its own. */
   managedWorkspace?: boolean;
+  /** Where designs and exports go (openspec desktop-visible-design-folder); classic when absent. */
+  layout?: DesignLayout;
+  /** The design folder use_open_design_managed_workspace opened, which the first design there is suggested into. */
+  managedDesignSlug?: string;
 }
 
 function slugify(input: string): string {
@@ -135,7 +140,12 @@ function slugify(input: string): string {
   return slug || 'artifact';
 }
 
-function suggestEntryPath(ctx: ToolContext, brief: string, skillName: string): string {
+async function suggestEntryPath(ctx: ToolContext, brief: string, skillName: string): Promise<string> {
+  // The first design in a managed folder goes in the folder use_open_design_managed_workspace named for it.
+  const managed = ctx.managedDesignSlug;
+  if (managed && !(await holdsRegisteredArtifact(path.join(ctx.workspaceRoot, ctx.outputDir, managed), 1))) {
+    return path.posix.join(ctx.outputDir, managed, `${managed}.html`);
+  }
   const slugSource = brief.trim().length > 0 ? brief : skillName;
   const slug = slugify(slugSource);
   return path.posix.join(ctx.outputDir, slug, `${slug}.html`);
@@ -273,7 +283,7 @@ export async function prepareBrief(
       siblingScreens: siblings.map((s) => ({ role: s.screenRole ?? '?', title: s.title })),
     };
   } else {
-    suggestedEntryPath = suggestEntryPath(ctx, input.brief, skill.name);
+    suggestedEntryPath = await suggestEntryPath(ctx, input.brief, skill.name);
   }
 
   const sources = await resolveBriefSources({
@@ -747,7 +757,7 @@ export async function remixExample(ctx: ToolContext, input: { skillId: string })
   }
 
   const slug = slugify(skill.name);
-  const entryPath = `${ctx.outputDir}/${slug}/${slug}.html`;
+  const entryPath = path.posix.join(ctx.outputDir, slug, `${slug}.html`);
 
   const { supportingFiles } = await copyExampleArtifact({
     assetsRoot: ctx.assetsRoot,
@@ -818,6 +828,7 @@ export async function exportArtifact(
     ...input,
     workspaceRoot: ctx.workspaceRoot,
     outputDir: ctx.outputDir,
+    layout: ctx.layout,
     lookupAspectHint: async (id) => (await ctx.contentIndex.getSkill(id))?.aspectHint,
   });
   return formatExportResult(result);

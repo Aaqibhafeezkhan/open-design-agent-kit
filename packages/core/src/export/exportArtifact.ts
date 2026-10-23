@@ -110,6 +110,12 @@ export interface ExportArtifactOptions {
   campaignSheet?: boolean;
   /** The workspace's Open Design output directory, for finding the collection's other pieces. Default ".open-design". */
   outputDir?: string;
+  /**
+   * Where image, PDF and PPTX files go (openspec desktop-visible-design-folder): "classic" (default) writes
+   * <design-dir>/exports/<name>[-<shape id>].<ext>; "visible" writes them beside the design as
+   * <name>-<size label>.<ext> and never overwrites a file the manifest doesn't record as an earlier export.
+   */
+  layout?: ExportLayout;
   /** mp4/webm/gif: frames per second, 1–60 (default 30, 15 for GIF). */
   fps?: number;
   /** mp4/webm/gif: seconds, 0.5–60 (default: resolved from the page). */
@@ -267,24 +273,71 @@ function validateOptions(o: ExportArtifactOptions): string | undefined {
   return undefined;
 }
 
-/** `<artifact-dir>/exports/<entry-basename>[-NN].<ext>`, workspace-relative with forward slashes. */
 const EXTENSIONS: Record<CaptureFormat, string> = { png: 'png', jpeg: 'jpg', pdf: 'pdf', pptx: 'pptx' };
 
-export function exportFilePath(entryPath: string, index: number | undefined, format: CaptureFormat): string {
-  const posixEntry = entryPath.replace(/\\/g, '/');
+/** Where exports go: under exports/ (classic) or beside the design (visible, openspec desktop-visible-design-folder). */
+export type ExportLayout = 'classic' | 'visible';
+
+function exportDirFor(posixEntry: string, layout: ExportLayout): string {
   const dir = path.posix.dirname(posixEntry);
-  const base = path.posix.basename(posixEntry, path.posix.extname(posixEntry));
-  const suffix = index === undefined ? '' : `-${String(index).padStart(2, '0')}`;
-  return path.posix.join(dir, 'exports', `${base}${suffix}.${EXTENSIONS[format]}`);
+  return layout === 'visible' ? dir : path.posix.join(dir, 'exports');
 }
 
-/** `<artifact-dir>/exports/<entry-basename>-<suffix>[-NN].<ext>`, for data-bound exports. */
-export function exportFilePathWithSuffix(entryPath: string, suffix: string, index: number | undefined, format: CaptureFormat): string {
+/** `<artifact-dir>/exports/<entry-basename>[-NN].<ext>` (beside the entry in the visible layout), workspace-relative with forward slashes. */
+export function exportFilePath(entryPath: string, index: number | undefined, format: CaptureFormat, layout: ExportLayout = 'classic'): string {
   const posixEntry = entryPath.replace(/\\/g, '/');
-  const dir = path.posix.dirname(posixEntry);
+  const base = path.posix.basename(posixEntry, path.posix.extname(posixEntry));
+  const suffix = index === undefined ? '' : `-${String(index).padStart(2, '0')}`;
+  return path.posix.join(exportDirFor(posixEntry, layout), `${base}${suffix}.${EXTENSIONS[format]}`);
+}
+
+/** `<artifact-dir>/exports/<entry-basename>-<suffix>[-NN].<ext>` (beside the entry in the visible layout), for data-bound and shape exports. */
+export function exportFilePathWithSuffix(entryPath: string, suffix: string, index: number | undefined, format: CaptureFormat, layout: ExportLayout = 'classic'): string {
+  const posixEntry = entryPath.replace(/\\/g, '/');
   const base = path.posix.basename(posixEntry, path.posix.extname(posixEntry));
   const n = index === undefined ? '' : `-${String(index).padStart(2, '0')}`;
-  return path.posix.join(dir, 'exports', `${base}-${suffix}${n}.${EXTENSIONS[format]}`);
+  return path.posix.join(exportDirFor(posixEntry, layout), `${base}-${suffix}${n}.${EXTENSIONS[format]}`);
+}
+
+const SIDE_EXPORT_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.pdf', '.pptx']);
+
+/**
+ * Whether `relPath` is one of the entry's exports: anything in its exports/ folder (except the site bundle when
+ * `includeSite` is false), or, for the visible layout, an image, PDF or PPTX beside it named `<entry>.<ext>` or
+ * `<entry>-….<ext>`.
+ */
+export function isExportOfEntry(entryPath: string, relPath: string, includeSite = true): boolean {
+  const posixEntry = entryPath.replace(/\\/g, '/');
+  const rel = path.posix.normalize(relPath.replace(/\\/g, '/'));
+  if (rel.includes('/../') || rel.startsWith('../')) return false;
+  const dir = path.posix.dirname(posixEntry);
+  const exportsDir = path.posix.join(dir, 'exports');
+  if (rel.startsWith(`${exportsDir}/`)) return includeSite || !rel.startsWith(`${exportsDir}/site/`);
+  if (path.posix.dirname(rel) !== dir) return false;
+  const ext = path.posix.extname(rel).toLowerCase();
+  if (!SIDE_EXPORT_EXTENSIONS.has(ext)) return false;
+  const base = path.posix.basename(posixEntry, path.posix.extname(posixEntry));
+  const name = path.posix.basename(rel, path.posix.extname(rel));
+  return name === base || name.startsWith(`${base}-`);
+}
+
+/**
+ * `relOut`, or the first free `<name>-2.<ext>`, `<name>-3.<ext>`… when a file is already there that `recorded`
+ * (the manifest's earlier exports) doesn't list: in the visible layout exports share the design's folder with the
+ * user's own files, which an export must never replace.
+ */
+export async function freeExportPath(workspaceRoot: string, relOut: string, recorded: ReadonlySet<string>): Promise<string> {
+  const ext = path.posix.extname(relOut);
+  const stem = relOut.slice(0, relOut.length - ext.length);
+  for (let n = 1; ; n++) {
+    const candidate = n === 1 ? relOut : `${stem}-${n}${ext}`;
+    if (recorded.has(candidate)) return candidate;
+    try {
+      await fs.access(path.join(workspaceRoot, candidate));
+    } catch {
+      return candidate;
+    }
+  }
 }
 
 /**
@@ -561,11 +614,24 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
     let sizeDetail = fluid && first.shape ? `${size.detail}, reflowed (fluid design)` : size.detail;
     if (multiShape) sizeDetail = `presets ${options.presets!.join(', ')}, each reflowed (fluid design)`;
 
-    const writeOut = async (relOut: string, buffer: Buffer): Promise<void> => {
+    const exportLayout: ExportLayout = options.layout ?? 'classic';
+    const recordedExports = new Set(
+      (Array.isArray((manifest.metadata as JsonRecord | undefined)?.exports) ? ((manifest.metadata as JsonRecord).exports as JsonRecord[]) : [])
+        .map((r) => r?.path)
+        .filter((p): p is string => typeof p === 'string'),
+    );
+    const written = new Set<string>();
+    /** Writes the file and returns where it went (in the visible layout, possibly a free `-2` name). */
+    const writeOut = async (wanted: string, buffer: Buffer): Promise<string> => {
+      const relOut = exportLayout === 'visible' && !written.has(wanted) ? await freeExportPath(options.workspaceRoot, wanted, recordedExports) : wanted;
+      written.add(relOut);
       const absOut = path.join(options.workspaceRoot, relOut);
       await fs.mkdir(path.dirname(absOut), { recursive: true });
       await fs.writeFile(absOut, buffer);
+      return relOut;
     };
+    /** The name part for a shape: its id under exports/, its file label beside the design. */
+    const shapeName = (canvas: CanvasFormat | undefined): string | undefined => (canvas ? (exportLayout === 'visible' ? canvas.fileLabel : canvas.id) : undefined);
     const budgetWarnings = (relOut: string, requested: ExportFormat, budget: number | undefined, got: { format: ImageFormat; quality?: number; overBudget?: boolean; bytes: number }) => {
       if (got.format !== requested) {
         warnings.push(`${relOut}: the ${requested.toUpperCase()} was over ${budget} bytes, so it was re-encoded as JPEG (quality ${got.quality}).`);
@@ -638,7 +704,7 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
             }
           }
           if (options.checkOnly || !pass.exported) continue;
-          const nameParts = [row ? rowSuffixes[i] : undefined, multiShape ? p.canvas!.id : undefined].filter((x): x is string => !!x);
+          const nameParts = [row ? rowSuffixes[i] : undefined, multiShape || exportLayout === 'visible' ? shapeName(p.canvas) : undefined].filter((x): x is string => !!x);
           const suffix = nameParts.length > 0 ? nameParts.join('-') : undefined;
 
           if (passMode === 'image') {
@@ -681,8 +747,7 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
               const result = await captureWithinBudget(target.capture, imageFormat, passQuality, options.transparent ? undefined : p.maxBytes);
               // Numbered only when there's more than one image; a single card keeps the plain name.
               const index = targets.length > 1 ? target.index : undefined;
-              const relOut = suffix === undefined ? exportFilePath(relEntry, index, result.format) : exportFilePathWithSuffix(relEntry, suffix, index, result.format);
-              await writeOut(relOut, result.buffer);
+              const relOut = await writeOut(suffix === undefined ? exportFilePath(relEntry, index, result.format, exportLayout) : exportFilePathWithSuffix(relEntry, suffix, index, result.format, exportLayout), result.buffer);
               if (options.transparent) {
                 if (p.maxBytes !== undefined && result.buffer.length > p.maxBytes) warnings.push(`${relOut}: ${result.buffer.length} bytes is over maxBytes (${p.maxBytes}); transparent PNGs aren't re-encoded.`);
                 if (isFullyOpaquePng(result.buffer)) {
@@ -709,19 +774,20 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
 
         if (passMode !== 'image' && pass.exported && !options.checkOnly) {
           const finish = (pdf: Buffer): Promise<Buffer> => (geometry ? finishPrintPdf(pdf, geometry, { cropMarks: options.cropMarks, title }) : Promise.resolve(pdf));
-          const shapePart = multiShape ? p.canvas!.id : undefined;
+          const shapePart = multiShape || exportLayout === 'visible' ? shapeName(p.canvas) : undefined;
           const outputs: Array<{ relOut: string; pdf: Buffer }> = [];
           if (table && options.split) {
             for (const [i, pdf] of pdfs.entries()) {
-              outputs.push({ relOut: exportFilePathWithSuffix(relEntry, [rowSuffixes[i], shapePart].filter(Boolean).join('-'), undefined, 'pdf'), pdf: await finish(pdf) });
+              outputs.push({ relOut: exportFilePathWithSuffix(relEntry, [rowSuffixes[i], shapePart].filter(Boolean).join('-'), undefined, 'pdf', exportLayout), pdf: await finish(pdf) });
             }
           } else {
             const merged = await finish(pdfs.length === 1 ? pdfs[0] : await mergePdfs(pdfs, title));
-            outputs.push({ relOut: shapePart ? exportFilePathWithSuffix(relEntry, shapePart, undefined, 'pdf') : exportFilePath(relEntry, undefined, 'pdf'), pdf: merged });
+            outputs.push({ relOut: shapePart ? exportFilePathWithSuffix(relEntry, shapePart, undefined, 'pdf', exportLayout) : exportFilePath(relEntry, undefined, 'pdf', exportLayout), pdf: merged });
           }
           const s = sizeFor(p);
-          for (const { relOut, pdf } of outputs) {
-            await writeOut(relOut, pdf);
+          for (const output of outputs) {
+            const { pdf } = output;
+            const relOut = await writeOut(output.relOut, pdf);
             files.push({ path: relOut, width: s.viewport.width, height: s.viewport.height, bytes: pdf.length, format: 'pdf' });
             if (p.maxBytes !== undefined && pdf.length > p.maxBytes) warnings.push(`${relOut}: ${pdf.length} bytes is over maxBytes (${p.maxBytes}); PDFs aren't re-encoded.`);
           }
@@ -737,8 +803,7 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
       }
 
       if (options.shapeSheet && thumbnails.length > 0) {
-        shapeSheetPath = exportFilePathWithSuffix(relEntry, 'shapes', undefined, 'png');
-        await writeOut(shapeSheetPath, await composeShapeSheet(instance, thumbnails, title));
+        shapeSheetPath = await writeOut(exportFilePathWithSuffix(relEntry, exportLayout === 'visible' ? 'all-sizes' : 'shapes', undefined, 'png', exportLayout), await composeShapeSheet(instance, thumbnails, title));
       }
       if (options.campaignSheet && thumbnails.length > 0) {
         // Every shape of the master, then the first screen of each other piece in its collection (landing page,
@@ -792,8 +857,7 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
             ? await assemblePptx(captured.slides, { title, aspect: captured.stage.w / captured.stage.h })
             : await assemblePdf(captured.slides, { title });
         const docFormat: ExportFormat = mode === 'deck-pptx' ? 'pptx' : 'pdf';
-        const relOut = exportFilePath(relEntry, undefined, docFormat);
-        await writeOut(relOut, assembled);
+        const relOut = await writeOut(exportFilePath(relEntry, undefined, docFormat, exportLayout), assembled);
         files.push({ path: relOut, width: pxW, height: pxH, bytes: assembled.length, format: docFormat });
         if (maxBytes !== undefined && assembled.length > maxBytes) {
           warnings.push(`${relOut}: ${assembled.length} bytes is over maxBytes (${maxBytes}); ${docFormat.toUpperCase()} isn't re-encoded — try scale: 1.`);
@@ -803,8 +867,7 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
         for (const slide of captured.slides) {
           const got = { format: (slide.jpeg ? 'jpeg' : 'png') as ImageFormat, quality: slide.quality, overBudget: slide.overBudget, bytes: slide.buffer.length };
           // Always numbered by the slide's own number, even for a single slide.
-          const relOut = exportFilePath(relEntry, slide.number, got.format);
-          await writeOut(relOut, slide.buffer);
+          const relOut = await writeOut(exportFilePath(relEntry, slide.number, got.format, exportLayout), slide.buffer);
           budgetWarnings(relOut, format, maxBytes, got);
           files.push({ path: relOut, width: pxW, height: pxH, bytes: got.bytes, format: got.format, quality: got.quality });
         }

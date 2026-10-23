@@ -10,6 +10,8 @@ Design a poster with Open Design, check it, and export files that are ready to p
 
 Brief: {{brief}}
 
+{{voice}}
+
 ## 1. Pick the medium and a default shape
 
 Decide whether this is for **print** or **screens**. If the brief doesn't say, ask the user before doing anything else. Don't guess between print and screen: the units, bleed and type sizes are different.

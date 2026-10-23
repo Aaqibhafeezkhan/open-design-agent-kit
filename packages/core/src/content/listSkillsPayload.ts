@@ -1,6 +1,6 @@
 // list_open_design_skills' result, shared by every host (openspec
 // add-surface-picker): the free catalog listing, a surface's entries, or the
-// surface catalog itself.
+// surface catalog itself, or the surfaces a goal leads to.
 import type { ContentIndex, SkillSummary } from './contentIndex';
 
 export interface ListSkillsInput {
@@ -8,8 +8,10 @@ export interface ListSkillsInput {
   mode?: string;
   source?: string;
   remixableOnly?: boolean;
-  /** A surface id for its entries, or "list" for the surfaces themselves. */
+  /** A surface id for its entries, or "list" for the surfaces (and goals) themselves. */
   surface?: string;
+  /** A goal id for the surfaces it leads to (openspec desktop-first-run-welcome). */
+  goal?: string;
   /** Where a compact listing's page starts (its nextOffset). */
   offset?: number;
 }
@@ -60,11 +62,28 @@ function entryPayload(s: SkillSummary): Record<string, unknown> {
 }
 
 export async function listSkillsPayload(index: ContentIndex, input: ListSkillsInput): Promise<unknown> {
+  const goal = input.goal?.trim();
+  if (goal && !input.surface?.trim()) {
+    const found = await index.getGoal(goal);
+    if (!found) {
+      const valid = (await index.listGoals()).map((g) => g.id);
+      return { error: `Unknown goal "${goal}". Valid goals: ${valid.join(', ')}.` };
+    }
+    const surfaces = new Map((await index.listSurfaces()).map((s) => [s.id, s]));
+    return {
+      goal: { id: found.id, label: found.label, description: found.description },
+      surfaces: found.surfaces.map((id, i) => {
+        const s = surfaces.get(id)!;
+        return { id: s.id, label: s.label, description: s.description, entryCount: s.entryCount, prompt: s.prompt, ...(i === 0 ? { default: true } : {}) };
+      }),
+    };
+  }
   const surface = input.surface?.trim();
   if (surface) {
     if (surface === 'list') {
       return {
         surfaces: (await index.listSurfaces()).map((s) => ({ id: s.id, label: s.label, description: s.description, entryCount: s.entryCount, prompt: s.prompt })),
+        goals: (await index.listGoals()).map((g) => ({ id: g.id, label: g.label, description: g.description, surfaces: g.surfaces })),
       };
     }
     const found = await index.getSurface(surface);
