@@ -5,15 +5,17 @@
 //
 // Naming rules behind the hints (verified 2026-10-07):
 //   Claude Code  mcp__claude_ai_<Connector>__<tool> (claude.ai connector) or mcp__<name>__<tool>
-//   Claude Desktop: unverified; assumed to follow Claude Code, plus mcp__<Connector>__<tool>.
+//   Claude Desktop mcp__<Connector>__<tool> (claude.ai connector, seen 2026-10-23 as mcp__Canva__*);
+//                mcp__claude_ai_<Connector>__<tool> kept in case another route uses Claude Code's form.
 //   Codex        mcp__<name>__<tool>
 //   VS Code      mcp_<server name, lowercased, max 13 chars>_<tool>
 //   Cursor and other clients: unverified, so only "a tool named <tool>".
 // Client names (MCP initialize, captured 2026-10-10): "claude-code",
 // "codex-mcp-client", VS Code's product name ("Visual Studio Code"), Cursor
-// assumed to contain "cursor". Claude Desktop's name isn't captured yet (an
-// unverified note says "claude-ai"), so any other name containing "claude"
-// maps to claude-desktop, matching isClaudeClient in the MCP server.
+// assumed to contain "cursor". Claude Desktop's Chat with a folder (captured
+// 2026-10-23, Desktop on Linux) sends "local-agent-mode-<source>:<plugin>:<server>",
+// e.g. "local-agent-mode-plugin:od-cowork-probe:od-probe", with no "claude" in
+// it. Any other name containing "claude" also maps to claude-desktop.
 import type { IntegrationEntry } from './registry';
 
 export const INTEGRATION_AGENTS = ['claude-code', 'claude-desktop', 'codex', 'vscode', 'cursor', 'generic'] as const;
@@ -27,7 +29,7 @@ export function isIntegrationAgent(v: unknown): v is IntegrationAgent {
 export function agentFromClientName(name: string | undefined): IntegrationAgent {
   const n = (name ?? '').toLowerCase();
   if (n.includes('claude-code') || n === 'claude code') return 'claude-code';
-  if (n.includes('claude')) return 'claude-desktop';
+  if (n.startsWith('local-agent-mode') || n.includes('claude')) return 'claude-desktop';
   if (n.includes('codex')) return 'codex';
   if (n.includes('cursor')) return 'cursor';
   if (n.includes('visual studio code') || n.includes('vscode')) return 'vscode';

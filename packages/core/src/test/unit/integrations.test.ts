@@ -7,6 +7,7 @@ import {
   INTEGRATION_AGENTS,
   INTEGRATION_CONSENT_RULES,
   installableOn,
+  integrationStatus,
   parseIntegrationRegistry,
   renderInstall,
   resolveIntegrations,
@@ -82,6 +83,12 @@ describe('integration registry', () => {
     assert.ok(installableOn(entry('canva'), 'claude-desktop'));
   });
 
+  it('sees Canva as connected from the tool names Desktop lists', () => {
+    const input = { toolNames: ['mcp__Canva__create-design'], configuredServers: [], agent: 'claude-desktop' as const };
+    assert.strictEqual(integrationStatus(entry('canva'), input), 'connected');
+    assert.strictEqual(integrationStatus(entry('figma'), input), 'not-installed');
+  });
+
   it('Buffer on Claude Desktop is manual only, with no snippet and no key', () => {
     const t = renderInstall(entry('buffer'), 'claude-desktop');
     assert.strictEqual(t.manualOnly, true);
@@ -147,7 +154,9 @@ describe('integration registry', () => {
     assert.strictEqual(agentFromClientName('Visual Studio Code - Insiders'), 'vscode');
     assert.strictEqual(agentFromClientName('Cursor'), 'cursor');
     assert.strictEqual(agentFromClientName('some-other-client'), 'generic');
-    // Claude Desktop's name isn't captured yet: any Claude client other than Claude Code.
+    // Claude Desktop Chat with a folder, captured 2026-10-23 from the od-cowork-probe plugin.
+    assert.strictEqual(agentFromClientName('local-agent-mode-plugin:od-cowork-probe:od-probe'), 'claude-desktop');
+    assert.strictEqual(agentFromClientName('local-agent-mode-plugin:open-design:open-design'), 'claude-desktop');
     assert.strictEqual(agentFromClientName('claude-ai'), 'claude-desktop');
     assert.strictEqual(agentFromClientName('Claude Desktop'), 'claude-desktop');
     assert.strictEqual(agentFromClientName('Claude Code'), 'claude-code');

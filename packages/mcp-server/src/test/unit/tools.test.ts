@@ -547,6 +547,11 @@ describe('list_open_design_integrations (shipped registry)', () => {
     assert.match(codex, /codex mcp add canva --url https:\/\/mcp\.canva\.com\/mcp/);
     const claude = await tools.listIntegrations(ctxFor('claude-code'), { integration: 'canva' });
     assert.match(claude, /claude\.ai\/customize\/connectors/);
+    const desktop = await tools.listIntegrations(ctxFor('local-agent-mode-plugin:open-design:open-design'), { integration: 'canva' });
+    assert.match(desktop, /Install steps are for: \*\*claude-desktop\*\*/);
+    assert.match(desktop, /Settings > Connectors/);
+    assert.ok(tools.isClaudeClient('local-agent-mode-plugin:open-design:open-design'));
+    assert.ok(!tools.isClaudeClient('codex-mcp-client'));
   });
 
   it('falls back to generic for an unknown client, and an explicit agent wins', async () => {

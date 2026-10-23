@@ -48,7 +48,7 @@ With no filters, the tool SHALL return a compact catalog of entries. With filter
 - the install template for the agent;
 - the consent rules.
 
-The VS Code host SHALL treat the agent as `vscode`. The MCP server SHALL infer the agent from the client name sent during the MCP handshake, falling back to `generic`. A name that identifies Claude Code SHALL map to `claude-code`; any other name containing `claude`, case-insensitive (Claude Desktop sends one such as `claude-ai`), SHALL map to `claude-desktop`. An explicit `agent` input SHALL override the inferred value.
+The VS Code host SHALL treat the agent as `vscode`. The MCP server SHALL infer the agent from the client name sent during the MCP handshake, falling back to `generic`. A name that identifies Claude Code SHALL map to `claude-code`; a name starting with `local-agent-mode` (Claude Desktop Chat sends `local-agent-mode-plugin:<plugin>:<server>`) or any other name containing `claude`, case-insensitive, SHALL map to `claude-desktop`. An explicit `agent` input SHALL override the inferred value.
 
 The tool SHALL NOT write files, run commands or contact any third-party service.
 
@@ -65,7 +65,7 @@ The tool SHALL NOT write files, run commands or contact any third-party service.
 - **THEN** the tool SHALL return the generic template
 
 #### Scenario: Claude Desktop client
-- **WHEN** the MCP client identified itself as `claude-ai` and the tool is called with `integration: "figma"` and no `agent`
+- **WHEN** the MCP client identified itself as `local-agent-mode-plugin:open-design:open-design` and the tool is called with `integration: "figma"` and no `agent`
 - **THEN** the returned install template SHALL be the `claude-desktop` template
 
 #### Scenario: Claude Code still recognised first
