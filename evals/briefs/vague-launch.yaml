@@ -1,0 +1,14 @@
+id: vague-launch
+request: "We're launching next month, can you do the design?"
+vague: true
+expect:
+  surface: any
+  questions: { min: 1, max: 3 }
+designSystem: null
+answers:
+  what: "A landing page for Fernway, a trip-planning app for families"
+  style: "you pick"
+  cta: "Join the waitlist"
+must:
+  - "Asked what is launching and what to make"
+  - "Stated its assumptions once before or after building"

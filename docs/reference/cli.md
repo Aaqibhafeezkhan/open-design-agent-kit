@@ -130,6 +130,7 @@ npx @feimacode/open-design-agent-kit check <entryPath> [options]
 | `--max-images <n>` | With `--screenshots`: how many, 0–6. Default 3. |
 | `--views <list\|none>` | 3D scenes exposing their `odScene` handles: the review views on the sheet, comma-separated from `overview,closeup,low,wireframe` (default all), or `none`. The sheet is written as `3d-views-<views>.jpg`. See [the check tool](tools.md#check_open_design_artifact). |
 | `--fail-on <error\|warning>` | Exit `1` when a finding at or above this severity exists, to gate CI. |
+| `--json` | Print the result as one JSON object instead of text: `findings`, `mode`, `savedRun`, `warnings`, and `images` as label, size and written file. On failure, `{ "ok": false, "code", "error" }` on stdout. Used by the [evals](../../evals/README.md) scorer. |
 | `--browser <path>` | Browser executable. Default: [`OPEN_DESIGN_BROWSER_PATH`](settings-and-env.md#open_design_browser_path), then auto-detect. |
 | `--workspace <dir>` | Workspace root. Default: the nearest folder above the entry file that contains `.open-design/`, else the current directory. |
 

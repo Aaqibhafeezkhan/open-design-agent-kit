@@ -84,6 +84,16 @@ describe('check command', () => {
     assert.deepStrictEqual((await fs.readdir(path.join(cwd, 'shots'))).sort(), ['desktop.jpg', 'mobile-2-3.jpg']);
   });
 
+  it('prints one JSON object with --json, images as labels and written files', async () => {
+    const printed: string[] = [];
+    console.log = (line: string) => printed.push(line);
+    assert.strictEqual(await runCheck('page.html', { json: true, screenshots: 'shots' }, cwd, fakeCheck([ERROR])), 0);
+    assert.strictEqual(printed.length, 1);
+    const out = JSON.parse(printed[0]);
+    assert.deepStrictEqual(out.findings, [ERROR]);
+    assert.deepStrictEqual(out.images[0], { label: 'desktop', width: 1440, height: 900, file: path.join(cwd, 'shots', 'desktop.jpg') });
+  });
+
   it('names screenshot files from their labels', () => {
     assert.strictEqual(screenshotFileName('slides 1–12'), 'slides-1-12.jpg');
     assert.strictEqual(screenshotFileName('Instagram portrait'), 'instagram-portrait.jpg');
