@@ -532,6 +532,36 @@ Composes instructions to rebuild a finished artifact as real, idiomatic code in 
 
 **Result:** `{ instructions, suggestedTargetComponentPath }`. Routing and navigation wiring are left to you. See [Promote to app code](../guides/promote-to-app-code.md).
 
+### prepare_open_design_component_library
+
+Composes staged instructions to turn one or more reviewed artifacts into a reusable component set in the workspace's React app, on **Material UI themed to Material 3** (`mui`) or **shadcn/ui** (`shadcn`). **It writes no app code.** The only file it changes is the artifacts' manifests, on the `record` call. See [Build a component set](../guides/component-library.md).
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `entryPaths` | string[] (1–10) | one of these two | Registered artifacts to build the set from. |
+| `collectionId` | string | one of these two | Instead of `entryPaths`: every screen of this [collection](../guides/generate-a-design.md#collections). |
+| `library` | `auto` · `mui` · `shadcn` | no | Default `auto`: `mui` when the app depends on `@mui/material`, `shadcn` when it has a `components.json` (or Radix and Tailwind). When it can't tell, the result is `needs-choice` and the agent asks once. A library the app doesn't have yet gets an install step the agent asks about first. |
+| `outputDir` | string | no | Workspace-relative folder for the components, inside the app. Default: `<app>/src/components/<DesignName>` (`components/` when the app has no `src/`), or the folder an earlier record names. The app is the nearest `package.json` from this folder up. |
+| `record` | object | no | Stage 5 only: `{ library, outputDir, themePath, components: [{ name, path, sourceSelectors? }] }`. Writes it as [`metadata.componentLibrary`](artifact-manifest.md#metadatacomponentlibrary) on each artifact and returns a confirmation instead of instructions. At most 60 components and 4 KB. |
+
+**Result:** the instructions, in five stages:
+
+1. **Inventory.** Up to 40 candidates from a scan of the designs: element groups with the same tag and classes seen two or more times, plus every button, input, `nav`, `header`, `footer` and top-level `section`; what several designs share comes first. The agent writes `components.md` beside the first artifact (name, source selectors, variants, props, states) and **stops for the user's approval**.
+2. **Theme.** Generated from the artifact's design system (or its own `:root` tokens) by a fixed mapping: a `createTheme` options object for MUI, the `:root` variables (hex and HSL forms) for shadcn. Tokens without a slot are listed with where they could go.
+3. **Components** that wrap the library's own ones, take content through props and read every colour, size and radius from the theme.
+4. **Gallery:** Storybook stories when the app has Storybook, otherwise one unrouted `ComponentGallery` component.
+5. **Check and record:** the app's type check or build, then the `record` call.
+
+When an artifact already records a set for the same library, the instructions switch to **update mode**: they name the existing files, and list recorded components no longer found in the design for the user instead of deleting them.
+
+**Errors**, each prefixed `Component set not prepared (<code>)`: `invalid-args`, `not-registered` (an entry path without a manifest), `unsupported-library` (anything but `auto`, `mui`, `shadcn`), `no-app` (no `package.json`), `unsupported-framework` (the app doesn't depend on `react`; it names what it found), `needs-choice`, `invalid-record`.
+
+**Example (MCP arguments):**
+
+```json
+{ "entryPaths": [".open-design/pricing/pricing.html"], "library": "mui" }
+```
+
 ### share_open_design_artifact_to_community
 
 VS Code only. Composes instructions to package a finished artifact as a new entry in the community catalog and open a pull request under your own GitHub identity. **It writes nothing and runs nothing itself.** The instructions require the agent to check with you before anything public happens.

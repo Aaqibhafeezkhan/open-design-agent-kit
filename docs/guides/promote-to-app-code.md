@@ -2,6 +2,8 @@
 
 When a prototype is right, turn it into real code in your app: idiomatic components that follow your codebase's own conventions, not a paste of the prototype's HTML.
 
+This guide ports one page into one component. For a reusable set of components and a theme on MUI (Material 3) or shadcn/ui, see [Build a component set](component-library.md).
+
 ## Before you start
 
 - A registered artifact you're happy with.
@@ -18,7 +20,7 @@ When a prototype is right, turn it into real code in your app: idiomatic compone
    - `targetComponentPath`: where the new code goes. A path is suggested if you don't give one.
 3. The agent writes the new component with its own tools. It rebuilds the design in your app's styling system rather than copying the prototype's CSS.
 
-> **In VS Code:** the **Promote to code** button in the [preview](preview-comments-edit.md) toolbar prefills this request.
+> **In VS Code:** the **Promote to code** button in the [preview](preview-comments-edit.md) toolbar asks **One component** or **A component set** and prefills the matching request.
 
 ## What you get
 
@@ -29,4 +31,4 @@ A new component file in your app. What it deliberately doesn't do:
 
 ## Related
 
-[Generate a design](generate-a-design.md#grounded-in-your-app) · [Preview, comment and edit](preview-comments-edit.md)
+[Build a component set](component-library.md) · [Generate a design](generate-a-design.md#grounded-in-your-app) · [Preview, comment and edit](preview-comments-edit.md)

@@ -27,6 +27,7 @@ import {
   composeDesignSystemTokensInstructions,
   composeInstructions,
   composePortToAppInstructions,
+  prepareComponentLibrary as prepareComponentLibraryCore,
   copyExampleArtifact,
   detectExistingApp,
   addDiagramRuntime as addDiagramRuntimeCore,
@@ -738,6 +739,24 @@ export async function portToAppCode(
     referenceComponentPath: input.referenceComponentPath,
   });
   return JSON.stringify({ instructions, suggestedTargetComponentPath: targetComponentPath }, null, 2);
+}
+
+/** prepare_open_design_component_library: staged instructions for a component set; writes only the manifest record. */
+export async function prepareComponentLibrary(
+  ctx: ToolContext,
+  input: { entryPaths?: string[]; collectionId?: string; library?: string; outputDir?: string; record?: unknown },
+): Promise<string> {
+  const result = await prepareComponentLibraryCore({
+    workspaceRoot: ctx.workspaceRoot,
+    outputDir: ctx.outputDir,
+    entryPaths: input.entryPaths,
+    collectionId: input.collectionId,
+    library: input.library,
+    componentsDir: input.outputDir,
+    record: input.record,
+    getDesignSystem: (id) => ctx.contentIndex.getDesignSystem(id),
+  });
+  return result.ok ? result.text : `Component set not prepared (${result.code}): ${result.text}`;
 }
 
 export async function pullFigmaFrame(ctx: ToolContext, input: { figmaUrl: string; designSystemId?: string }): Promise<string> {
