@@ -1,7 +1,7 @@
 {
   "name": "open-design",
   "description": "Generate design artifacts (landing pages, decks, prototypes, dashboards) using Open Design's bundled skills and design systems, directly in this workspace.",
-  "version": "0.1.1",
+  "version": "0.3.0",
   "author": {
     "name": "feimacode"
   },
