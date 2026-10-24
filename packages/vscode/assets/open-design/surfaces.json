@@ -284,6 +284,34 @@
         "What's the setting, and what must be in it?",
         "A still, a flythrough video, or both? Does it need to match a real place or photo?"
       ]
+    },
+    {
+      "id": "shop",
+      "label": "Online shop",
+      "description": "Product images, a store banner, parcel cards and launch posts for a Shopify, Big Cartel or Etsy shop.",
+      "icon": "tag",
+      "status": "ready",
+      "entries": [
+        "shop-pack"
+      ],
+      "questions": [
+        "What do you sell, and where (Shopify, Big Cartel, Etsy, other)?",
+        "Do you have a product list and photos?"
+      ]
+    },
+    {
+      "id": "cards",
+      "label": "Game cards",
+      "description": "Card fronts, a back and a proof sheet from your card list and art, ready for a print house.",
+      "icon": "layers",
+      "status": "ready",
+      "entries": [
+        "card-set"
+      ],
+      "questions": [
+        "Which game or card size, and which print house?",
+        "Do you have the card list and art?"
+      ]
     }
   ],
   "goals": [
@@ -301,13 +329,35 @@
     {
       "id": "run-a-shop",
       "label": "Sell or run a small shop",
-      "description": "Menus, posters, posts and a newsletter for a café, shop or market stall.",
+      "description": "Menus, posters, posts and a newsletter for a café, market stall or shop counter.",
       "icon": "tag",
       "surfaces": [
         "poster",
         "social",
         "campaign",
         "email"
+      ]
+    },
+    {
+      "id": "sell-online",
+      "label": "Sell online",
+      "description": "Product images, a banner, posts and emails for your online shop, from your product list and photos.",
+      "icon": "package",
+      "surfaces": [
+        "shop",
+        "social",
+        "email",
+        "campaign"
+      ]
+    },
+    {
+      "id": "make-cards",
+      "label": "Make cards to print and sell",
+      "description": "A card set for your game, ready for the print house, and posts to show it off.",
+      "icon": "layers",
+      "surfaces": [
+        "cards",
+        "social"
       ]
     },
     {

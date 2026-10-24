@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { exportArtifact, formatExportResult, type AssetResolution, type ContentIndex, type ExportFormat, type PasteTarget } from '@feimacode/open-design-agent-kit-core';
+import { exportArtifact, formatExportResult, resolvePrintHouse, type AssetResolution, type ContentIndex, type ExportFormat, type PasteTarget } from '@feimacode/open-design-agent-kit-core';
 import { getOutputDirectory, getWorkspaceRoot } from '../workspace/artifactWriter';
 
 interface ExportArtifactInput {
@@ -20,6 +20,8 @@ interface ExportArtifactInput {
   preset?: string;
   bleed?: number;
   cropMarks?: boolean;
+  dpi?: number;
+  printHouse?: string;
   checkOnly?: boolean;
   data?: string;
   sheet?: string;
@@ -55,8 +57,12 @@ export class ExportArtifactTool implements vscode.LanguageModelTool<ExportArtifa
     const browserPath = config.get<string>('export.browserPath', '') || undefined;
     const ffmpegPath = config.get<string>('export.ffmpegPath', '') || undefined;
     const packaging = options.input.format === 'standalone' || options.input.format === 'site';
+    const { printHouse: printHouseId, ...input } = options.input;
+    const house = printHouseId !== undefined ? await resolvePrintHouse(this.contentIndex, printHouseId) : undefined;
+    if (house && !house.ok) return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(house.error)]);
     const result = await exportArtifact({
-      ...options.input,
+      ...input,
+      printHouse: house?.printHouse,
       workspaceRoot: getWorkspaceRoot(),
       outputDir: getOutputDirectory(),
       browserPath,

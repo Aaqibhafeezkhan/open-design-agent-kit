@@ -17,6 +17,7 @@ Open Design keeps a short list of **trusted integrations**: official servers run
 | Buffer | Draft and schedule posts on X, LinkedIn, Instagram, Facebook, Threads, Bluesky, Mastodon, TikTok, Pinterest, YouTube | **API key** you set as `BUFFER_API_KEY` | Images must be public URLs; text only on X, Mastodon, Threads and Bluesky |
 | Metricool | Schedule posts on Instagram, Facebook, LinkedIn, TikTok, YouTube | Metricool account | Also a claude.ai connector |
 | X | Post through X's own server | Your X developer app | Self-hosted; set up by hand from [xdevplatform/xmcp](https://github.com/xdevplatform/xmcp) |
+| Shopify | Update products and descriptions in your store | Shopify store owner or staff account | A claude.ai connector; writes to a live store |
 <!-- integrations:end -->
 
 For social posts, X's own server comes first when you have it. Otherwise the agent uses whichever posting service you've connected. If more than one would work and none is connected, it asks which one you use.

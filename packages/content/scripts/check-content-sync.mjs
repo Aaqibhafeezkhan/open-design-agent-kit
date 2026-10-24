@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { DEFAULT_OPEN_DESIGN_REF } from './sync-open-design-content.mjs';
 import { LOCAL_ROOT, findRedundantOverrides, listOverlayFiles } from './apply-local-overlay.mjs';
 import { checkSurfaces } from './surfaces.mjs';
+import { checkPrintHouses } from './printHouses.mjs';
 import { checkIntegrations } from './integrations.mjs';
 import { checkPorts } from './ports.mjs';
 import { checkDescriptors } from './designSystemDescriptors.mjs';
@@ -106,6 +107,15 @@ async function checkSurfaceCatalog() {
   }
 }
 
+// Card and sticker printers: sourced, dated, sane sizes (openspec add-print-house-images).
+async function checkPrintHouseCatalog() {
+  const problems = await checkPrintHouses(assetsRoot);
+  if (problems.length > 0) {
+    console.error(`Print-house problems (packages/content/local/print-houses.json):\n- ${problems.join('\n- ')}`);
+    process.exit(1);
+  }
+}
+
 // Trusted MCP servers: valid entries, https URLs, no literal secrets (openspec add-integration-registry).
 async function checkIntegrationRegistry() {
   const { errors, warnings } = await checkIntegrations(assetsRoot);
@@ -149,6 +159,7 @@ async function main() {
   await checkLocalOverlay();
   await checkUnreviewedScaffolds();
   await checkSurfaceCatalog();
+  await checkPrintHouseCatalog();
   await checkIntegrationRegistry();
   await checkDesignSystemDescriptors();
   await checkPortProvenance();

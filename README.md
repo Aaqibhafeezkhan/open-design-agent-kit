@@ -103,6 +103,7 @@ When your agent is connected to one of these services' official MCP servers, Ope
 | Buffer | Draft and schedule posts on X, LinkedIn, Instagram, Facebook, Threads, Bluesky, Mastodon, TikTok, Pinterest, YouTube |
 | Metricool | Schedule posts on Instagram, Facebook, LinkedIn, TikTok, YouTube |
 | X | Post through X's own server |
+| Shopify | Update products and descriptions in your store |
 <!-- integrations:end -->
 
 ## Documentation
@@ -113,7 +114,7 @@ Everything lives in [`docs/`](docs/README.md):
   - [generate a design](docs/guides/generate-a-design.md), [explore design directions](docs/guides/explore-directions.md), [turn a document into a deck](docs/guides/deck-from-a-document.md), [diagrams of your code](docs/guides/diagrams.md), [3D objects](docs/guides/3d-objects.md), [engineering documents](docs/guides/engineering-docs.md);
   - [design systems](docs/guides/design-systems.md), [remix and the gallery](docs/guides/remix-and-gallery.md), [community designs](docs/guides/community-designs.md);
   - [preview, comment and edit](docs/guides/preview-comments-edit.md), [Figma](docs/guides/figma.md), [promote to app code](docs/guides/promote-to-app-code.md), [connect other services](docs/guides/integrations.md);
-  - [social media posts](docs/guides/social-posts.md), [HTML email](docs/guides/html-email.md), [paste into WeChat, Notion and newsletters](docs/guides/paste-html.md), [posters and print](docs/guides/posters.md), [run a campaign](docs/guides/campaigns.md), [YouTube videos](docs/guides/youtube-video.md);
+  - [social media posts](docs/guides/social-posts.md), [HTML email](docs/guides/html-email.md), [paste into WeChat, Notion and newsletters](docs/guides/paste-html.md), [posters and print](docs/guides/posters.md), [sell what you make](docs/guides/sell-what-you-make.md), [run a campaign](docs/guides/campaigns.md), [YouTube videos](docs/guides/youtube-video.md);
   - [export images](docs/guides/export-images.md), [export decks and PDFs](docs/guides/export-decks.md), [export animations](docs/guides/export-animations.md), [share and publish](docs/guides/share-and-publish.md).
 - **Reference:** [tools](docs/reference/tools.md), [prompts and commands](docs/reference/prompts-and-commands.md), [CLI](docs/reference/cli.md), [settings and environment variables](docs/reference/settings-and-env.md), [artifact manifest](docs/reference/artifact-manifest.md).
 - **Help:** [troubleshooting](docs/troubleshooting.md).

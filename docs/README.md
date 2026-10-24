@@ -40,7 +40,8 @@ Task-by-task, for every host ([how the guides are laid out](guides/README.md)):
 - [Social media posts](guides/social-posts.md): X, Instagram, LinkedIn, Xiaohongshu, Stories, YouTube thumbnails
 - [HTML email](guides/html-email.md): newsletters and launch emails that render in real inboxes, ready to paste into your email tool
 - [Paste into WeChat, Notion and newsletters](guides/paste-html.md): HTML that keeps its look when pasted into another editor
-- [Posters and print](guides/posters.md): print-ready PDFs with bleed, preflight checks, real QR codes, other sizes, and one per spreadsheet row
+- [Posters and print](guides/posters.md): print-ready PDFs with bleed, preflight checks, real QR codes, other sizes, one per spreadsheet row, and cards for a print house
+- [Sell what you make](guides/sell-what-you-make.md): product images, parcel cards and game card sets from your list and photos, and into your shop
 - [Run a campaign](guides/campaigns.md): one master design in every channel size and language, with a campaign sheet
 - [YouTube videos](guides/youtube-video.md): HyperFrames compositions rendered to MP4
 - [Export images](guides/export-images.md): PNG and JPEG, sizes, cards, file-size budgets

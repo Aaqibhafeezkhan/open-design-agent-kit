@@ -14,9 +14,11 @@ import { ExtractDesignSystemTool } from './extractDesignSystemTool';
 import { PortToAppCodeTool } from './portToAppCodeTool';
 import { ShareToCommunityTool } from './shareToCommunityTool';
 import { PublishCanvaTemplateTool } from './publishCanvaTemplateTool';
+import { PublishToShopTool } from './publishToShopTool';
 import { PullFigmaFrameTool } from './pullFigmaFrameTool';
 import { CheckArtifactTool } from './checkArtifactTool';
 import { ListIntegrationsTool } from './listIntegrationsTool';
+import { ListPrintHousesTool } from './listPrintHousesTool';
 import { Find3dAssetsTool } from './find3dAssetsTool';
 import { PushFigmaTool } from './pushFigmaTool';
 import { ExportArtifactTool } from './exportArtifactTool';
@@ -53,11 +55,13 @@ export function registerTools(
     ['port_open_design_artifact_to_app', new PortToAppCodeTool()],
     ['share_open_design_artifact_to_community', new ShareToCommunityTool()],
     ['publish_open_design_artifact_to_canva', new PublishCanvaTemplateTool()],
+    ['publish_open_design_artifact_to_shop', new PublishToShopTool()],
     ['pull_open_design_figma_frame', new PullFigmaFrameTool(context)],
     ['push_open_design_artifact_to_figma', new PushFigmaTool()],
     ['export_open_design_artifact', new ExportArtifactTool(contentIndex)],
     ['check_open_design_artifact', new CheckArtifactTool(contentIndex)],
     ['list_open_design_integrations', new ListIntegrationsTool(contentIndex)],
+    ['list_open_design_print_houses', new ListPrintHousesTool(contentIndex)],
     ['find_open_design_3d_assets', new Find3dAssetsTool()],
     ['adapt_open_design_artifact', new AdaptArtifactTool()],
     ['create_open_design_qr_code', new CreateQrCodeTool()],

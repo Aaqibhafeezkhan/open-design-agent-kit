@@ -24,6 +24,10 @@ If you don't say whether it's for print or screens, the agent asks first. You do
 | Conference or research poster | `a0` | 841×1189 mm |
 | Instagram, Stories, X, square | `ig-portrait`, `story`, `x-image`, `ig-square` | 1080×1350, 1080×1920, 1600×900, 1080×1080 px |
 | YouTube thumbnail, Xiaohongshu card | `yt-thumbnail`, `xhs-card` | 1280×720, 1080×1440 px |
+| Insert, care card, postcard, invitation | `a5`, `a6`, `a7`, `postcard-4x6` | 148×210, 105×148, 74×105 mm, 4×6 in |
+| Business card, jewelry display card, swing tag | `business-card`, `business-card-us` | 85×55 mm, 3.5×2 in |
+| Game cards (corners cut round) | `trading-card`, `tarot-card`, `mini-card` | 2.5×3.5, 2.75×4.75, 1.75×2.5 in |
+| Shop product image and banners | `shop-product`, `shop-banner`, `shop-collection` | 2048×2048, 1920×800, 1920×600 px |
 
 Every id, with its safe area, bleed and minimum type size, is in [Canvas formats](../reference/tools.md#canvas-formats).
 
@@ -48,6 +52,26 @@ A print shop trims a poster after printing, so the artwork has to run a little p
 
 **Color:** the PDF is RGB. Most print shops convert it to CMYK themselves. If yours insists on CMYK or PDF/X, convert it with their recommended tool first. Very saturated screen colors (neon green, electric blue) print duller.
 
+## Send cards to a print house
+
+Card and sticker printers usually want one image per card face at an exact pixel size, not a PDF. Export images of a print format and they come out at **300 dpi** with the bleed included, the dpi written into the file: a `trading-card` is 825×1125 px. `dpi` changes it (150–600).
+
+For a printer the kit knows, pass its id as `printHouse` instead, and each face is cut to that printer's exact size and file type:
+
+```json
+{ "entryPath": ".open-design/cards/cards.html", "data": "cards.csv", "nameField": "name", "printHouse": "boardgamesmaker" }
+```
+
+| Printer | id | Takes | Backs |
+|---|---|---|---|
+| [Board Games Maker](https://www.boardgamesmaker.com/) | `boardgamesmaker` | `trading-card` as 822×1122 px PNG, 300 dpi | One per card |
+
+[`list_open_design_print_houses`](../reference/tools.md#list_open_design_print_houses) lists them with the page each size came from. Sizes change, so compare with the printer's upload page before you order. For a printer that isn't listed, the 300 dpi images are the safe start; check their size.
+
+**Backs.** Put the back in the same file as a second card, `<div data-od-card data-od-side="back">`. The faces come out as `cards-goblin-front.png`, `cards-goblin-back.png` and so on. A back that's the same on every card is written once, unless the printer wants one back per card. A print PDF puts each back on the page after its front, for double-sided printing.
+
+> **From the CLI:** `npx @feimacode/open-design-agent-kit export .open-design/cards/cards.html --data cards.csv --name-field name --print-house boardgamesmaker`
+
 ## Preflight checks
 
 Every image or page-PDF export checks the design before capturing it, and lists what it found, errors first. Findings never stop the export; `checkOnly: true` runs the checks alone.
@@ -56,6 +80,7 @@ Every image or page-PDF export checks the design before capturing it, and lists 
 |---|---|
 | `overflow` | Text that is longer than its box and gets cut off, or runs past the edge of the card |
 | `safe-area` | Text, images or a QR code outside the safe area; for print, anything inside the bleed that will be cut off |
+| `corner-clearance` | On cards with rounded corners, text sitting in a corner that the printer cuts round (a warning) |
 | `bleed-size`, `card-size` | A card that isn't the format's size (for print: trim plus bleed) |
 | `min-type` | Text below the format's minimum size (print, in points) or under 14 px on a 1080 px social canvas |
 | `contrast` | Text with too little contrast against a solid background (4.5:1, or 3:1 for large text). Text on gradients or photos is listed as not checked |

@@ -23,6 +23,8 @@ export interface CanvasFormat {
   safeInset: number;
   /** Print only: default bleed in mm on every side. */
   bleed?: number;
+  /** Print only: the radius the printer cuts the trim corners to, in mm (cards). The design keeps square corners. */
+  cornerRadius?: number;
   /** Print only: smallest readable body text, in points, at this size's viewing distance. */
   minTypePt?: number;
   /** Screen only: the platform's upload limit. */
@@ -57,11 +59,27 @@ const LIST: CanvasFormat[] = [
   { id: 'banner-leaderboard', label: 'Display ad 728×90 (leaderboard)', fileLabel: 'ad-728x90', medium: 'screen', width: 728, height: 90, unit: 'px', safeInset: 8, maxBytes: 150_000, skillHint: 'od:prototype:poster-hero', inDefaultSheet: false },
   { id: 'banner-skyscraper', label: 'Display ad 160×600 (wide skyscraper)', fileLabel: 'ad-160x600', medium: 'screen', width: 160, height: 600, unit: 'px', safeInset: 10, maxBytes: 150_000, skillHint: 'od:prototype:poster-hero', inDefaultSheet: false },
   { id: 'banner-mobile', label: 'Display ad 320×50 (mobile banner)', fileLabel: 'ad-320x50', medium: 'screen', width: 320, height: 50, unit: 'px', safeInset: 4, maxBytes: 150_000, skillHint: 'od:prototype:poster-hero', inDefaultSheet: false },
+  // Shop images: one generic set that fits Shopify, Big Cartel and Etsy (square product images of at least 2000 px are accepted by all three).
+  { id: 'shop-product', label: 'Shop product image (square)', fileLabel: 'product', medium: 'screen', width: 2048, height: 2048, unit: 'px', safeInset: 96, maxBytes: 20_000_000, skillHint: 'od:prototype:shop-pack', inDefaultSheet: false },
+  { id: 'shop-banner', label: 'Shop banner (wide)', fileLabel: 'shop-banner', medium: 'screen', width: 1920, height: 800, unit: 'px', safeInset: 120, maxBytes: 20_000_000, skillHint: 'od:prototype:shop-pack', inDefaultSheet: false },
+  { id: 'shop-collection', label: 'Collection banner', fileLabel: 'collection-banner', medium: 'screen', width: 1920, height: 600, unit: 'px', safeInset: 120, maxBytes: 20_000_000, skillHint: 'od:prototype:shop-pack', inDefaultSheet: false },
   { id: 'a4', label: 'A4 (210×297 mm)', fileLabel: 'A4', medium: 'print', width: 210, height: 297, unit: 'mm', safeInset: 5, bleed: ISO_BLEED, minTypePt: 9, skillHint: 'od:prototype:poster-hero' },
   { id: 'a3', label: 'A3 (297×420 mm)', fileLabel: 'A3', medium: 'print', width: 297, height: 420, unit: 'mm', safeInset: 5, bleed: ISO_BLEED, minTypePt: 10, skillHint: 'od:prototype:poster-hero' },
   { id: 'a2', label: 'A2 (420×594 mm)', fileLabel: 'A2', medium: 'print', width: 420, height: 594, unit: 'mm', safeInset: 10, bleed: ISO_BLEED, minTypePt: 14, skillHint: 'od:prototype:poster-hero' },
   { id: 'a1', label: 'A1 (594×841 mm)', fileLabel: 'A1', medium: 'print', width: 594, height: 841, unit: 'mm', safeInset: 10, bleed: ISO_BLEED, minTypePt: 18, skillHint: 'od:prototype:poster-hero' },
   { id: 'a0', label: 'A0 (841×1189 mm)', fileLabel: 'A0', medium: 'print', width: 841, height: 1189, unit: 'mm', safeInset: 15, bleed: ISO_BLEED, minTypePt: 24, skillHint: 'od:prototype:poster-hero' },
+  // Small print (openspec add-card-and-shop-formats): parcel inserts, postcards, cards. A business card also fits jewelry display cards and swing tags.
+  { id: 'a5', label: 'A5 (148×210 mm)', fileLabel: 'A5', medium: 'print', width: 148, height: 210, unit: 'mm', safeInset: 5, bleed: ISO_BLEED, minTypePt: 8, skillHint: 'od:prototype:poster-hero' },
+  { id: 'a6', label: 'A6 (105×148 mm)', fileLabel: 'A6', medium: 'print', width: 105, height: 148, unit: 'mm', safeInset: 4, bleed: ISO_BLEED, minTypePt: 7, skillHint: 'od:prototype:poster-hero' },
+  { id: 'a7', label: 'A7 (74×105 mm)', fileLabel: 'A7', medium: 'print', width: 74, height: 105, unit: 'mm', safeInset: 3, bleed: ISO_BLEED, minTypePt: 6, skillHint: 'od:prototype:poster-hero' },
+  { id: 'postcard-4x6', label: 'Postcard 4×6 in', fileLabel: 'postcard', medium: 'print', width: 101.6, height: 152.4, unit: 'mm', safeInset: 4, bleed: US_BLEED, minTypePt: 7, skillHint: 'od:prototype:poster-hero' },
+  { id: 'business-card', label: 'Business card (85×55 mm)', fileLabel: 'business-card', medium: 'print', width: 85, height: 55, unit: 'mm', safeInset: 3, bleed: ISO_BLEED, minTypePt: 6, skillHint: 'od:prototype:poster-hero', inDefaultSheet: false },
+  { id: 'business-card-us', label: 'Business card 3.5×2 in', fileLabel: 'business-card-us', medium: 'print', width: 88.9, height: 50.8, unit: 'mm', safeInset: 3.175, bleed: US_BLEED, minTypePt: 6, skillHint: 'od:prototype:poster-hero', inDefaultSheet: false },
+  // Game cards: 2.5×3.5 in is the size sleeves are made for; printers cut the corners round (about 1/8 in).
+  // Sources: 4OVER4 trading card guide (0.125 in bleed and safe zone, ~1/8 in corners); Board Games Maker (63.5×88.9 mm, 36 px bleed at 300 dpi).
+  { id: 'trading-card', label: 'Trading card 2.5×3.5 in', fileLabel: 'trading-card', medium: 'print', width: 63.5, height: 88.9, unit: 'mm', safeInset: 3.175, bleed: US_BLEED, cornerRadius: 3.175, minTypePt: 6, multiCard: true, skillHint: 'od:prototype:card-set', inDefaultSheet: false },
+  { id: 'tarot-card', label: 'Tarot card 2.75×4.75 in', fileLabel: 'tarot-card', medium: 'print', width: 69.85, height: 120.65, unit: 'mm', safeInset: 3.175, bleed: US_BLEED, cornerRadius: 3.175, minTypePt: 6, multiCard: true, skillHint: 'od:prototype:card-set', inDefaultSheet: false },
+  { id: 'mini-card', label: 'Mini card 1.75×2.5 in', fileLabel: 'mini-card', medium: 'print', width: 44.45, height: 63.5, unit: 'mm', safeInset: 3.175, bleed: US_BLEED, cornerRadius: 3.175, minTypePt: 5, multiCard: true, skillHint: 'od:prototype:card-set', inDefaultSheet: false },
   { id: 'letter', label: 'US Letter (8.5×11 in)', fileLabel: 'letter', medium: 'print', width: 215.9, height: 279.4, unit: 'mm', safeInset: 5, bleed: US_BLEED, minTypePt: 9, skillHint: 'od:prototype:poster-hero' },
   { id: 'tabloid', label: 'Tabloid (11×17 in)', fileLabel: 'tabloid', medium: 'print', width: 279.4, height: 431.8, unit: 'mm', safeInset: 5, bleed: US_BLEED, minTypePt: 10, skillHint: 'od:prototype:poster-hero' },
   { id: 'poster-18x24', label: 'Poster 18×24 in', fileLabel: 'poster-18x24in', medium: 'print', width: 457.2, height: 609.6, unit: 'mm', safeInset: 10, bleed: US_BLEED, minTypePt: 14, skillHint: 'od:prototype:poster-hero' },
@@ -105,6 +123,12 @@ const fmt = (n: number): string => String(round2(n));
 /** The "Canvas" section appended to a brief when a format is given (poster-formats spec). */
 const SHARED_CANVAS_RULES = `Every \`[data-od-field="<column>"]\` element marks text (or an \`img\` \`src\` / \`a\` \`href\`) that can be filled per row from a spreadsheet at export time, so give such fields room for longer values (\`text-wrap: balance\`, no fixed one-line widths). Put any QR code in as inline SVG carrying \`data-od-qr="<the encoded text>"\` (make one with create_open_design_qr_code; never draw a fake one) or mark its slot \`data-od-qr-field="<column>"\` for a per-row code. Before exporting, run export_open_design_artifact with \`checkOnly: true\` and fix every preflight error it reports.`;
 
+/** Print pieces with rounded corners (cards): the printer cuts the round, so the design keeps square corners. */
+function cornerRule(format: CanvasFormat): string {
+  if (!format.cornerRadius) return '';
+  return `- **Rounded corners:** the printer cuts the corners round (${fmt(format.cornerRadius)} mm radius). Keep the card's corners square with the background running into the bleed (never \`border-radius\` on the card), and keep text, numbers and icons clear of the corners. Preflight warns with \`corner-clearance\` when something sits in one.\n`;
+}
+
 export function composeCanvasSection(format: CanvasFormat): string {
   const shared = SHARED_CANVAS_RULES;
   if (format.medium === 'screen') {
@@ -114,7 +138,7 @@ export function composeCanvasSection(format: CanvasFormat): string {
     return `## Canvas — ${format.label} (\`${format.id}\`)\n\n- Size: **${format.width}×${format.height} px**. ${cards} Give the card \`overflow: hidden\` and a fixed \`width\`/\`height\` in px.\n- Safe area: keep all text, logos and key subjects at least **${format.safeInset}px** inside the card's edges. Backgrounds can run to the edge.\n- Make the hook readable at thumbnail size.\n\n${shared}`;
   }
   const box = bleedBox(format);
-  return `## Canvas — ${format.label} print (\`${format.id}\`)\n\nThis is a **print** piece. A print shop trims it to ${fmt(format.width)}×${fmt(format.height)} mm, and needs artwork that runs ${fmt(box.bleed)} mm past every trim edge (bleed) so no white slivers show after cutting.\n\n- The design is **one** \`[data-od-card]\` element sized **${fmt(box.width)}mm × ${fmt(box.height)}mm** (the trim size plus ${fmt(box.bleed)} mm bleed on every side), with \`overflow: hidden\`, \`position: relative\` and \`box-sizing: border-box\`. Use \`mm\` (or \`px\`) for the card; **never** viewport units (\`vw\`, \`vh\`, \`vmin\`), which change between the preview and the printer.\n- Page setup: \`body { margin: 0 }\`, and nothing else on the page outside the card.\n- Full-bleed backgrounds, photos and color fields fill the whole card, out to its edges.\n- Text, logos, QR codes and anything that must not be cut sit at least **${fmt(box.bleed + format.safeInset)} mm** inside the card's edges (bleed ${fmt(box.bleed)} mm plus a ${fmt(format.safeInset)} mm safe margin).\n- Minimum type size: **${format.minTypePt} pt** for any text meant to be read (1 pt = 1/72 in; \`font-size: ${format.minTypePt}pt\` works directly). Headlines should be several times larger: a poster is read from a distance.\n- Raster images need at least 150 ppi at their printed size (an image printed 100 mm wide needs at least 591 px). Prefer SVG and CSS for graphics.\n- Colors print from RGB; very saturated screen colors (neon greens, electric blues) come out duller on paper.\n\n${shared}`;
+  return `## Canvas — ${format.label} print (\`${format.id}\`)\n\nThis is a **print** piece. A print shop trims it to ${fmt(format.width)}×${fmt(format.height)} mm, and needs artwork that runs ${fmt(box.bleed)} mm past every trim edge (bleed) so no white slivers show after cutting.\n\n- The design is **one** \`[data-od-card]\` element${format.multiCard ? ' for the front' : ''} sized **${fmt(box.width)}mm × ${fmt(box.height)}mm** (the trim size plus ${fmt(box.bleed)} mm bleed on every side), with \`overflow: hidden\`, \`position: relative\` and \`box-sizing: border-box\`.${format.multiCard ? ' For a card back, add a second card the same size after it, `<div data-od-card data-od-side="back">`; export writes the faces as `-front` and `-back`. For a set, design one front and fill each card from a spreadsheet with `data-od-field`, rather than one card per element.' : ''} Use \`mm\` (or \`px\`) for the card; **never** viewport units (\`vw\`, \`vh\`, \`vmin\`), which change between the preview and the printer.\n- Page setup: \`body { margin: 0 }\`, and nothing else on the page outside the card${format.multiCard ? 's' : ''}.\n- Full-bleed backgrounds, photos and color fields fill the whole card, out to its edges.\n- Text, logos, QR codes and anything that must not be cut sit at least **${fmt(box.bleed + format.safeInset)} mm** inside the card's edges (bleed ${fmt(box.bleed)} mm plus a ${fmt(format.safeInset)} mm safe margin).\n- Minimum type size: **${format.minTypePt} pt** for any text meant to be read (1 pt = 1/72 in; \`font-size: ${format.minTypePt}pt\` works directly). ${format.width < 160 ? 'This piece is read in the hand: keep a clear hierarchy with few sizes.' : 'Headlines should be several times larger: a poster is read from a distance.'}\n${cornerRule(format)}- Raster images need at least 150 ppi at their printed size (an image printed 100 mm wide needs at least 591 px). Prefer SVG and CSS for graphics.\n- Colors print from RGB; very saturated screen colors (neon greens, electric blues) come out duller on paper.\n\n${shared}`;
 }
 
 /** A3: the default shape of a fluid poster brief that names no format. */
@@ -181,7 +205,7 @@ body { margin: 0; }
 - **What to drop on small or extreme shapes:** mark secondary elements \`data-od-priority="2"\` (supporting details) or \`"3"\` (decoration) and hide them with \`display: none\` inside the wide or tall rule when space is tight. Never hide the headline, date/time/place, call to action, QR code or logo.
 - **Photos:** \`object-fit: cover\` with an \`object-position\` on the part that matters (e.g. a face at \`50% 25%\`), so wide and tall crops keep it.
 - ${typeRule}
-${print ? '- **Bleed:** build at the trim size. Backgrounds fill the whole card; export grows the card by the bleed and moves `.od-safe` in by the same amount.\n- Raster images need at least 150 ppi at their printed size; prefer SVG and CSS for graphics.\n' : ''}
+${print ? '- **Bleed:** build at the trim size. Backgrounds fill the whole card; export grows the card by the bleed and moves `.od-safe` in by the same amount.\n' + cornerRule(format) + '- Raster images need at least 150 ppi at their printed size; prefer SVG and CSS for graphics.\n' : ''}
 ${SHARED_CANVAS_RULES}`;
 }
 

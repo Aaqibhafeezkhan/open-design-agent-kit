@@ -16,6 +16,8 @@ export interface Finding {
   selector?: string;
   /** 1-based card number, when the page has several cards. */
   card?: number;
+  /** Which face of a card the finding is on, when the design has a back (openspec add-print-house-images). */
+  face?: 'front' | 'back';
   /** 1-based data row, for bulk exports. */
   row?: number;
   /** The row's nameField value, for bulk exports. */
@@ -63,6 +65,7 @@ export async function runPreflight(page: Page, options: PreflightOptions): Promi
     safeInsetPx: format ? (print ? mmToPx(format.safeInset) : format.safeInset) : 0,
     minTypePt: print ? format?.minTypePt : undefined,
     minTypePx: format && !print ? SCREEN_MIN_TYPE_PX * Math.max(1, format.width / 1080) : undefined,
+    cornerRadiusPx: print && format?.cornerRadius ? mmToPx(format.cornerRadius) : undefined,
   });
   const findings: Finding[] = [...raw];
 
@@ -142,7 +145,7 @@ function capFindings(findings: Finding[]): Finding[] {
   const out: Finding[] = [];
   const dropped = new Map<string, Finding & { extra: number }>();
   for (const f of findings) {
-    const key = `${f.check}|${f.severity}|${f.card ?? ''}|${f.row ?? ''}|${f.viewport ?? ''}|${f.slide ?? ''}`;
+    const key = `${f.check}|${f.severity}|${f.card ?? ''}|${f.face ?? ''}|${f.row ?? ''}|${f.viewport ?? ''}|${f.slide ?? ''}`;
     const n = (counts.get(key) ?? 0) + 1;
     counts.set(key, n);
     if (n <= MAX_PER_CHECK) out.push(f);
@@ -209,7 +212,7 @@ export function sortFindings(findings: Finding[]): Finding[] {
 }
 
 export function formatFinding(f: Finding): string {
-  const where = [f.viewport ? f.viewport : '', f.slide !== undefined ? `slide ${f.slide}` : '', f.shape ? `shape ${f.shape}` : '', f.row !== undefined ? `row ${f.row}${f.rowName ? ` (${f.rowName})` : ''}` : '', f.card !== undefined ? `card ${f.card}` : ''].filter(Boolean).join(', ');
+  const where = [f.viewport ? f.viewport : '', f.slide !== undefined ? `slide ${f.slide}` : '', f.shape ? `shape ${f.shape}` : '', f.row !== undefined ? `row ${f.row}${f.rowName ? ` (${f.rowName})` : ''}` : '', f.card !== undefined ? `card ${f.card}` : '', f.face ? `${f.face}` : ''].filter(Boolean).join(', ');
   return `- ${f.severity.toUpperCase()} [${f.check}]${where ? ` ${where}:` : ''} ${f.message}`;
 }
 

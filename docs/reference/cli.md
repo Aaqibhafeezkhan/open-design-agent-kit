@@ -61,6 +61,8 @@ npx @feimacode/open-design-agent-kit export <entryPath> [options]
 | `--preset <format>` | A [canvas format](tools.md#canvas-formats): screen formats set the size, card selector and byte budget; print formats make a [print-ready PDF](../guides/posters.md#print-ready-pdfs). |
 | `--bleed <mm>` | Print PDFs: bleed in mm on every side. Default: the format's. |
 | `--crop-marks` | Print PDFs: add crop marks in a slug around the page. |
+| `--dpi <150-600>` | Print images (`--format png` or `jpeg` of a print format): the resolution, default 300, written into the file. |
+| `--print-house <id>` | Write each card face at a print house's exact upload size, e.g. `boardgamesmaker` ([the profiles](../guides/posters.md#send-cards-to-a-print-house)). |
 | `--check` | Run [preflight](../guides/posters.md#preflight-checks) only; write no files. |
 | `--data <file>` | A CSV, XLSX or JSON-array file (relative to the current directory): [one output per row](../guides/posters.md#one-per-row-from-a-spreadsheet). |
 | `--sheet <name>` | XLSX data: the sheet to read. Default: the first. |

@@ -22,6 +22,8 @@ export const OVERLAY_MARKER = '.od-local-overlay';
 /** The surface catalog (openspec add-surface-picker): local/surfaces.json, copied to the assets root. */
 export const SURFACES_FILE = 'surfaces.json';
 export const VOICE_FILE = 'voice.md';
+/** Card and sticker printers' file requirements (openspec add-print-house-images). */
+export const PRINT_HOUSES_FILE = 'print-houses.json';
 /** Trusted third-party MCP servers (openspec add-integration-registry): local/integrations.json, copied to the assets root. */
 export const INTEGRATIONS_FILE = 'integrations.json';
 /** Curated design-system descriptors (openspec add-design-system-matching): local/design-system-descriptors.json, copied to the assets root. */
@@ -91,6 +93,7 @@ export async function listOverlayFiles(localRoot = LOCAL_ROOT) {
   for (const name of await listFiles(path.join(localRoot, NOTICES_DIR))) files.push(path.join(NOTICES_DIR, name));
   if (await pathExists(path.join(localRoot, SURFACES_FILE))) files.push(SURFACES_FILE);
   if (await pathExists(path.join(localRoot, VOICE_FILE))) files.push(VOICE_FILE);
+  if (await pathExists(path.join(localRoot, PRINT_HOUSES_FILE))) files.push(PRINT_HOUSES_FILE);
   if (await pathExists(path.join(localRoot, INTEGRATIONS_FILE))) files.push(INTEGRATIONS_FILE);
   if (await pathExists(path.join(localRoot, DESCRIPTORS_FILE))) files.push(DESCRIPTORS_FILE);
   for (const id of await listDirs(path.join(localRoot, 'design-systems'))) {
@@ -253,6 +256,8 @@ export async function applyLocalOverlay(targetRoot, localRoot = LOCAL_ROOT) {
   // voice.md: the shared voice block local prompts include (openspec plain-language-replies).
   if (await pathExists(path.join(localRoot, VOICE_FILE))) await fs.copyFile(path.join(localRoot, VOICE_FILE), path.join(targetRoot, VOICE_FILE));
   else await fs.rm(path.join(targetRoot, VOICE_FILE), { force: true });
+  if (await pathExists(path.join(localRoot, PRINT_HOUSES_FILE))) await fs.copyFile(path.join(localRoot, PRINT_HOUSES_FILE), path.join(targetRoot, PRINT_HOUSES_FILE));
+  else await fs.rm(path.join(targetRoot, PRINT_HOUSES_FILE), { force: true });
 
   const hasSurfaces = await pathExists(path.join(localRoot, SURFACES_FILE));
   if (hasSurfaces) await fs.copyFile(path.join(localRoot, SURFACES_FILE), path.join(targetRoot, SURFACES_FILE));

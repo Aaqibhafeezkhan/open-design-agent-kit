@@ -213,7 +213,7 @@ const TOOL_DEFS: ToolDef[] = [
           format: {
             type: 'string',
             enum: [...FORMAT_IDS],
-            description: 'Optional canvas format. Adds a Canvas section with the exact size, units, safe area and, for print, bleed and minimum type size, so any skill can produce a post or poster at that size. Screen: x-image (1600×900), ig-square (1080×1080 per card), ig-portrait (1080×1350), story (1080×1920), xhs-card (1080×1440 per card), yt-thumbnail (1280×720), linkedin-image (1200×627), og-image (1200×630), x-header (1500×500), linkedin-banner (1584×396), email-header (600×200, captured at 2×), and display ads banner-mrec (300×250), banner-leaderboard (728×90), banner-skyscraper (160×600), banner-mobile (320×50). Print (trim sizes, authored in mm with bleed): a4, a3, a2, a1, a0, letter, tabloid, poster-18x24, poster-24x36. Pass the same id as format to register_open_design_artifact.',
+            description: 'Optional canvas format. Adds a Canvas section with the exact size, units, safe area and, for print, bleed and minimum type size, so any skill can produce a post or poster at that size. Screen: x-image (1600×900), ig-square (1080×1080 per card), ig-portrait (1080×1350), story (1080×1920), xhs-card (1080×1440 per card), yt-thumbnail (1280×720), linkedin-image (1200×627), og-image (1200×630), x-header (1500×500), linkedin-banner (1584×396), email-header (600×200, captured at 2×), and display ads banner-mrec (300×250), banner-leaderboard (728×90), banner-skyscraper (160×600), banner-mobile (320×50), and shop images shop-product (2048×2048), shop-banner (1920×800), shop-collection (1920×600). Print (trim sizes, authored in mm with bleed): a4, a3, a2, a1, a0, a5, a6, a7, letter, tabloid, poster-18x24, poster-24x36, postcard-4x6, business-card, business-card-us, and cards with rounded corners trading-card, tarot-card, mini-card. Pass the same id as format to register_open_design_artifact.',
           },
           fluid: {
             type: 'boolean',
@@ -732,7 +732,7 @@ const TOOL_DEFS: ToolDef[] = [
           preset: {
             type: 'string',
             enum: [...FORMAT_IDS],
-            description: "A canvas format id instead of hand-copied sizes. Screen formats (x-image (1600×900), ig-square (1080×1080 per card), ig-portrait (1080×1350), story (1080×1920), xhs-card (1080×1440 per card), yt-thumbnail (1280×720), linkedin-image (1200×627), og-image (1200×630), x-header (1500×500), linkedin-banner (1584×396), email-header (600×200, captured at 2×), and display ads banner-mrec (300×250), banner-leaderboard (728×90), banner-skyscraper (160×600), banner-mobile (320×50)) fill in width/height, selector \"[data-od-card]\" and the platform's byte budget. Print formats (a4, a3, a2, a1, a0, letter, tabloid, poster-18x24, poster-24x36) produce a print-ready PDF the size of the bleed box, with TrimBox and BleedBox set. Explicit arguments still win. Without preset, the format the artifact was registered with is used.",
+            description: "A canvas format id instead of hand-copied sizes. Screen formats (x-image (1600×900), ig-square (1080×1080 per card), ig-portrait (1080×1350), story (1080×1920), xhs-card (1080×1440 per card), yt-thumbnail (1280×720), linkedin-image (1200×627), og-image (1200×630), x-header (1500×500), linkedin-banner (1584×396), email-header (600×200, captured at 2×), and display ads banner-mrec (300×250), banner-leaderboard (728×90), banner-skyscraper (160×600), banner-mobile (320×50), and shop images shop-product (2048×2048), shop-banner (1920×800), shop-collection (1920×600)) fill in width/height, selector \"[data-od-card]\" and the platform's byte budget. Print formats (a4, a3, a2, a1, a0, a5, a6, a7, letter, tabloid, poster-18x24, poster-24x36, postcard-4x6, business-card, business-card-us, and cards with rounded corners trading-card, tarot-card, mini-card) produce a print-ready PDF the size of the bleed box, with TrimBox and BleedBox set. Explicit arguments still win. Without preset, the format the artifact was registered with is used.",
           },
           bleed: {
             type: 'number',
@@ -743,6 +743,16 @@ const TOOL_DEFS: ToolDef[] = [
           cropMarks: {
             type: 'boolean',
             description: 'Print PDFs only: add crop marks at the trim corners in a 10 mm slug around the page.',
+          },
+          dpi: {
+            type: 'integer',
+            minimum: 150,
+            maximum: 600,
+            description: "Print images only (PNG or JPEG of a print format): the resolution, 150–600 (default 300). The image is the bleed box at this dpi, and the dpi is written into the file. Can't be combined with scale; over 8192 px a side is refused, naming the largest dpi that fits.",
+          },
+          printHouse: {
+            type: 'string',
+            description: "A print-house profile id from list_open_design_print_houses, e.g. \"boardgamesmaker\". Writes each card face at that printer's exact upload size and file type (bleed included, only bleed removed), with -front/-back names and one back per card when the printer asks for it. The design's format must be one the printer takes. Can't be combined with dpi, scale, width/height, presets or selector.",
           },
           checkOnly: {
             type: 'boolean',
@@ -837,6 +847,8 @@ const TOOL_DEFS: ToolDef[] = [
           preset?: string;
           bleed?: number;
           cropMarks?: boolean;
+          dpi?: number;
+          printHouse?: string;
           checkOnly?: boolean;
           data?: string;
           sheet?: string;
@@ -941,6 +953,15 @@ const TOOL_DEFS: ToolDef[] = [
   },
   {
     tool: {
+      name: 'list_open_design_print_houses',
+      description:
+        "Lists the card and sticker printers whose upload sizes the kit knows: each one's id, the formats it takes with the exact pixel size, file type and dpi, how it wants card backs, and the page those sizes came from with the date they were checked. Call it when the user names a printer or says the cards are going to a print house; pass the id as printHouse to export_open_design_artifact. When their printer isn't listed, export print images at 300 dpi and tell them to check the size against the printer's upload page. Read-only.",
+      inputSchema: { type: 'object', properties: {} },
+    },
+    handler: (ctx) => tools.listPrintHouses(ctx),
+  },
+  {
+    tool: {
       name: 'check_open_design_artifact',
       description:
         "Renders a registered Open Design artifact in a headless browser (an installed Chrome, Edge, or Chromium) and returns what it looks like: screenshots attached as images, plus preflight findings (overflow and clipped text, contrast, text overlap, safe area, broken images/fonts, emoji, QR codes, and horizontal-scroll for pages that scroll sideways). Leaves the artifact and its manifest alone; saves the run's screenshots under .open-design/.checks/ so the user can see them, before and after, in the browser preview's Checks panel or at the listed paths. Call it after creating or substantially editing an artifact and registering it, before telling the user it's done: fix every ERROR, look at the screenshots for what the checks can't measure (balance, hierarchy, crowded or empty areas, text over busy imagery), then re-check — at most two fix rounds; tell the user about anything left. For a 3D design with a review sheet, a clean check isn't the end: get the critique the result asks for, for up to three critique rounds. What it renders: a page without a [data-od-card] at each viewport (default desktop 1440×900 and mobile 390×844, findings tagged by viewport); a card design (poster, social post) at its registered format size; a deck slide by slide (findings tagged by slide, one contact sheet of up to 12 slides — pass slides to see others). Screenshots are JPEG with a long edge of at most 1568 px; maxImages (default 3, max 6) bounds how many are attached, and 0 returns findings only. Returns a 'no-browser' error when no browser is installed: then skip the check and tell the user once that visual checking needs Chrome, Edge or Chromium. For bulk data rows or shape sheets, use export_open_design_artifact with checkOnly instead. A 3D scene that exposes window.odScene.scene, camera and renderer (the 3d-object ready contract) also gets a review sheet, one image showing the overview, close-up, low-angle and wireframe views (placed second), plus 3D evidence (pixel metrics, renderer statistics) and a webgl-budget warning for scenes too heavy for software rendering; views picks which views go on the sheet, or false for none.",
@@ -1015,7 +1036,7 @@ const TOOL_DEFS: ToolDef[] = [
             },
             minItems: 1,
             maxItems: 6,
-            description: '1–6 target canvas formats. Screen: x-image (1600×900), ig-square (1080×1080 per card), ig-portrait (1080×1350), story (1080×1920), xhs-card (1080×1440 per card), yt-thumbnail (1280×720), linkedin-image (1200×627), og-image (1200×630), x-header (1500×500), linkedin-banner (1584×396), email-header (600×200, captured at 2×), and display ads banner-mrec (300×250), banner-leaderboard (728×90), banner-skyscraper (160×600), banner-mobile (320×50). Print: a4, a3, a2, a1, a0, letter, tabloid, poster-18x24, poster-24x36.',
+            description: '1–6 target canvas formats. Screen: x-image (1600×900), ig-square (1080×1080 per card), ig-portrait (1080×1350), story (1080×1920), xhs-card (1080×1440 per card), yt-thumbnail (1280×720), linkedin-image (1200×627), og-image (1200×630), x-header (1500×500), linkedin-banner (1584×396), email-header (600×200, captured at 2×), and display ads banner-mrec (300×250), banner-leaderboard (728×90), banner-skyscraper (160×600), banner-mobile (320×50), and shop images shop-product (2048×2048), shop-banner (1920×800), shop-collection (1920×600). Print: a4, a3, a2, a1, a0, a5, a6, a7, letter, tabloid, poster-18x24, poster-24x36, postcard-4x6, business-card, business-card-us, and cards with rounded corners trading-card, tarot-card, mini-card.',
           },
           notes: {
             type: 'string',
@@ -1175,6 +1196,53 @@ const TOOL_DEFS: ToolDef[] = [
       },
     },
     handler: (ctx, args) => tools.publishToCanva(ctx, args as { entryPath: string; filePath?: string; uploadUrl?: string }),
+  },
+  {
+    tool: {
+      name: 'publish_open_design_artifact_to_shop',
+      description:
+        "Gets finished shop designs into the user's online shop: the product images (and any other design filled per product) from the product list. For shop \"shopify\" it composes instructions and writes nothing: check whether Shopify's connector is connected (via list_open_design_integrations and your own tools), and if it is, show the product matches first, make the first three updates one at a time with the user's go-ahead, create new products only as drafts, leave price, stock and visibility alone unless asked, attach images only if a connector tool can, and report what changed per product. Otherwise, and for bigcartel, etsy and other shops, it exports each design once per product and writes <design folder>/for-<shop>/: images named <product>-1.png, <product>-2.png…, copy.md with each product's title, price and description, and for Shopify a products.csv in Shopify's import format (unpublished, image links empty), plus the shop's own upload steps to pass on. Cost, margin, supplier, stock and note columns are never used. This tool never contacts the shop.",
+      inputSchema: {
+        "type": "object",
+        "properties": {
+          "entryPaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "description": "Workspace-relative entry files of the registered designs to put in the shop, each with [data-od-field] fields filled per product (e.g. the product image, then a second angle). Their images become <product>-1, <product>-2… in that order."
+          },
+          "shop": {
+            "type": "string",
+            "enum": [
+              "shopify",
+              "bigcartel",
+              "etsy",
+              "other"
+            ],
+            "description": "Where the user sells."
+          },
+          "data": {
+            "type": "string",
+            "description": "Workspace-relative product list (CSV, XLSX or JSON array), one row per product: the same list the designs were exported with. Needed for the folder."
+          },
+          "nameField": {
+            "type": "string",
+            "description": "The column holding each product's title. Default: a title, name or product column."
+          },
+          "folder": {
+            "type": "boolean",
+            "description": "Shopify only: write the hand-off folder now instead of the connector instructions (when the connector isn't connected, the user declined it, or it can't attach images). Other shops always get the folder."
+          }
+        },
+        "required": [
+          "entryPaths",
+          "shop"
+        ]
+      },
+    },
+    handler: (ctx, args) => tools.publishToShop(ctx, args as unknown as Parameters<typeof tools.publishToShop>[1]),
   },
   {
     tool: {
