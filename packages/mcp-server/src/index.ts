@@ -1199,6 +1199,53 @@ const TOOL_DEFS: ToolDef[] = [
   },
   {
     tool: {
+      name: 'publish_open_design_artifact_to_shop',
+      description:
+        "Gets finished shop designs into the user's online shop: the product images (and any other design filled per product) from the product list. For shop \"shopify\" it composes instructions and writes nothing: check whether Shopify's connector is connected (via list_open_design_integrations and your own tools), and if it is, show the product matches first, make the first three updates one at a time with the user's go-ahead, create new products only as drafts, leave price, stock and visibility alone unless asked, attach images only if a connector tool can, and report what changed per product. Otherwise, and for bigcartel, etsy and other shops, it exports each design once per product and writes <design folder>/for-<shop>/: images named <product>-1.png, <product>-2.png…, copy.md with each product's title, price and description, and for Shopify a products.csv in Shopify's import format (unpublished, image links empty), plus the shop's own upload steps to pass on. Cost, margin, supplier, stock and note columns are never used. This tool never contacts the shop.",
+      inputSchema: {
+        "type": "object",
+        "properties": {
+          "entryPaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "description": "Workspace-relative entry files of the registered designs to put in the shop, each with [data-od-field] fields filled per product (e.g. the product image, then a second angle). Their images become <product>-1, <product>-2… in that order."
+          },
+          "shop": {
+            "type": "string",
+            "enum": [
+              "shopify",
+              "bigcartel",
+              "etsy",
+              "other"
+            ],
+            "description": "Where the user sells."
+          },
+          "data": {
+            "type": "string",
+            "description": "Workspace-relative product list (CSV, XLSX or JSON array), one row per product: the same list the designs were exported with. Needed for the folder."
+          },
+          "nameField": {
+            "type": "string",
+            "description": "The column holding each product's title. Default: a title, name or product column."
+          },
+          "folder": {
+            "type": "boolean",
+            "description": "Shopify only: write the hand-off folder now instead of the connector instructions (when the connector isn't connected, the user declined it, or it can't attach images). Other shops always get the folder."
+          }
+        },
+        "required": [
+          "entryPaths",
+          "shop"
+        ]
+      },
+    },
+    handler: (ctx, args) => tools.publishToShop(ctx, args as unknown as Parameters<typeof tools.publishToShop>[1]),
+  },
+  {
+    tool: {
       name: 'push_open_design_artifact_to_figma',
       description: "Pushes a finished Open Design artifact into Figma as editable layers through the user's Figma MCP server. Renders the artifact in a headless browser and captures its layers (or reuses a capture newer than the file), then writes ready-to-run code parts and image files under the artifact's exports/figma/ and returns instructions: check Figma is connected (list_open_design_integrations), ask the user whether to add to an existing Figma file (a link) or create a new one, load Figma's figma-use guidance, run each part with Figma's use_figma exactly as written, upload the images with upload_assets, then verify with get_screenshot and share the link. Never contacts Figma itself. When Figma isn't connected, the instructions offer setup and otherwise give the OD Figma Import plugin steps. Use when the user wants a design in Figma (\"push this to Figma\", \"get this into Figma\", \"hand this off to design\").",
       inputSchema: {

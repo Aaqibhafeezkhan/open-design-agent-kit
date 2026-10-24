@@ -35,6 +35,7 @@ export * from './generation/githubImport';
 export * from './generation/hostOverrides';
 export * from './generation/portToAppInstructions';
 export * from './generation/publishCanvaTemplateInstructions';
+export * from './generation/shopHandoff';
 export * from './generation/canvaUpload';
 export * from './generation/shareToCommunityInstructions';
 export * from './generation/sourceBrief';

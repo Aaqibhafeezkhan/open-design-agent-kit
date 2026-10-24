@@ -14,7 +14,9 @@
     "storage.upload": "Save a file into the user's storage",
     "team.share": "Post a message, image or link to a team channel",
     "social.post": "Publish or draft a post on a social network",
-    "social.schedule": "Schedule a social post for later"
+    "social.schedule": "Schedule a social post for later",
+    "shop.products": "Read and update products in an online store, or create them as drafts",
+    "shop.images": "Attach images to a product in an online store"
   },
   "integrations": [
     {
@@ -203,6 +205,32 @@
       "docs": { "summary": "Schedule posts on Instagram, Facebook, LinkedIn, TikTok, YouTube", "signIn": "Metricool account", "notes": "Also a claude.ai connector" },
       "manualFallback": "Export the images with export_open_design_artifact and schedule the post in Metricool's own app.",
       "verifiedAt": "2026-10-10",
+      "toolsVerified": false
+    },
+    {
+      "id": "shopify",
+      "displayName": "Shopify",
+      "vendor": "Shopify",
+      "tier": "official-platform",
+      "capabilities": {
+        "shop.products": null,
+        "shop.images": null
+      },
+      "claudeAiConnector": "Shopify",
+      "installable": false,
+      "manualSetup": "Shopify's connector is added in Claude, not to this agent's config.\n1. In Claude (claude.ai or Claude Desktop), open Settings, then Connectors, and add Shopify.\n2. Sign in to the store and approve the access it asks for.\n3. Start a new chat so its tools load.",
+      "caveats": [
+        "It writes to a live store: show the product matches first, confirm the first changes one at a time, and create new products only as drafts.",
+        "Tool names not yet verified: pick Shopify's tools that read, update and create products by their descriptions, and check whether one can attach images before promising it.",
+        "Connectors need a Claude plan that includes them."
+      ],
+      "docs": {
+        "summary": "Update products and descriptions in your store",
+        "signIn": "Shopify store owner or staff account",
+        "notes": "A claude.ai connector; writes to a live store"
+      },
+      "manualFallback": "Call publish_open_design_artifact_to_shop with folder: true for a folder of images named by product, copy.md and a products.csv to import in Shopify admin.",
+      "verifiedAt": "2026-10-24",
       "toolsVerified": false
     }
   ]

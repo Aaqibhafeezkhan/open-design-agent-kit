@@ -26,6 +26,7 @@ Two rules apply to every tool:
 | [`port_open_design_artifact_to_app`](#port_open_design_artifact_to_app) | `#od-port-to-app` | yes | Instructions to turn a prototype into app code |
 | [`share_open_design_artifact_to_community`](#share_open_design_artifact_to_community) | `#od-share-to-community` | **no** (VS Code only) | Instructions to contribute a design to the community catalog |
 | [`publish_open_design_artifact_to_canva`](#publish_open_design_artifact_to_canva) | `#od-publish-to-canva` | yes | Get a design into Canva: through your Canva connector when it's connected, otherwise a file to import |
+| [`publish_open_design_artifact_to_shop`](#publish_open_design_artifact_to_shop) | `#od-shop` | yes | Put product images and copy in Shopify, Big Cartel or Etsy: through Shopify's connector, or a folder ready to upload |
 | [`pull_open_design_figma_frame`](#pull_open_design_figma_frame) | `#od-pull-figma-frame` | yes | Instructions to rebuild a Figma frame as code (through your Figma connection, or a token) |
 | [`push_open_design_artifact_to_figma`](#push_open_design_artifact_to_figma) | `#od-push-to-figma` | yes | Push a design into Figma as editable layers through your Figma connection |
 | [`check_open_design_artifact`](#check_open_design_artifact) | `#od-check` | yes | Render a design and see it: screenshots plus preflight findings, at desktop and mobile, per card or per slide |
@@ -132,6 +133,22 @@ A surface is a kind of thing to make, such as a wireframe, a poster or a diagram
 | `diagram` | Diagram | [diagrams](../guides/diagrams.md) |
 | `color-type` | Color + type | [style tiles](../guides/design-systems.md#pick-one-from-style-tiles) |
 | `3d` | 3D object | [3D objects](../guides/3d-objects.md) |
+| `shop` | Online shop | [sell what you make](../guides/sell-what-you-make.md) |
+| `cards` | Game cards | [sell what you make](../guides/sell-what-you-make.md#game-cards) |
+
+The goals, each leading to its surfaces in order (the first is the default):
+
+| Id | Label | Surfaces |
+|---|---|---|
+| `promote-event` | Promote an event | `poster`, `social`, `campaign` |
+| `run-a-shop` | Sell or run a small shop | `poster`, `social`, `campaign`, `email` |
+| `sell-online` | Sell online | `shop`, `social`, `email`, `campaign` |
+| `make-cards` | Make cards to print and sell | `cards`, `social` |
+| `show-an-idea` | Show an idea | `prototype`, `mobile`, `slides` |
+| `get-hired` | Get hired | `resume`, `document`, `social` |
+| `explain-something` | Explain something | `slides`, `document`, `diagram`, `data-report` |
+| `post-regularly` | Post regularly | `social`, `campaign` |
+| `build-a-screen` | Build a product screen | `prototype`, `mobile`, `wireframe` |
 
 **`surface: "list"`** returns `{ surfaces: [{ id, label, description, entryCount, prompt? }] }`.
 
@@ -543,6 +560,25 @@ The import passes a Canva design type when one fits the artifact: a deck becomes
 | `uploadUrl` | string | no | The single-use URL from Canva's `create-upload-url`. With `filePath`, the tool uploads the file and returns its `fileId` instead of instructions. |
 
 **Result:** the instructions text, or with `filePath` and `uploadUrl`, the upload's outcome.
+
+### publish_open_design_artifact_to_shop
+
+Gets finished shop designs into the user's online shop, product by product, from the same product list they were exported with. **It never contacts the shop.** See [Put your designs in your shop](../guides/sell-what-you-make.md#put-your-designs-in-your-shop).
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `entryPaths` | string[] | yes | The registered designs to put in the shop, each filled per product with `data-od-field` (the product image, then a second angle…). Their images become `<product>-1`, `<product>-2`… in that order. |
+| `shop` | `shopify` · `bigcartel` · `etsy` · `other` | yes | Where the user sells. |
+| `data` | string | for the folder | The product list (CSV, XLSX or JSON array), one row per product. |
+| `nameField` | string | no | The column with each product's title. Default: a `title`, `name` or `product` column. |
+| `folder` | boolean | no | Shopify only: write the hand-off folder now instead of the connector instructions. Other shops always get the folder. |
+
+- **Shopify, without `folder`:** instructions only. The agent checks for Shopify's connector ([`list_open_design_integrations`](#list_open_design_integrations)). When it's connected, the agent shows the product matches before writing anything, makes the first three updates one at a time with the user's go-ahead, creates new products only as drafts, leaves price, stock and visibility alone unless asked, attaches images only if a connector tool can, and reports what changed per product. Its tool names aren't verified yet, so the agent finds them by description.
+- **The hand-off folder** (`folder: true`, and always for other shops): each design is exported once per product and gathered into `<design folder>/for-<shop>/` with images named `<product>-<n>.png`, `copy.md` (each product's title, price and description), and for Shopify a `products.csv` in Shopify's import format: products unpublished, image links empty. The result lists the files, the columns used and left out, and the shop's own upload steps.
+
+Columns for cost, margin, supplier, stock, SKU or notes are never used, whatever the arguments say.
+
+**Result (text):** the instructions, or the written files and the upload steps.
 
 ### pull_open_design_figma_frame
 

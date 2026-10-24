@@ -108,6 +108,8 @@ import {
   formatFinishJobRunResult,
   type FinishJobRunInput,
   formatPrintHouses,
+  publishToShop as publishToShopCore,
+  type Shop,
   resolvePrintHouse,
   type PrintHouse,
 } from '@feimacode/open-design-agent-kit-core';
@@ -957,6 +959,12 @@ export async function publishToCanva(ctx: ToolContext, input: { entryPath: strin
     manifestKind: typeof manifest?.kind === 'string' ? manifest.kind : undefined,
     manifestFormat: typeof metadata?.format === 'string' ? metadata.format : undefined,
   });
+}
+
+/** publish_open_design_artifact_to_shop: Shopify connector instructions, or the upload-ready hand-off folder. Never contacts the shop. */
+export async function publishToShop(ctx: ToolContext, input: { entryPaths: string[]; shop: Shop; data?: string; nameField?: string; folder?: boolean }): Promise<string> {
+  // Browser path: OPEN_DESIGN_BROWSER_PATH is read by core's discovery itself.
+  return publishToShopCore({ ...input, workspaceRoot: ctx.workspaceRoot, exportOptions: { outputDir: ctx.outputDir, layout: ctx.layout } });
 }
 
 /** push_open_design_artifact_to_figma: captures the artifact and writes use_figma parts; returns instructions. Never contacts Figma. */

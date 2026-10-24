@@ -14,6 +14,7 @@ import { ExtractDesignSystemTool } from './extractDesignSystemTool';
 import { PortToAppCodeTool } from './portToAppCodeTool';
 import { ShareToCommunityTool } from './shareToCommunityTool';
 import { PublishCanvaTemplateTool } from './publishCanvaTemplateTool';
+import { PublishToShopTool } from './publishToShopTool';
 import { PullFigmaFrameTool } from './pullFigmaFrameTool';
 import { CheckArtifactTool } from './checkArtifactTool';
 import { ListIntegrationsTool } from './listIntegrationsTool';
@@ -54,6 +55,7 @@ export function registerTools(
     ['port_open_design_artifact_to_app', new PortToAppCodeTool()],
     ['share_open_design_artifact_to_community', new ShareToCommunityTool()],
     ['publish_open_design_artifact_to_canva', new PublishCanvaTemplateTool()],
+    ['publish_open_design_artifact_to_shop', new PublishToShopTool()],
     ['pull_open_design_figma_frame', new PullFigmaFrameTool(context)],
     ['push_open_design_artifact_to_figma', new PushFigmaTool()],
     ['export_open_design_artifact', new ExportArtifactTool(contentIndex)],
