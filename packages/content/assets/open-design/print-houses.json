@@ -1,0 +1,15 @@
+{
+  "$comment": "Card and sticker printers' file requirements (openspec add-print-house-images). Add a printer only from its own requirements page, with that page as source and the date you checked it. Sizes are the exact upload size in pixels, bleed included; the content guard and a core test check every entry against the format catalog.",
+  "printHouses": [
+    {
+      "id": "boardgamesmaker",
+      "label": "Board Games Maker",
+      "url": "https://www.boardgamesmaker.com/",
+      "source": "https://www.boardgamesmaker.com/pops/faq-photo.html",
+      "checkedAt": "2026-10-24",
+      "formats": [{ "format": "trading-card", "width": 822, "height": 1122, "type": "png", "dpi": 300 }],
+      "backs": "per-card",
+      "notes": "Upload one image per card face. Keep text and key art 36 px (0.12 in) inside the cut."
+    }
+  ]
+}

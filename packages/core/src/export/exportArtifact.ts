@@ -23,7 +23,9 @@ import { ASSET_RESOLUTIONS, type AssetResolution, type BinaryFetch } from './emb
 import { formatPackageResult, isPackageFormat, packageArtifact, type PackageExportResult, type PackageFormat } from './packageArtifact';
 import { checkDataAgainstFields, loadDataTable, rowFileSuffixes, scanBoundFields, type DataTable } from '../poster/data';
 import { bleedBox, DEFAULT_SHEET_FORMAT_IDS, getFormat, isFluidHtml, unknownFormatError, type CanvasFormat } from '../poster/formats';
-import { applyShape, bindRow, fitBoundText, type ShapeCss } from '../poster/pageScripts';
+import { applyShape, bindRow, fitBoundText, showCardForPrint, type ShapeCss } from '../poster/pageScripts';
+import { bleedBoxPx, captureDpiFor, type PrintHouse, type PrintHouseFormat } from '../poster/printHouses';
+import { cropPngCentre, pngToJpeg, setJpegDpi, setPngDpi } from './printImage';
 import { checkFixedSize, formatPreflight, runPreflight, type Finding } from '../poster/preflight';
 import { finishPrintPdf, mergePdfs, preparePrintPage, printBleedPage, RGB_NOTE, type PrintGeometry } from '../poster/printPdf';
 import { qrSvg } from '../poster/qr';
@@ -90,6 +92,10 @@ export interface ExportArtifactOptions {
   bleed?: number;
   /** Print PDFs: add crop marks in a slug around the page. */
   cropMarks?: boolean;
+  /** PNG/JPEG of a print format: render the bleed box at this many dots per inch, 150–600 (default 300; openspec add-print-house-images). */
+  dpi?: number;
+  /** A print house's profile: each card face is written at the exact size it asks for. Hosts resolve the id with ContentIndex.getPrintHouse. */
+  printHouse?: PrintHouse;
   /** Run the load and preflight only; write no files and leave the manifest alone. */
   checkOnly?: boolean;
   /** Workspace-relative CSV, XLSX or JSON-array file: one output per row, filling [data-od-field] elements. */
@@ -140,6 +146,12 @@ interface ShapePlan {
   selector?: string;
   maxBytes?: number;
   shape?: ShapeCss;
+  /** Print images: the capture resolution (device scale = dpi / 96). */
+  dpi?: number;
+  /** Print images: the dpi written into the file. */
+  densityDpi?: number;
+  /** Print house: the exact size to cut the capture to, removing only bleed. */
+  cut?: { width: number; height: number };
 }
 
 export interface PrintInfo {
@@ -187,6 +199,10 @@ export type ExportArtifactResult =
       shapeSheet?: string;
       /** Workspace-relative path of the campaign sheet, when one was written. */
       campaignSheet?: string;
+      /** Print images: the dpi written into the files. */
+      dpi?: number;
+      /** The print house whose sizes were used. */
+      printHouse?: { id: string; label: string; source: string; checkedAt: string };
     }
   | { ok: false; code: ExportErrorCode; error: string };
 
@@ -209,6 +225,10 @@ const MAX_BLEED_MM = 20;
 /** Rows × shapes per export. */
 const MAX_OUTPUTS = 400;
 const MAX_PRESETS = 15;
+/** Print images: dots per inch when none is given; what card and sticker printers ask for. */
+export const DEFAULT_PRINT_DPI = 300;
+const MAX_IMAGE_PX = 8192;
+const BACK_SELECTOR = '[data-od-card][data-od-side="back"]';
 
 function fail(code: ExportErrorCode, error: string): ExportArtifactResult {
   return { ok: false, code, error };
@@ -220,6 +240,11 @@ function validateOptions(o: ExportArtifactOptions): string | undefined {
     return 'width and height must be integers between 16 and 8192.';
   }
   if (o.scale !== undefined && !(o.scale >= 1 && o.scale <= 3)) return 'scale must be between 1 and 3.';
+  if (o.dpi !== undefined && !(Number.isInteger(o.dpi) && o.dpi >= 150 && o.dpi <= 600)) return 'dpi must be a whole number from 150 to 600.';
+  if (o.dpi !== undefined && o.scale !== undefined) return "dpi and scale can't be combined: dpi sets the resolution of print images.";
+  if (o.printHouse !== undefined && (o.dpi !== undefined || o.scale !== undefined || o.width !== undefined || o.height !== undefined || o.presets !== undefined || o.selector !== undefined)) {
+    return "printHouse sets the size and resolution itself; it can't be combined with dpi, scale, width/height, presets or selector.";
+  }
   if (o.quality !== undefined && !(Number.isInteger(o.quality) && o.quality >= 1 && o.quality <= 100)) {
     return 'quality must be an integer between 1 and 100.';
   }
@@ -240,13 +265,13 @@ function validateOptions(o: ExportArtifactOptions): string | undefined {
     return `selector, slides and maxBytes apply to image, PDF and PPTX exports, not "${o.format}".`;
   }
   if (isMotionFormat(o.format)) {
-    const other = (['quality', 'selector', 'deck', 'slides', 'badge', 'baseUrl', 'bleed', 'cropMarks', 'checkOnly', 'data', 'presets', 'shapeSheet', 'campaignSheet', 'target', 'transparent'] as const).filter((k) => o[k] !== undefined);
+    const other = (['quality', 'selector', 'deck', 'slides', 'badge', 'baseUrl', 'bleed', 'cropMarks', 'dpi', 'printHouse', 'checkOnly', 'data', 'presets', 'shapeSheet', 'campaignSheet', 'target', 'transparent'] as const).filter((k) => o[k] !== undefined);
     if (other.length > 0) return `${other.join(', ')} ${other.length === 1 ? "doesn't" : "don't"} apply to the "${o.format}" format (it takes fps, duration, loop, width/height or preset, scale and maxBytes).`;
     return undefined;
   }
   if (o.fps !== undefined || o.duration !== undefined || o.loop !== undefined) return 'fps, duration and loop apply to the mp4, webm and gif formats only.';
   if (isInlineFormat(o.format)) {
-    const other = (['width', 'height', 'scale', 'quality', 'selector', 'maxBytes', 'deck', 'slides', 'badge', 'preset', 'bleed', 'cropMarks', 'checkOnly', 'data', 'presets', 'shapeSheet', 'transparent'] as const).filter((k) => o[k] !== undefined);
+    const other = (['width', 'height', 'scale', 'quality', 'selector', 'maxBytes', 'deck', 'slides', 'badge', 'preset', 'bleed', 'cropMarks', 'dpi', 'printHouse', 'checkOnly', 'data', 'presets', 'shapeSheet', 'transparent'] as const).filter((k) => o[k] !== undefined);
     if (other.length > 0) return `${other.join(', ')} ${other.length === 1 ? "doesn't" : "don't"} apply to the "${o.format}" format (it takes target and baseUrl).`;
     return undefined;
   }
@@ -256,8 +281,8 @@ function validateOptions(o: ExportArtifactOptions): string | undefined {
   }
   if (o.preset !== undefined && !getFormat(o.preset)) return unknownFormatError(o.preset);
   if (o.bleed !== undefined && !(typeof o.bleed === 'number' && o.bleed >= 0 && o.bleed <= MAX_BLEED_MM)) return `bleed must be between 0 and ${MAX_BLEED_MM} (mm).`;
-  if (isPackageFormat(o.format) && (o.preset !== undefined || o.checkOnly || o.data !== undefined || o.bleed !== undefined || o.cropMarks !== undefined)) {
-    return `preset, bleed, cropMarks, checkOnly and data apply to image and PDF exports, not "${o.format}".`;
+  if (isPackageFormat(o.format) && (o.preset !== undefined || o.checkOnly || o.data !== undefined || o.bleed !== undefined || o.cropMarks !== undefined || o.dpi !== undefined || o.printHouse !== undefined)) {
+    return `preset, bleed, cropMarks, dpi, printHouse, checkOnly and data apply to image and PDF exports, not "${o.format}".`;
   }
   if (o.format === 'pptx' && (o.preset !== undefined || o.data !== undefined)) return 'preset and data apply to images and PDFs, not PPTX.';
   if (o.data === undefined && (o.sheet !== undefined || o.nameField !== undefined || o.split !== undefined)) return 'sheet, nameField and split apply only with data.';
@@ -488,15 +513,29 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
     );
   }
   const explicitSize = options.width !== undefined && options.height !== undefined;
+  // A print house names the file type, size and resolution for the design's format (openspec add-print-house-images).
+  let houseEntry: PrintHouseFormat | undefined;
+  const house = options.printHouse;
+  if (house) {
+    const canvas = presetFormat ?? recordedFormat;
+    const takes = house.formats.map((f) => f.format).join(', ');
+    if (!canvas) return fail('invalid-args', `${house.label} takes ${takes}: pass preset with one of those, or register the design with it.`);
+    houseEntry = house.formats.find((f) => f.format === canvas.id);
+    if (!houseEntry) return fail('invalid-args', `${house.label} takes ${takes}, and this design is ${canvas.id}. Export it at 300 dpi without printHouse, or make it at one of those sizes.`);
+    if (options.format !== undefined && options.format !== houseEntry.type) return fail('invalid-args', `${house.label} wants ${houseEntry.type.toUpperCase()} files for ${canvas.id}; leave format out.`);
+  }
+  const requestedFormat = (options.format as CaptureFormat | undefined) ?? houseEntry?.type;
   const plan = (canvas: CanvasFormat | undefined, source: 'preset' | 'recorded-format'): ShapePlan => {
     // A print shape (preset or the recorded default) exports its print PDF unless a format is asked for.
-    const format: CaptureFormat = (options.format as CaptureFormat | undefined) ?? (canvas?.medium === 'print' && !explicitSize ? 'pdf' : 'png');
+    const format: CaptureFormat = requestedFormat ?? (canvas?.medium === 'print' && !explicitSize ? 'pdf' : 'png');
     const printPath = canvas?.medium === 'print' && format === 'pdf' && !explicitSize;
     const bleed = canvas?.medium === 'print' && !explicitSize ? (options.bleed ?? canvas.bleed ?? 0) : undefined;
     const imageFormat = format === 'png' || format === 'jpeg';
     // A preset fills in what the agent used to copy from a table; explicit arguments still win. Fluid cards are always captured by their card.
     const preset = source === 'preset' ? canvas : undefined;
-    const selector = options.selector ?? ((preset || fluid) && imageFormat ? CARD_SELECTOR : undefined);
+    // Print images are always captured by the card, so each face comes out at its bleed box.
+    const printImage = canvas?.medium === 'print' && imageFormat && !explicitSize;
+    const selector = options.selector ?? ((preset || fluid || printImage) && imageFormat ? CARD_SELECTOR : undefined);
     const maxBytes = options.maxBytes ?? (preset && imageFormat ? preset.maxBytes : undefined);
     // A fluid card is resized to the shape: explicit px, else the format (mm for print, with bleed).
     let shape: ShapeCss | undefined;
@@ -505,7 +544,21 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
       const unit = canvas.medium === 'print' ? 'mm' : 'px';
       shape = { widthCss: `${canvas.width}${unit}`, heightCss: `${canvas.height}${unit}`, bleedCss: `${bleed ?? 0}mm` };
     }
-    return { canvas, source, format, printPath, bleed, selector, maxBytes, shape };
+    // Print images are captured at print resolution: the printer's size, else dpi, else 300 dpi.
+    let dpi: number | undefined;
+    let densityDpi: number | undefined;
+    let cut: { width: number; height: number } | undefined;
+    if (printImage) {
+      if (houseEntry && houseEntry.format === canvas.id && houseEntry.width && houseEntry.height) {
+        dpi = captureDpiFor(canvas, houseEntry);
+        densityDpi = houseEntry.dpi ?? DEFAULT_PRINT_DPI;
+        cut = { width: houseEntry.width, height: houseEntry.height };
+      } else {
+        dpi = options.dpi ?? DEFAULT_PRINT_DPI;
+        densityDpi = dpi;
+      }
+    }
+    return { canvas, source, format, printPath, bleed, selector, maxBytes, shape, dpi, densityDpi, cut };
   };
   const multiShape = options.presets !== undefined;
   const plans: ShapePlan[] = multiShape
@@ -517,6 +570,18 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
   }
   const format = first.format;
   const maxBytes = first.maxBytes;
+  if (options.dpi !== undefined && !plans.every((p) => p.dpi !== undefined)) {
+    return fail('invalid-args', 'dpi applies to PNG or JPEG exports of print formats (a print preset such as "trading-card" or "a6", or an artifact registered with one).');
+  }
+  for (const p of plans) {
+    if (p.dpi === undefined || !p.canvas) continue;
+    const px = bleedBoxPx(p.canvas, p.dpi, p.bleed);
+    if (px.width > MAX_IMAGE_PX || px.height > MAX_IMAGE_PX) {
+      const box = bleedBox(p.canvas, p.bleed);
+      const fits = Math.floor((MAX_IMAGE_PX * 25.4) / Math.max(box.width, box.height));
+      return fail('invalid-args', `${p.canvas.id} at ${p.dpi} dpi would be ${px.width}×${px.height} px, over the ${MAX_IMAGE_PX} px limit. The largest dpi that fits is ${fits}; or export a PDF, which has no such limit.`);
+    }
+  }
 
   // Data-bound export: everything about the data is checked before a browser starts.
   let table: DataTable | undefined;
@@ -568,7 +633,7 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
     const { browser: instance, page } = session;
     const layout = layoutFor(first, size);
     // A format can ask for a capture scale (retina email headers); an explicit scale always wins.
-    const scaleFor = (p: ShapePlan): number => options.scale ?? p.canvas?.scale ?? 1;
+    const scaleFor = (p: ShapePlan): number => options.scale ?? p.canvas?.scale ?? (p.dpi ? p.dpi / 96 : 1);
     await page.setViewport({ width: layout.width, height: layout.height, deviceScaleFactor: scaleFor(first) });
     await loadPage(page, session.url, options.readyTimeoutMs ?? 15000, options.settleMs ?? 500, warnings);
 
@@ -662,6 +727,22 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
         await page.evaluate(bindRow, row, qr);
       };
       let isolated = false;
+      // Card backs (openspec add-print-house-images): [data-od-card][data-od-side="back"], paired with the front before
+      // it, or shared by every front when there is one. A back with no bound fields is the same on every row.
+      const cardFaces = (await page.evaluate(
+        `Array.prototype.slice.call(document.querySelectorAll(${JSON.stringify(CARD_SELECTOR)})).map(function (el) { return { back: el.getAttribute('data-od-side') === 'back', fields: !!el.querySelector('[data-od-field],[data-od-qr-field]') }; })`,
+      )) as Array<{ back: boolean; fields: boolean }>;
+      const hasBack = cardFaces.some((c) => c.back) && house?.backs !== 'none';
+      const frontIndexes = cardFaces.map((c, i) => (c.back ? -1 : i)).filter((i) => i >= 0);
+      const backIndexes = cardFaces.map((c, i) => (c.back ? i : -1)).filter((i) => i >= 0);
+      const sharedBack = backIndexes.length === 1;
+      /** The front a back belongs to: every front for a shared back, else the front just before it. */
+      const frontsOfBack = (b: number): number[] => (sharedBack ? frontIndexes : frontIndexes.filter((f) => f < b && !frontIndexes.some((g) => g > f && g < b)).slice(-1));
+      const tagFaces = (list: Finding[], only?: 'front' | 'back'): Finding[] => {
+        if (!hasBack) return list;
+        for (const f of list) f.face = only ?? (f.card !== undefined && cardFaces[f.card - 1]?.back ? 'back' : 'front');
+        return list;
+      };
 
       for (const [passIndex, pass] of passes.entries()) {
         const p = pass.plan;
@@ -694,7 +775,7 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
           const rowName = row && pass.exported && options.nameField ? row[options.nameField] : undefined;
           if (row) await bind(row);
           findings.push(...fitFindings(await page.evaluate(fitBoundText, cardSelector), { row: rowNo, rowName, shape: shapeId }));
-          findings.push(...(await runPreflight(page, { cardSelector, format: p.canvas, bleed: p.bleed, row: rowNo, rowName, fluid, shape: shapeId })));
+          findings.push(...tagFaces(await runPreflight(page, { cardSelector, format: p.canvas, bleed: p.bleed, row: rowNo, rowName, fluid, shape: shapeId }), p.printPath ? 'front' : undefined));
           if (fluid && p.shape && i === 0) findings.push(...(await checkFixedSize(page, cardSelector, p.shape, { shape: shapeId })));
           if (wantSheet && i === 0) {
             const handle = await page.$(cardSelector);
@@ -704,11 +785,13 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
             }
           }
           if (options.checkOnly || !pass.exported) continue;
-          const nameParts = [row ? rowSuffixes[i] : undefined, multiShape || exportLayout === 'visible' ? shapeName(p.canvas) : undefined].filter((x): x is string => !!x);
+          const rowPart = row ? rowSuffixes[i] : undefined;
+          const shapePartOfName = multiShape || exportLayout === 'visible' ? shapeName(p.canvas) : undefined;
+          const nameParts = [rowPart, shapePartOfName].filter((x): x is string => !!x);
           const suffix = nameParts.length > 0 ? nameParts.join('-') : undefined;
 
           if (passMode === 'image') {
-            type Target = { index?: number; capture: (f: ImageFormat, q?: number) => Promise<Buffer>; width: number; height: number };
+            type Target = { index?: number; capture: (f: ImageFormat, q?: number) => Promise<Buffer>; width: number; height: number; side?: 'front' | 'back'; rowFree?: boolean };
             const targets: Target[] = [];
             if (p.selector) {
               let handles;
@@ -718,18 +801,32 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
                 return fail('invalid-args', `Invalid selector "${p.selector}": ${err instanceof Error ? err.message : String(err)}`);
               }
               if (handles.length === 0) return fail('selector-no-match', `Selector "${p.selector}" matched no elements in ${options.entryPath}.`);
+              const faced = hasBack && p.selector === CARD_SELECTOR && handles.length === cardFaces.length;
               for (const [j, handle] of handles.entries()) {
                 const box = await handle.boundingBox();
                 if (!box || box.width < 1 || box.height < 1) {
                   if (i === 0) warnings.push(`Element ${j + 1} matching "${p.selector}" has no visible box — skipped.`);
                   continue;
                 }
-                targets.push({
-                  index: j + 1,
-                  width: Math.round(box.width * passScale),
-                  height: Math.round(box.height * passScale),
-                  capture: async (f, q) => Buffer.from(await handle.screenshot({ type: f, quality: q, omitBackground: !!options.transparent })),
-                });
+                const capture = async (f: ImageFormat, q?: number) => Buffer.from(await handle.screenshot({ type: f, quality: q, omitBackground: !!options.transparent }));
+                const width = Math.round(box.width * passScale);
+                const height = Math.round(box.height * passScale);
+                if (!faced) {
+                  targets.push({ index: j + 1, width, height, capture });
+                  continue;
+                }
+                const frontNo = (f: number): number | undefined => (frontIndexes.length > 1 ? frontIndexes.indexOf(f) + 1 : undefined);
+                if (!cardFaces[j].back) {
+                  targets.push({ index: frontNo(j), width, height, capture, side: 'front' });
+                  continue;
+                }
+                // A back with no bound fields is written once for the whole export, unless the printer wants one per card.
+                const perCard = house?.backs === 'per-card';
+                const rowFree = !cardFaces[j].fields && !perCard;
+                if (rowFree && i > 0) continue;
+                const owners = frontsOfBack(j);
+                const indexes = sharedBack && !perCard ? [undefined] : owners.map(frontNo);
+                for (const index of indexes) targets.push({ index, width, height, capture, side: 'back', rowFree });
               }
               if (targets.length === 0) return fail('selector-no-match', `No element matching "${p.selector}" has a visible box.`);
             } else {
@@ -743,11 +840,31 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
             const imageFormat = p.format as ImageFormat;
             const passQuality = imageFormat === 'jpeg' ? (options.quality ?? 90) : undefined;
             for (const target of targets) {
-              // A transparent PNG is never re-encoded as JPEG to fit a budget: that would lose the transparency.
-              const result = await captureWithinBudget(target.capture, imageFormat, passQuality, options.transparent ? undefined : p.maxBytes);
-              // Numbered only when there's more than one image; a single card keeps the plain name.
-              const index = targets.length > 1 ? target.index : undefined;
-              const relOut = await writeOut(suffix === undefined ? exportFilePath(relEntry, index, result.format, exportLayout) : exportFilePathWithSuffix(relEntry, suffix, index, result.format, exportLayout), result.buffer);
+              let result: { buffer: Buffer; format: ImageFormat; quality?: number; overBudget: boolean };
+              if (p.dpi !== undefined) {
+                // Print images: cut to the printer's exact size (removing only bleed), and record the dpi in the file.
+                let buffer: Buffer;
+                if (p.cut) {
+                  let cropped: Buffer;
+                  try {
+                    cropped = cropPngCentre(await target.capture('png'), p.cut.width, p.cut.height);
+                  } catch (err) {
+                    return fail('capture-failed', `Couldn't cut the card to ${p.cut.width}×${p.cut.height} px: ${err instanceof Error ? err.message : String(err)}.`);
+                  }
+                  buffer = imageFormat === 'jpeg' ? await pngToJpeg(instance, cropped, passQuality ?? 90) : cropped;
+                  target.width = p.cut.width;
+                  target.height = p.cut.height;
+                } else buffer = await target.capture(imageFormat, passQuality);
+                buffer = imageFormat === 'png' ? setPngDpi(buffer, p.densityDpi!) : setJpegDpi(buffer, p.densityDpi!);
+                result = { buffer, format: imageFormat, quality: passQuality, overBudget: false };
+              } else {
+                // A transparent PNG is never re-encoded as JPEG to fit a budget: that would lose the transparency.
+                result = await captureWithinBudget(target.capture, imageFormat, passQuality, options.transparent ? undefined : p.maxBytes);
+              }
+              // Numbered only when there's more than one image; a single card keeps the plain name. Faces are named -front / -back.
+              const index = target.side ? target.index : targets.length > 1 ? target.index : undefined;
+              const targetSuffix = target.side ? [...(target.rowFree ? [shapePartOfName] : [rowPart, shapePartOfName]), target.side].filter((x): x is string => !!x).join('-') : suffix;
+              const relOut = await writeOut(targetSuffix === undefined ? exportFilePath(relEntry, index, result.format, exportLayout) : exportFilePathWithSuffix(relEntry, targetSuffix, index, result.format, exportLayout), result.buffer);
               if (options.transparent) {
                 if (p.maxBytes !== undefined && result.buffer.length > p.maxBytes) warnings.push(`${relOut}: ${result.buffer.length} bytes is over maxBytes (${p.maxBytes}); transparent PNGs aren't re-encoded.`);
                 if (isFullyOpaquePng(result.buffer)) {
@@ -757,7 +874,18 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
               files.push({ path: relOut, width: target.width, height: target.height, bytes: result.buffer.length, format: result.format, quality: result.quality });
             }
           } else if (passMode === 'print-pdf') {
-            pdfs.push(await printBleedPage(page, geometry!));
+            const front = await printBleedPage(page, geometry!);
+            // Duplex: the first front's back follows it on the next page.
+            const firstFront = frontIndexes[0];
+            const back = hasBack && firstFront !== undefined ? backIndexes.find((b) => frontsOfBack(b).includes(firstFront)) : undefined;
+            if (back === undefined) pdfs.push(front);
+            else {
+              await page.evaluate(showCardForPrint, CARD_SELECTOR, back);
+              findings.push(...tagFaces(await runPreflight(page, { cardSelector: BACK_SELECTOR, format: p.canvas, bleed: p.bleed, row: rowNo, rowName, fluid, shape: shapeId }), 'back'));
+              const backPdf = await printBleedPage(page, geometry!);
+              await page.evaluate(showCardForPrint, CARD_SELECTOR, firstFront);
+              pdfs.push(await mergePdfs([front, backPdf], title));
+            }
           } else {
             pdfs.push(await capturePagePdf(page, { width: options.width, height: options.height }));
           }
@@ -910,6 +1038,8 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
       shapes: multiShape ? options.presets : undefined,
       shapeSheet: shapeSheetPath,
       campaignSheet: campaignSheetPath,
+      dpi: plans.find((p) => p.densityDpi !== undefined)?.densityDpi,
+      printHouse: house ? { id: house.id, label: house.label, source: house.source, checkedAt: house.checkedAt } : undefined,
     };
   } catch (err) {
     return fail('capture-failed', `Export failed using ${browser.executablePath}: ${err instanceof Error ? err.message : String(err)}`);
@@ -955,6 +1085,11 @@ export function formatExportResult(result: AnyExportResult): string {
         ),
       ];
   if (result.slideCount !== undefined) lines.push(`Deck: ${result.slideCount} slide(s) found.`);
+  if (result.printHouse) {
+    lines.push(`Print house: sized for ${result.printHouse.label} at ${result.dpi} dpi, from their published spec (${result.printHouse.source}, checked ${result.printHouse.checkedAt}). Check it against their upload page before ordering.`);
+  } else if (result.dpi !== undefined && !result.checkOnly) {
+    lines.push(`Print images at ${result.dpi} dpi, bleed included; the dpi is written into each file.`);
+  }
   if (result.campaignSheet) {
     lines.push(`Campaign sheet: ${result.campaignSheet} — every shape and every other piece in the collection; a red dot marks pieces with errors. Its tiles, with their errors, are listed in ${result.campaignSheet.replace(/\.png$/, '.json')}.`);
   }

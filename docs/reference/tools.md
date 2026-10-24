@@ -33,6 +33,7 @@ Two rules apply to every tool:
 | [`add_open_design_diagram_runtime`](#add_open_design_diagram_runtime) | `#od-diagram-runtime` | yes | Add or update the layout runtime in a diagram |
 | [`adapt_open_design_artifact`](#adapt_open_design_artifact) | `#od-adapt` | yes | Instructions to re-compose a design for other sizes |
 | [`create_open_design_qr_code`](#create_open_design_qr_code) | `#od-qr-code` | yes | Make a real QR code for a design |
+| [`list_open_design_print_houses`](#list_open_design_print_houses) | `#od-print-houses` | yes | The card and sticker printers whose upload sizes the kit knows |
 | [`publish_open_design_artifact`](#publish_open_design_artifact) | `#od-publish` | yes | Package for hosting and get instructions to publish a link |
 | [`restore_open_design_artifact`](#restore_open_design_artifact) | none | yes (MCP only) | Pick a design back up from a synced Claude artifact |
 | [`find_open_design_3d_assets`](#find_open_design_3d_assets) | `#od-3d-assets` | yes | Find free CC0 HDRIs, textures and models on Poly Haven for a 3D design |
@@ -237,17 +238,29 @@ Composes the instructions for a new design. It combines the skill's workflow, th
 | `banner-leaderboard` | screen | 728×90 px | 8 px | | | 150 KB |
 | `banner-skyscraper` | screen | 160×600 px | 10 px | | | 150 KB |
 | `banner-mobile` | screen | 320×50 px | 4 px | | | 150 KB |
+| `shop-product` | screen | 2048×2048 px | 96 px | | | 20 MB |
+| `shop-banner` | screen | 1920×800 px | 120 px | | | 20 MB |
+| `shop-collection` | screen | 1920×600 px | 120 px | | | 20 MB |
 | `a4` | print | 210×297 mm | 5 mm | 3 mm | 9 pt | |
 | `a3` | print | 297×420 mm | 5 mm | 3 mm | 10 pt | |
 | `a2` | print | 420×594 mm | 10 mm | 3 mm | 14 pt | |
 | `a1` | print | 594×841 mm | 10 mm | 3 mm | 18 pt | |
 | `a0` | print | 841×1189 mm | 15 mm | 3 mm | 24 pt | |
+| `a5` | print | 148×210 mm | 5 mm | 3 mm | 8 pt | |
+| `a6` | print | 105×148 mm | 4 mm | 3 mm | 7 pt | |
+| `a7` | print | 74×105 mm | 3 mm | 3 mm | 6 pt | |
 | `letter` | print | 8.5×11 in | 5 mm | 0.125 in | 9 pt | |
 | `tabloid` | print | 11×17 in | 5 mm | 0.125 in | 10 pt | |
 | `poster-18x24` | print | 18×24 in | 10 mm | 0.125 in | 14 pt | |
 | `poster-24x36` | print | 24×36 in | 12 mm | 0.125 in | 18 pt | |
+| `postcard-4x6` | print | 4×6 in | 4 mm | 0.125 in | 7 pt | |
+| `business-card` | print | 85×55 mm | 3 mm | 3 mm | 6 pt | |
+| `business-card-us` | print | 3.5×2 in | 0.125 in | 0.125 in | 6 pt | |
+| `trading-card` | print | 2.5×3.5 in, corners cut round (0.125 in) | 0.125 in | 0.125 in | 6 pt | |
+| `tarot-card` | print | 2.75×4.75 in, corners cut round (0.125 in) | 0.125 in | 0.125 in | 6 pt | |
+| `mini-card` | print | 1.75×2.5 in, corners cut round (0.125 in) | 0.125 in | 0.125 in | 5 pt | |
 
-Headers, banners, the email header and the display ads are left out of a shape sheet that names no `presets`, since they need a design's own banner layout. Print sizes are trim sizes. The design's `[data-od-card]` is authored at the trim size plus the bleed on every side (A3: 303×426 mm), and the safe area is measured inside the trim.
+Headers, banners, the email header, the display ads, shop images, business cards and game cards are left out of a shape sheet that names no `presets`, since they need a design's own banner layout. Print sizes are trim sizes. The design's `[data-od-card]` is authored at the trim size plus the bleed on every side (A3: 303×426 mm), and the safe area is measured inside the trim. For cards, the printer cuts the corners round: the design keeps square corners with bleed, and preflight warns (`corner-clearance`) about text in a corner.
 
 ### register_open_design_artifact
 
@@ -639,6 +652,8 @@ Renders a registered artifact in a headless browser (an installed Chrome, Edge o
 | `preset` | [format id](#canvas-formats) | no | Use a canvas format's settings instead of `width`/`height`/`selector`/`maxBytes`. A screen format captures each `[data-od-card]` at its size within its byte budget. A fluid design is reflowed to the preset's shape first, and for print the bleed is added to it. A print format writes a [print-ready PDF](../guides/posters.md#print-ready-pdfs) (the default format becomes `pdf`). Explicit arguments still win. Without `preset`, the format the artifact was registered with is used. |
 | `bleed` | number 0–20 | no | Print PDFs only: bleed in mm on every side. Default: the format's. |
 | `cropMarks` | boolean | no | Print PDFs only: add crop marks at the trim corners, in a 10 mm slug around the page. |
+| `dpi` | integer 150–600 | no | PNG or JPEG of a print format only: the resolution. Default 300. The image is the bleed box at this dpi (a `trading-card` is 825×1125 px), and the dpi is written into the file. Not with `scale`. Over 8192 px a side is refused, naming the largest dpi that fits. |
+| `printHouse` | string | no | A [print-house profile](#list_open_design_print_houses) id, such as `boardgamesmaker`. Each card face is written at that printer's exact upload size and file type, removing only bleed, and the result names the page the size came from. Fails if the design's format isn't one the printer takes. Not with `dpi`, `scale`, `width`/`height`, `presets` or `selector`. See [Send cards to a print house](../guides/posters.md#send-cards-to-a-print-house). |
 | `checkOnly` | boolean | no | Load the page and run [preflight](../guides/posters.md#preflight-checks) only. No files are written and the manifest isn't changed. |
 | `data` | string | no | A workspace-relative CSV, XLSX or JSON-array file for [one output per row](../guides/posters.md#one-per-row-from-a-spreadsheet). At most 200 rows. Every `data-od-field` and `data-od-qr-field` in the page must have a column. Not for decks. |
 | `sheet` | string | no | With an XLSX `data` file: the sheet to read. Default: the first. |
@@ -652,7 +667,9 @@ Renders a registered artifact in a headless browser (an installed Chrome, Edge o
 | `transparent` | boolean | no | `png` only: capture without the page background, so whatever the design doesn't paint is transparent (cut-outs such as a [3D product shot](../guides/3d-objects.md)). The page, and a 3D scene's renderer, must have a transparent background; a warning says when every pixel came out opaque. Not re-encoded to fit `maxBytes`. |
 | `campaignSheet` | boolean | no | Fluid designs only: also write `exports/campaign-sheet.png`: the design at every shape in `presets`, plus the first screen of every other piece registered in the same collection (landing page, email…), each marked when it has errors. Next to it, `exports/campaign-sheet.json` lists each tile in order (label, shape preset or member entry path, exported file, image, error findings) and `exports/campaign-sheet-tiles/` holds each tile's image. See [Run a campaign](../guides/campaigns.md). |
 
-**Result (text):** each written file with its pixel size, file size and format; for decks, the slide count and the stage size and scale used; where the size came from; for print PDFs, the trim size, bleed and a note that the PDF is RGB; for page exports, the **preflight** findings, errors first ([the checks](../guides/posters.md#preflight-checks)); and any warnings (failed requests, blank slides, budget re-encoding). Details in [Export images](../guides/export-images.md), [Export decks and PDFs](../guides/export-decks.md) and [Posters and print](../guides/posters.md).
+**Card backs:** a design with a `[data-od-card][data-od-side="back"]` element exports its faces as `<name>-front` and `<name>-back` (numbered when there are several fronts, and per row with `data`). A back with no bound fields is written once for the whole export, unless the printer wants one back per card. A print PDF puts the back on the page after its front, for double-sided printing.
+
+**Result (text):** each written file with its pixel size, file size and format; for print images, the dpi (and, with `printHouse`, the printer and its source page); for decks, the slide count and the stage size and scale used; where the size came from; for print PDFs, the trim size, bleed and a note that the PDF is RGB; for page exports, the **preflight** findings, errors first ([the checks](../guides/posters.md#preflight-checks)); and any warnings (failed requests, blank slides, budget re-encoding). Details in [Export images](../guides/export-images.md), [Export decks and PDFs](../guides/export-decks.md) and [Posters and print](../guides/posters.md).
 
 **Errors**, each prefixed `Export failed (<code>)`:
 
@@ -831,6 +848,12 @@ Every result says the license (CC0: no attribution needed, free for any use) and
 ```json
 { "query": "lantern", "type": "model", "limit": 3 }
 ```
+
+### list_open_design_print_houses
+
+Lists the card and sticker printers whose upload sizes the kit knows, from the content's `print-houses.json`. Each profile has the formats it takes with the exact pixel size, file type and dpi, how it wants card backs (`per-card`, `shared` or `none`), and the printer's own page the sizes came from, with the date they were checked. **It takes no arguments and writes nothing.** Pass a profile's id as `printHouse` to [`export_open_design_artifact`](#export_open_design_artifact). When the user's printer isn't listed, the agent exports at 300 dpi and asks them to check the size against the printer's upload page.
+
+**Result (text):** one line per profile, then that advice.
 
 ## Integrations
 

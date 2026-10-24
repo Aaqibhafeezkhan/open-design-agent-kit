@@ -107,6 +107,9 @@ import {
   formatStartJobRunResult,
   formatFinishJobRunResult,
   type FinishJobRunInput,
+  formatPrintHouses,
+  resolvePrintHouse,
+  type PrintHouse,
 } from '@feimacode/open-design-agent-kit-core';
 import { figmaTokenFilePath } from './env';
 import type { DesignLayout } from './layout';
@@ -807,6 +810,8 @@ export async function exportArtifact(
     preset?: string;
     bleed?: number;
     cropMarks?: boolean;
+    dpi?: number;
+    printHouse?: string;
     checkOnly?: boolean;
     data?: string;
     sheet?: string;
@@ -824,8 +829,16 @@ export async function exportArtifact(
 ): Promise<string> {
   // Browser path: OPEN_DESIGN_BROWSER_PATH is read by core's discovery itself;
   // OPEN_DESIGN_SHARE_BADGE by core's badge resolution.
+  const { printHouse: printHouseId, ...rest } = input;
+  let printHouse: PrintHouse | undefined;
+  if (printHouseId !== undefined) {
+    const resolved = await resolvePrintHouse(ctx.contentIndex, printHouseId);
+    if (!resolved.ok) return resolved.error;
+    printHouse = resolved.printHouse;
+  }
   const result = await exportArtifactCore({
-    ...input,
+    ...rest,
+    printHouse,
     workspaceRoot: ctx.workspaceRoot,
     outputDir: ctx.outputDir,
     layout: ctx.layout,
@@ -858,6 +871,11 @@ export async function addDiagramRuntime(ctx: ToolContext, input: { entryPath: st
 export type ListIntegrationsArgs = ListIntegrationsInput;
 
 /** list_open_design_integrations: trusted third-party MCP servers with setup steps for the connected agent; read-only. */
+/** list_open_design_print_houses: printers' upload sizes, for export's printHouse; read-only. */
+export async function listPrintHouses(ctx: ToolContext): Promise<string> {
+  return formatPrintHouses(await ctx.contentIndex.listPrintHouses());
+}
+
 export async function listIntegrations(ctx: ToolContext, input: ListIntegrationsInput): Promise<string> {
   return formatIntegrations(await ctx.contentIndex.getIntegrationRegistry(), input, agentFromClientName(ctx.clientName));
 }

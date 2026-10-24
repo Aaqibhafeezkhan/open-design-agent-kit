@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
-import { ASSET_RESOLUTIONS, ContentIndex, exportArtifact, formatExportResult, PASTE_TARGETS, type AssetResolution, type ExportArtifactOptions, type ExportFormat, type PasteTarget } from '@feimacode/open-design-agent-kit-core';
+import { ASSET_RESOLUTIONS, ContentIndex, exportArtifact, formatExportResult, PASTE_TARGETS, resolvePrintHouse, type AssetResolution, type ExportArtifactOptions, type ExportFormat, type PasteTarget } from '@feimacode/open-design-agent-kit-core';
 import { TROUBLESHOOTING_URL } from './docsLinks';
 import { getContentAssetsRoot } from './env';
 
@@ -23,6 +23,8 @@ export interface ExportCliOptions {
   preset?: string;
   bleed?: string;
   cropMarks?: boolean;
+  dpi?: string;
+  printHouse?: string;
   check?: boolean;
   /** Relative to the current directory, like the entry path. */
   data?: string;
@@ -110,6 +112,7 @@ export function parseExportFlags(flags: ExportCliOptions): Omit<ExportArtifactOp
     preset: flags.preset,
     bleed: parseNumberFlag('bleed', flags.bleed),
     cropMarks: flags.cropMarks,
+    dpi: parseIntFlag('dpi', flags.dpi),
     checkOnly: flags.check,
     data: flags.data,
     sheet: flags.sheet,
@@ -172,6 +175,14 @@ export async function runExport(entryArg: string, flags: ExportCliOptions, cwd =
   const entryPath = path.relative(workspaceRoot, path.resolve(cwd, entryArg));
   if (options.data !== undefined) options.data = path.relative(workspaceRoot, path.resolve(cwd, options.data));
   const contentIndex = new ContentIndex(getContentAssetsRoot());
+  if (flags.printHouse !== undefined) {
+    const house = await resolvePrintHouse(contentIndex, flags.printHouse);
+    if (!house.ok) {
+      console.error(house.error.replace('list_open_design_print_houses shows their sizes', 'the print guide lists their sizes'));
+      return 1;
+    }
+    options.printHouse = house.printHouse;
+  }
 
   const result = await exportArtifact({
     ...options,

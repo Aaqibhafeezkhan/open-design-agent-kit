@@ -2,6 +2,7 @@ import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import matter from 'gray-matter';
 import { loadIntegrationRegistry, type IntegrationRegistry } from '../integrations/registry';
+import { loadPrintHouses, type PrintHouse } from '../poster/printHouses';
 import { DESIGN_SECTIONS_FILE, applyDesignSections } from './designSections';
 import { computeDesignSystemFacets, loadDesignSystemDescriptors, matchesAllWords, rankDesignSystems, type DesignProfile, type DesignSystemDescriptor, type DesignSystemFacets, type MatchCandidate, type RecommendationResult } from './designSystemMatching';
 
@@ -560,6 +561,7 @@ function mergeSkillPools(...pools: Map<string, SkillDetail>[]): Map<string, Skil
 export class ContentIndex {
   private loaded: Promise<LoadedContent> | undefined;
   private integrations: Promise<IntegrationRegistry> | undefined;
+  private printHouses: Promise<PrintHouse[]> | undefined;
   private readonly facetCache = new Map<string, DesignSystemFacets>();
 
   constructor(
@@ -667,6 +669,16 @@ export class ContentIndex {
     const { surfaces, goals } = await this.ensureLoaded();
     const ready = new Set(surfaces.filter((s) => s.status === 'ready').map((s) => s.id));
     return goals.map((g) => ({ ...g, surfaces: g.surfaces.filter((id) => ready.has(id)) })).filter((g) => g.surfaces.length > 0);
+  }
+
+  /** Card and sticker printers' file requirements (openspec add-print-house-images); invalid profiles are left out. */
+  async listPrintHouses(): Promise<PrintHouse[]> {
+    this.printHouses ??= loadPrintHouses(this.assetsRoot).then((r) => r.printHouses);
+    return this.printHouses;
+  }
+
+  async getPrintHouse(id: string): Promise<PrintHouse | undefined> {
+    return (await this.listPrintHouses()).find((p) => p.id === id.trim());
   }
 
   /** A goal by id (with only its ready surfaces), or undefined. */

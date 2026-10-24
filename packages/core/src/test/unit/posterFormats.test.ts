@@ -34,9 +34,25 @@ describe('poster formats', () => {
     for (const id of ['a4', 'a2', 'a1', 'a0', 'tabloid', 'poster-18x24', 'poster-24x36']) assert.strictEqual(FORMATS[id].medium, 'print', id);
   });
 
+  it('has small print, card and shop formats, with rounded corners only on cards', () => {
+    for (const id of ['a5', 'a6', 'a7', 'postcard-4x6', 'business-card', 'business-card-us', 'trading-card', 'tarot-card', 'mini-card']) assert.strictEqual(FORMATS[id].medium, 'print', id);
+    for (const id of ['shop-product', 'shop-banner', 'shop-collection']) assert.strictEqual(FORMATS[id].medium, 'screen', id);
+    const card = getFormat('trading-card')!;
+    assert.deepStrictEqual([card.width, card.height, card.bleed, card.cornerRadius, card.fileLabel], [63.5, 88.9, 3.175, 3.175, 'trading-card']);
+    assert.deepStrictEqual(bleedBox(card), { width: 69.85, height: 95.25, bleed: 3.175 });
+    assert.strictEqual(getFormat('shop-product')!.fileLabel, 'product');
+    for (const f of Object.values(FORMATS)) if (f.cornerRadius) assert.ok(/card/.test(f.id), f.id);
+    const text = composeCanvasSection(card);
+    assert.match(text, /corners round \(3\.18 mm radius\)/);
+    assert.match(text, /never `border-radius` on the card/);
+    assert.match(text, /read in the hand/);
+    assert.doesNotMatch(composeCanvasSection(getFormat('a3')!), /Rounded corners/);
+    assert.match(composeFluidCanvasSection(card), /corner-clearance/);
+  });
+
   it('lists valid ids for an unknown one', () => {
-    assert.strictEqual(getFormat('a7'), undefined);
-    const message = unknownFormatError('a7');
+    assert.strictEqual(getFormat('a9-sticker'), undefined);
+    const message = unknownFormatError('a9-sticker');
     for (const id of FORMAT_IDS) assert.ok(message.includes(id), id);
   });
 
@@ -146,7 +162,7 @@ describe('fluid briefs', () => {
     assert.deepStrictEqual(resolveBriefCanvas('a3', false), { format: getFormat('a3'), fluid: false });
     assert.deepStrictEqual(resolveBriefCanvas(undefined, true), { format: getFormat('a3'), fluid: true });
     assert.deepStrictEqual(resolveBriefCanvas(undefined, undefined), { fluid: false });
-    assert.ok('error' in resolveBriefCanvas('a7', true));
+    assert.ok('error' in resolveBriefCanvas('a9-sticker', true));
   });
 
   it('writes the fluid contract with the format as the default shape', () => {
@@ -190,5 +206,14 @@ describe('fluid briefs', () => {
     await fs.writeFile(path.join(root, 'p.html'), '<div data-od-card></div>');
     const fixed = await posterRegistrationMetadata(root, 'p.html', undefined);
     assert.deepStrictEqual([fixed?.fluid, fixed?.format, fixed?.shares], [undefined, 'poster-18x24', earlier.shares], 'fluid follows the HTML');
+  });
+});
+
+describe('card formats: backs in the canvas section', () => {
+  it('tells a card brief how to add a back, and leaves posters as one card', () => {
+    const card = composeCanvasSection(getFormat('trading-card')!);
+    assert.match(card, /data-od-side="back"/);
+    assert.match(card, /-front` and `-back`/);
+    assert.doesNotMatch(composeCanvasSection(getFormat('a3')!), /data-od-side/);
   });
 });

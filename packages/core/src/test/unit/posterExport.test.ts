@@ -86,6 +86,27 @@ describe('poster export (real browser; skipped when none is installed)', functio
     assert.deepStrictEqual(box(page, 'TrimBox'), [mm(3), mm(3), mm(300), mm(423)]);
   });
 
+  it('warns about text in a rounded corner of a trading card, and only there', async () => {
+    const card = `<!doctype html><html><head><style>
+      body{margin:0}
+      [data-od-card]{width:69.85mm;height:95.25mm;position:relative;overflow:hidden;box-sizing:border-box;background:#222;color:#fff;font:9pt sans-serif}
+      span{position:absolute}
+    </style></head><body><div data-od-card>
+      <span id="cost" style="left:4mm;top:4mm">7</span>
+      <span id="side" style="left:4.5mm;top:40mm">Side</span>
+      <span id="name" style="left:15mm;top:15mm">Phantasmagoria</span>
+    </div></body></html>`;
+    const root = await workspace(card);
+    const result = await exportArtifact({ workspaceRoot: root, entryPath: ENTRY, browserPath, settleMs: 0, preset: 'trading-card', checkOnly: true });
+    assert.ok(result.ok, JSON.stringify(result));
+    const findings = result.findings ?? [];
+    const corner = findings.filter((f) => f.check === 'corner-clearance');
+    assert.strictEqual(corner.length, 1, JSON.stringify(findings, null, 1));
+    assert.match(corner[0].message, /span#cost.*top-left corner.*3\.2 mm radius/);
+    assert.ok(findings.some((f) => f.check === 'safe-area' && /span#side/.test(f.message)), 'an edge, not a corner, stays a safe-area finding');
+    assert.ok(!findings.some((f) => /span#name/.test(f.message) && (f.check === 'safe-area' || f.check === 'corner-clearance')));
+  });
+
   it('uses the recorded format for a plain PDF export, and flags a card authored at trim size', async () => {
     const root = await workspace(a3Poster('', 'width:297mm;height:420mm'), { format: 'a3' });
     const result = await exportArtifact({ workspaceRoot: root, entryPath: ENTRY, browserPath, settleMs: 0, format: 'pdf' });
@@ -210,7 +231,7 @@ describe('poster export (real browser; skipped when none is installed)', functio
       const r = await exportArtifact({ workspaceRoot: root, entryPath: ENTRY, browserPath, settleMs: 0, ...o });
       assert.ok(!r.ok && r.code === 'invalid-args' && re.test(r.error), JSON.stringify(r));
     };
-    await bad({ preset: 'a7' }, /Valid format ids/);
+    await bad({ preset: 'a9-sticker' }, /Valid format ids/);
     await bad({ preset: 'story', cropMarks: true }, /print formats/);
     await bad({ bleed: 50, preset: 'a3' }, /between 0 and 20/);
     await bad({ format: 'standalone', checkOnly: true }, /not "standalone"/);

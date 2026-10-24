@@ -141,7 +141,7 @@ describe('adapt_open_design_artifact', () => {
     assert.ok(!unregistered.ok && /register_open_design_artifact first/.test(unregistered.error));
     const r2 = await workspace();
     for (const [formats, re] of [
-      [['a7'], /Valid format ids/],
+      [['a9-sticker'], /Valid format ids/],
       [['story', 'story'], /listed twice/],
       [[], /1–6/],
       [['a0', 'a1', 'a2', 'a3', 'a4', 'story', 'x-image'], /1–6/],
@@ -186,8 +186,8 @@ function freeIdentifiers(source: string): string[] {
 describe('poster page scripts', () => {
   const fns = Object.entries(posterPageScripts).filter(([, v]) => typeof v === 'function') as unknown as Array<[string, () => void]>;
 
-  it('exports the seven page scripts', () => {
-    assert.deepStrictEqual(fns.map(([n]) => n).sort(), ['applyShape', 'bindRow', 'collectHorizontalScroll', 'collectPreflight', 'fitBoundText', 'isolateCardForPrint', 'measureScalables']);
+  it('exports the eight page scripts', () => {
+    assert.deepStrictEqual(fns.map(([n]) => n).sort(), ['applyShape', 'bindRow', 'collectHorizontalScroll', 'collectPreflight', 'fitBoundText', 'isolateCardForPrint', 'measureScalables', 'showCardForPrint']);
   });
 
   for (const [name, fn] of fns) {
@@ -223,7 +223,7 @@ describe('poster page scripts', () => {
     const mod = { exports: {} as Record<string, unknown> };
     new Function('module', 'exports', out.outputFiles[0].text)(mod, mod.exports);
     const minified = Object.entries(mod.exports).filter(([, v]) => typeof v === 'function');
-    assert.strictEqual(minified.length, 7);
+    assert.strictEqual(minified.length, 8);
     for (const [name, fn] of minified) assert.deepStrictEqual(freeIdentifiers((fn as () => void).toString()), [], name);
   });
 });

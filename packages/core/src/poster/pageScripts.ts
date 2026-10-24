@@ -22,6 +22,8 @@ export interface PagePreflightOptions {
   minTypePt?: number;
   /** Screen: minimum text size in CSS px. */
   minTypePx?: number;
+  /** Print: the radius the printer cuts the trim corners to, CSS px (0 or absent for square corners). */
+  cornerRadiusPx?: number;
 }
 
 export interface PageFinding {
@@ -79,6 +81,26 @@ export async function collectPreflight(opts: PagePreflightOptions): Promise<Page
     const box = card.getBoundingClientRect();
     const trim = inset(box, opts.bleedPx);
     const safe = inset(box, opts.bleedPx + opts.safeInsetPx);
+    // Rounded trim corners (cards): text near a corner is cut by the round, not just the straight edge.
+    // The safe area of a rounded trim is itself rounded, with radius cornerRadius − safeInset.
+    const cornerRadius = opts.print ? opts.cornerRadiusPx || 0 : 0;
+    const innerRadius = Math.max(0, cornerRadius - opts.safeInsetPx);
+    const cornerHit = (r: any): string => {
+      if (cornerRadius <= 0) return '';
+      const corners = [
+        { name: 'top-left', x: r.left, y: r.top, cx: safe.left + innerRadius, cy: safe.top + innerRadius, sx: -1, sy: -1 },
+        { name: 'top-right', x: r.right, y: r.top, cx: safe.right - innerRadius, cy: safe.top + innerRadius, sx: 1, sy: -1 },
+        { name: 'bottom-left', x: r.left, y: r.bottom, cx: safe.left + innerRadius, cy: safe.bottom - innerRadius, sx: -1, sy: 1 },
+        { name: 'bottom-right', x: r.right, y: r.bottom, cx: safe.right - innerRadius, cy: safe.bottom - innerRadius, sx: 1, sy: 1 },
+      ];
+      for (const c of corners) {
+        // Past the inner circle's centre on both axes, the point must lie within the inner radius of it.
+        const dx = (c.x - c.cx) * c.sx;
+        const dy = (c.y - c.cy) * c.sy;
+        if (dx > 0.5 && dy > 0.5 && Math.sqrt(dx * dx + dy * dy) > innerRadius + 0.5) return c.name;
+      }
+      return '';
+    };
 
     // ---- Text, grouped by its parent element ----
     const byElement = new Map();
@@ -134,6 +156,8 @@ export async function collectPreflight(opts: PagePreflightOptions): Promise<Page
       if (!clipped && !outside(seen, box, 1)) {
         if (opts.bleedPx > 0 && outside(seen, trim, 0.5)) {
           add({ check: 'safe-area', severity: 'error', message: name + ' is inside the bleed and will be cut off when the print is trimmed.', selector: name });
+        } else if (cornerHit(seen)) {
+          add({ check: 'corner-clearance', severity: 'warning', message: name + ' sits in the ' + cornerHit(seen) + ' corner, which the printer cuts round (' + Math.round(((opts.cornerRadiusPx || 0) * 25.4) / 9.6) / 10 + ' mm radius); move it further in.', selector: name });
         } else if (outside(seen, safe, 0.5)) {
           add({ check: 'safe-area', severity: 'warning', message: name + ' is outside the safe area (keep text ' + Math.round(opts.safeInsetPx) + 'px' + (opts.bleedPx > 0 ? ' inside the trim' : ' from the edge') + ').', selector: name });
         }
@@ -375,6 +399,23 @@ export function isolateCardForPrint(cardSelector: string, pageWidthMm: number, p
   const style = document.createElement('style');
   style.textContent = '@page { size: ' + pageWidthMm + 'mm ' + pageHeightMm + 'mm; margin: 0; }';
   document.head.appendChild(style);
+  return true;
+}
+
+/**
+ * Print with a card back (openspec add-print-house-images): shows the card at `index` among `cardSelector`
+ * matches and hides the others, after isolateCardForPrint has stripped the page down to the cards.
+ */
+export function showCardForPrint(cardSelector: string, index: number): boolean {
+  const cards = Array.prototype.slice.call(document.querySelectorAll(cardSelector));
+  if (!cards[index]) return false;
+  cards.forEach((card: any, i: number) => {
+    if (i === index) {
+      card.style.removeProperty('display');
+      card.style.setProperty('margin', '0', 'important');
+      card.style.setProperty('transform', 'none', 'important');
+    } else card.style.setProperty('display', 'none', 'important');
+  });
   return true;
 }
 
