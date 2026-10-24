@@ -30,6 +30,10 @@ export const INTEGRATIONS_FILE = 'integrations.json';
 export const DESCRIPTORS_FILE = 'design-system-descriptors.json';
 /** Third-party licence notices for ported content (openspec add-mobile-design-systems): local/notices/*, copied to the assets' notices/. */
 export const NOTICES_DIR = 'notices';
+/** Kit-owned craft docs (openspec add-states-and-microcopy-craft): local/craft/<id>.md, copied beside upstream's craft/ docs, never over one. */
+export const CRAFT_DIR = 'craft';
+/** Extra craft docs per skill or template id, merged into od.craft.requires at load: local/craft-requires.json, copied to the assets root. */
+export const CRAFT_REQUIRES_FILE = 'craft-requires.json';
 // The files an overlay may contribute to an EXISTING upstream design system,
 // either or both: additive token overrides, applied on top of (never instead
 // of) the vendored tokens.css by core's resolveDesignSystemTokens(); and
@@ -72,6 +76,19 @@ async function listFiles(dir) {
   return (await fs.readdir(dir, { withFileTypes: true })).filter((e) => e.isFile()).map((e) => e.name);
 }
 
+async function listLocalCraft(localRoot) {
+  return (await listFiles(path.join(localRoot, CRAFT_DIR))).filter((name) => name.endsWith('.md'));
+}
+
+// craft/ is a flat folder of upstream files, so the overlay can't mark each
+// copy with its own OVERLAY_MARKER; instead one marker file in craft/ lists
+// the names the previous run copied.
+async function previousCraftCopies(targetRoot) {
+  const marker = path.join(targetRoot, CRAFT_DIR, OVERLAY_MARKER);
+  if (!(await pathExists(marker))) return new Set();
+  return new Set((await fs.readFile(marker, 'utf8')).split('\n').filter((line) => line.endsWith('.md')));
+}
+
 /**
  * Every source file the overlay contributes, as { src, dst } pairs relative to
  * (localRoot, targetRoot). Shared with check-content-sync.mjs so the check
@@ -91,6 +108,8 @@ export async function listOverlayFiles(localRoot = LOCAL_ROOT) {
   for (const id of await listDirs(path.join(localRoot, 'examples'))) await walk(path.join('examples', id));
   for (const name of await listFiles(path.join(localRoot, 'prompts'))) files.push(path.join('prompts', name));
   for (const name of await listFiles(path.join(localRoot, NOTICES_DIR))) files.push(path.join(NOTICES_DIR, name));
+  for (const name of await listLocalCraft(localRoot)) files.push(path.join(CRAFT_DIR, name));
+  if (await pathExists(path.join(localRoot, CRAFT_REQUIRES_FILE))) files.push(CRAFT_REQUIRES_FILE);
   if (await pathExists(path.join(localRoot, SURFACES_FILE))) files.push(SURFACES_FILE);
   if (await pathExists(path.join(localRoot, VOICE_FILE))) files.push(VOICE_FILE);
   if (await pathExists(path.join(localRoot, PRINT_HOUSES_FILE))) files.push(PRINT_HOUSES_FILE);
@@ -171,9 +190,14 @@ export async function applyLocalOverlay(targetRoot, localRoot = LOCAL_ROOT) {
     const dst = path.join(targetRoot, 'examples', id);
     if ((await pathExists(dst)) && !(await pathExists(path.join(dst, OVERLAY_MARKER)))) collisions.push(`${id} (upstream example)`);
   }
+  const craftNames = await listLocalCraft(localRoot);
+  const ourCraft = await previousCraftCopies(targetRoot);
+  for (const name of craftNames) {
+    if ((await pathExists(path.join(targetRoot, CRAFT_DIR, name))) && !ourCraft.has(name)) collisions.push(`${name.replace(/\.md$/, '')} (upstream craft doc)`);
+  }
   if (collisions.length > 0) {
     throw new Error(
-      `Local overlay id collision: ${collisions.join(', ')}. Rename the overlay entry under packages/content/local/skills/ or local/examples/ — overlay entries never shadow upstream ones.`,
+      `Local overlay id collision: ${collisions.join(', ')}. Rename the overlay entry under packages/content/local/skills/, local/examples/ or local/craft/ — overlay entries never shadow upstream ones.`,
     );
   }
 
@@ -252,6 +276,21 @@ export async function applyLocalOverlay(targetRoot, localRoot = LOCAL_ROOT) {
     for (const name of noticeNames) await fs.copyFile(path.join(localRoot, NOTICES_DIR, name), path.join(noticesDst, name));
   }
 
+  // Craft docs sit beside upstream's: drop our previous copies, then copy and record the current set.
+  const craftDst = path.join(targetRoot, CRAFT_DIR);
+  for (const name of ourCraft) await fs.rm(path.join(craftDst, name), { force: true });
+  await fs.rm(path.join(craftDst, OVERLAY_MARKER), { force: true });
+  if (craftNames.length > 0) {
+    await fs.mkdir(craftDst, { recursive: true });
+    for (const name of craftNames) await fs.copyFile(path.join(localRoot, CRAFT_DIR, name), path.join(craftDst, name));
+    await fs.writeFile(
+      path.join(craftDst, OVERLAY_MARKER),
+      `Copied from packages/content/local/craft/ by apply-local-overlay.mjs. Do not edit here.\n${craftNames.join('\n')}\n`,
+    );
+  }
+  if (await pathExists(path.join(localRoot, CRAFT_REQUIRES_FILE))) await fs.copyFile(path.join(localRoot, CRAFT_REQUIRES_FILE), path.join(targetRoot, CRAFT_REQUIRES_FILE));
+  else await fs.rm(path.join(targetRoot, CRAFT_REQUIRES_FILE), { force: true });
+
   // surfaces.json has no upstream counterpart either: copied, or removed when local/ has none.
   // voice.md: the shared voice block local prompts include (openspec plain-language-replies).
   if (await pathExists(path.join(localRoot, VOICE_FILE))) await fs.copyFile(path.join(localRoot, VOICE_FILE), path.join(targetRoot, VOICE_FILE));
@@ -308,6 +347,7 @@ export async function applyLocalOverlay(targetRoot, localRoot = LOCAL_ROOT) {
     skills: skillIds.length,
     examples: exampleIds.length,
     prompts: promptNames.length,
+    craft: craftNames.length,
     designSystemOverrides: overrideIds.length,
     designSystemPackages: newPackageIds.length,
   };
@@ -325,9 +365,9 @@ const isMainModule = process.argv[1] && import.meta.url === pathToFileURL(proces
 if (isMainModule) {
   const targetRoot = path.join(packageRoot, 'assets', 'open-design');
   applyLocalOverlay(targetRoot)
-    .then(({ skills, examples, prompts, designSystemOverrides, designSystemPackages }) =>
+    .then(({ skills, examples, prompts, craft, designSystemOverrides, designSystemPackages }) =>
       console.log(
-        `Applied local overlay: ${skills} skills, ${examples} examples, ${prompts} prompts, ${designSystemOverrides} design-system overrides, ${designSystemPackages} new design-system packages.`,
+        `Applied local overlay: ${skills} skills, ${examples} examples, ${prompts} prompts, ${craft} craft docs, ${designSystemOverrides} design-system overrides, ${designSystemPackages} new design-system packages.`,
       ),
     )
     .catch((err) => {
