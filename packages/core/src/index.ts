@@ -34,6 +34,8 @@ export * from './generation/figmaPull';
 export * from './generation/githubImport';
 export * from './generation/hostOverrides';
 export * from './generation/portToAppInstructions';
+export * from './generation/componentLibrary';
+export * from './generation/libraryThemes';
 export * from './generation/publishCanvaTemplateInstructions';
 export * from './generation/shopHandoff';
 export * from './generation/canvaUpload';

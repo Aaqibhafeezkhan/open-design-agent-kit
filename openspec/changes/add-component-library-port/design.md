@@ -46,20 +46,22 @@ MUI (`createTheme` options; Material 3 roles are expressed on MUI's palette and 
 | `--radius-md` | `shape.borderRadius` (px) | shape medium |
 | `--space-1` | `spacing` (px unit) | |
 
-shadcn (CSS variables in the app's global stylesheet, as hex or the HSL triplets the app's existing `components.json` style uses):
+shadcn (CSS variables in the app's global stylesheet, returned both as hex and as the bare HSL triplets older `hsl(var(--x))` setups use). shadcn's `--muted`, `--secondary` and `--accent` are background tints and `--muted-foreground` is the quiet text colour, so the contract's `--muted` (a text colour) goes to `--muted-foreground`:
 
 | Token | shadcn variable |
 |---|---|
 | `--bg`, `--fg` | `--background`, `--foreground` |
-| `--surface` | `--card`, `--popover` (and their `-foreground` from `--fg`) |
-| `--accent`, `--accent-on` | `--primary`, `--primary-foreground` |
-| `--muted`, `--fg-2` | `--muted`, `--muted-foreground` |
+| `--surface` (else `--bg`) | `--card`, `--popover` (and their `-foreground` from `--fg`) |
+| `--accent`, `--accent-on` | `--primary`, `--primary-foreground`; `--ring` |
+| `--surface-warm` (else `--surface`) | `--secondary`, `--muted`, `--accent` (their `-foreground` from `--fg`) |
+| `--muted` (else `--fg-2`) | `--muted-foreground` |
 | `--border` | `--border`, `--input` |
-| `--focus-ring` (else `--accent`) | `--ring` |
 | `--danger` | `--destructive` |
 | `--radius-md` | `--radius` |
 
-Tokens with no slot (`--elev-*`, `--motion-*`, `--surface-warm`, extra `--space-*` steps) are returned as `unmapped` with a suggestion (MUI `shadows` / `transitions`; Tailwind theme extension for shadcn), so the agent can place them or tell the user. A design without a design system is themed from the artifact's own `:root` custom properties when they use the contract names; otherwise the tool says it has no theme source and the agent extracts one with `extract_open_design_design_system` first or asks.
+`--focus-ring` is a box-shadow in the contract, not a colour, so it is listed as unmapped (with a `focus-visible` suggestion) rather than put on `--ring`.
+
+Tokens with no slot (`--elev-*`, `--motion-*`, `--focus-ring`, extra `--space-*` steps) are returned as `unmapped` with a suggestion (MUI `shadows` / `transitions`; Tailwind theme extension for shadcn), so the agent can place them or tell the user. A design without a design system is themed from the artifact's own `:root` custom properties when they use the contract names; otherwise the tool says it has no theme source and the agent extracts one with `extract_open_design_design_system` first or asks.
 
 ### Inventory: a deterministic seed, then the agent and the user
 

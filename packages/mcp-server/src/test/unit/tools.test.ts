@@ -615,3 +615,29 @@ describe('push_open_design_artifact_to_figma', () => {
     await fs.access(path.join(root, '.open-design/card/exports/figma/manifest.json'));
   });
 });
+
+describe('prepare_open_design_component_library', () => {
+  async function withDesign(pkg: unknown): Promise<ToolContext> {
+    const ctx = await makeContext();
+    await fs.writeFile(path.join(ctx.workspaceRoot, 'package.json'), JSON.stringify(pkg));
+    const entryPath = '.open-design/p/p.html';
+    await fs.mkdir(path.join(ctx.workspaceRoot, '.open-design', 'p'), { recursive: true });
+    await fs.writeFile(path.join(ctx.workspaceRoot, entryPath), '<style>:root{--bg:#fff;--fg:#111;--accent:#2563eb}</style><body><div class="card"></div><div class="card"></div></body>');
+    await writeArtifactManifest({ workspaceRoot: ctx.workspaceRoot, entryPath, artifactManifest: { kind: 'html', renderer: 'html', exports: ['html'], title: 'P' } });
+    return ctx;
+  }
+
+  it('returns instructions and writes no app code', async () => {
+    const ctx = await withDesign({ dependencies: { react: '^19.0.0', '@mui/material': '^7.0.0' } });
+    const text = await tools.prepareComponentLibrary(ctx, { entryPaths: ['.open-design/p/p.html'] });
+    assert.match(text, /Material UI \(MUI\), themed to Material 3/);
+    assert.match(text, /div\.card` ×2/);
+    assert.deepStrictEqual((await fs.readdir(ctx.workspaceRoot)).sort(), ['.open-design', 'package.json']);
+  });
+
+  it('prefixes errors with their code', async () => {
+    const ctx = await withDesign({ dependencies: { vue: '^3.0.0' } });
+    assert.match(await tools.prepareComponentLibrary(ctx, { entryPaths: ['.open-design/p/p.html'] }), /^Component set not prepared \(unsupported-framework\)/);
+    assert.match(await tools.prepareComponentLibrary(ctx, { entryPaths: ['.open-design/p/p.html'], library: 'vuetify' }), /^Component set not prepared \(unsupported-library\)/);
+  });
+});

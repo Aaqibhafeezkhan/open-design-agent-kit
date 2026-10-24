@@ -97,7 +97,7 @@ Or run `npx @feimacode/open-design-agent-kit init --tools codex` to add the matc
 - **Generating:** `read_open_design_source` (DOCX, PPTX, XLSX, PDF and more to Markdown), `prepare_open_design_brief`, `register_open_design_artifact`, `get_open_design_artifact`, `remix_open_design_example`, `add_open_design_diagram_runtime`
 - **Exploring directions:** `prepare_open_design_exploration`, `compare_open_design_exploration`, `choose_open_design_direction`
 - **Design systems:** `set_active_design_system`, `create_open_design_design_system`
-- **Beyond the prototype:** `port_open_design_artifact_to_app`, `pull_open_design_figma_frame`, `push_open_design_artifact_to_figma`, `publish_open_design_artifact_to_canva`, `publish_open_design_artifact_to_shop`
+- **Beyond the prototype:** `port_open_design_artifact_to_app`, `prepare_open_design_component_library`, `pull_open_design_figma_frame`, `push_open_design_artifact_to_figma`, `publish_open_design_artifact_to_canva`, `publish_open_design_artifact_to_shop`
 - **Check and export:** `check_open_design_artifact` (screenshots plus preflight findings), `export_open_design_artifact` (PNG/JPEG, PDF, PowerPoint, MP4/WebM/GIF, standalone HTML, a site folder, email HTML, paste-ready HTML, one file per spreadsheet row), `adapt_open_design_artifact`, `create_open_design_qr_code`, `list_open_design_print_houses`. Rendering needs an installed Chrome, Edge or Chromium; animation export also needs FFmpeg.
 - **Sharing:** `publish_open_design_artifact` (a temporary link, or your own Netlify, Vercel, Cloudflare Pages or GitHub Pages)
 - **Integrations:** `list_open_design_integrations` (Canva, Figma, Notion, Google Drive, Slack and posting services your agent can connect to)

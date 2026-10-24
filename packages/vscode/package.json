@@ -826,6 +826,95 @@
         }
       },
       {
+        "name": "prepare_open_design_component_library",
+        "displayName": "Build a Component Set from a Design",
+        "modelDescription": "Composes staged instructions for turning reviewed Open Design artifacts into a reusable component set on a named React library: Material UI themed to Material 3 (\"mui\") or shadcn/ui (\"shadcn\"). Use it when the user asks for components, a component library or a component set from a design; for putting one page into the app, use port_open_design_artifact_to_app instead. Returns a repeated-element inventory to turn into components.md (then stop for the user's approval), a ready theme generated from the design system's tokens, component and gallery rules, and how to record the set. Does NOT write app code. Call it again with record after the set builds: that writes metadata.componentLibrary on the artifacts' manifests so a later run updates the same set.",
+        "userDescription": "Turn a reviewed design into a reusable MUI or shadcn component set",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "od-component-library",
+        "icon": "$(symbol-class)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "entryPaths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1,
+              "maxItems": 10,
+              "description": "Workspace-relative entry paths of 1 to 10 registered artifacts the set is built from."
+            },
+            "collectionId": {
+              "type": "string",
+              "description": "Instead of entryPaths: every screen of this collection."
+            },
+            "library": {
+              "type": "string",
+              "enum": [
+                "auto",
+                "mui",
+                "shadcn"
+              ],
+              "description": "\"mui\" (Material UI, themed to Material 3), \"shadcn\" (shadcn/ui), or \"auto\" (default) to pick from the app's package.json."
+            },
+            "outputDir": {
+              "type": "string",
+              "description": "Optional: workspace-relative folder for the components, inside the app. Default: <app>/src/components/<DesignName>, or the folder an earlier record names."
+            },
+            "record": {
+              "type": "object",
+              "description": "Stage 5 only: the finished set, written to the artifacts' manifests instead of returning instructions.",
+              "properties": {
+                "library": {
+                  "type": "string",
+                  "enum": [
+                    "mui",
+                    "shadcn"
+                  ]
+                },
+                "outputDir": {
+                  "type": "string"
+                },
+                "themePath": {
+                  "type": "string"
+                },
+                "components": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "string"
+                      },
+                      "sourceSelectors": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "path"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "library",
+                "outputDir",
+                "themePath",
+                "components"
+              ]
+            }
+          }
+        }
+      },
+      {
         "name": "share_open_design_artifact_to_community",
         "displayName": "Share Artifact to Community",
         "modelDescription": "Composes instructions for packaging a finished Open Design artifact as a new entry in the community-contributed design catalog (awesome-open-design). Does NOT write any files and does NOT run any commands itself. The returned instructions direct the model to: (1) derive a slug/title/description/example_prompt from the artifact itself rather than asking the user to retype anything, (2) scaffold a local SKILL.md + example.html + open-design.json folder with its own file-editing tools, (3) explicitly check in with the user before publishing anything, since that step is public and hard to reverse, and only then (4) fork/branch/push/open a PR against the community repo using its own terminal tool under the user's own already-authenticated gh/git identity — never inventing a placeholder GitHub owner if gh auth is missing.",

@@ -37,6 +37,7 @@ Task-by-task, for every host ([how the guides are laid out](guides/README.md)):
 - [Inline preview in Claude Desktop Chat](guides/inline-preview.md)
 - [Figma](guides/figma.md): frame to code, and artifact to Figma layers
 - [Promote to app code](guides/promote-to-app-code.md): turn a prototype into real components
+- [Build a component set](guides/component-library.md): reusable MUI (Material 3) or shadcn/ui components and a theme from a design
 - [Social media posts](guides/social-posts.md): X, Instagram, LinkedIn, Xiaohongshu, Stories, YouTube thumbnails
 - [HTML email](guides/html-email.md): newsletters and launch emails that render in real inboxes, ready to paste into your email tool
 - [Paste into WeChat, Notion and newsletters](guides/paste-html.md): HTML that keeps its look when pasted into another editor

@@ -616,6 +616,59 @@ const TOOL_DEFS: ToolDef[] = [
   },
   {
     tool: {
+      name: 'prepare_open_design_component_library',
+      description:
+        "Composes staged instructions for turning reviewed Open Design artifacts into a reusable component set on a named React library: Material UI themed to Material 3 (`mui`) or shadcn/ui (`shadcn`). Use it when the user asks for components, a component library or a component set from a design (\"make Material 3 components for my React app from this\"); for putting one page into the app, use port_open_design_artifact_to_app instead. Returns a repeated-element inventory to turn into components.md (then stop for the user's approval), a ready theme generated from the design system's tokens, component and gallery rules, and how to record the set. Does NOT write app code. Call it again with `record` after the set builds: that writes metadata.componentLibrary on the artifacts' manifests so a later run updates the same set.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          entryPaths: {
+            type: 'array',
+            items: { type: 'string' },
+            minItems: 1,
+            maxItems: 10,
+            description: 'Workspace-relative entry paths of 1 to 10 registered artifacts the set is built from.',
+          },
+          collectionId: { type: 'string', description: 'Instead of entryPaths: every screen of this collection.' },
+          library: {
+            type: 'string',
+            enum: ['auto', 'mui', 'shadcn'],
+            description: '"mui" (Material UI, themed to Material 3), "shadcn" (shadcn/ui), or "auto" (default) to pick from the app\'s package.json.',
+          },
+          outputDir: {
+            type: 'string',
+            description: "Optional: workspace-relative folder for the components, inside the app. Default: <app>/src/components/<DesignName>, or the folder an earlier record names.",
+          },
+          record: {
+            type: 'object',
+            description: 'Stage 5 only: the finished set, written to the artifacts\' manifests instead of returning instructions.',
+            properties: {
+              library: { type: 'string', enum: ['mui', 'shadcn'] },
+              outputDir: { type: 'string' },
+              themePath: { type: 'string' },
+              components: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    name: { type: 'string' },
+                    path: { type: 'string' },
+                    sourceSelectors: { type: 'array', items: { type: 'string' } },
+                  },
+                  required: ['name', 'path'],
+                },
+              },
+            },
+            required: ['library', 'outputDir', 'themePath', 'components'],
+          },
+        },
+      },
+    },
+    handler: (ctx, args) =>
+      tools.prepareComponentLibrary(ctx, args as { entryPaths?: string[]; collectionId?: string; library?: string; outputDir?: string; record?: unknown }),
+  },
+  {
+    tool: {
       name: 'pull_open_design_figma_frame',
       description:
         "Composes instructions for translating a Figma frame into a real code artifact with 1:1 visual fidelity. When the user's Figma MCP server is connected (checked via list_open_design_integrations), the instructions use Figma's own get_design_context, get_variable_defs and get_screenshot; no token needed. A Figma personal access token is optional: when one is configured, the frame's structural summary and a rendered image are fetched too and included as ground truth, and it's the fallback when Figma isn't connected. Does NOT write any files \u2014 author the entry file yourself with your normal file-editing tools, then call register_open_design_artifact. figmaUrl must be a frame-scoped link (Figma's \"Copy link to selection\", with node-id), not a bare file link.",

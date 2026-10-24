@@ -12,6 +12,7 @@ import { RemixExampleTool } from './remixExampleTool';
 import { CreateCustomDesignSystemTool } from './createCustomDesignSystemTool';
 import { ExtractDesignSystemTool } from './extractDesignSystemTool';
 import { PortToAppCodeTool } from './portToAppCodeTool';
+import { PrepareComponentLibraryTool } from './prepareComponentLibraryTool';
 import { ShareToCommunityTool } from './shareToCommunityTool';
 import { PublishCanvaTemplateTool } from './publishCanvaTemplateTool';
 import { PublishToShopTool } from './publishToShopTool';
@@ -53,6 +54,7 @@ export function registerTools(
     ['create_open_design_design_system', new CreateCustomDesignSystemTool(contentIndex)],
     ['extract_open_design_design_system', new ExtractDesignSystemTool()],
     ['port_open_design_artifact_to_app', new PortToAppCodeTool()],
+    ['prepare_open_design_component_library', new PrepareComponentLibraryTool(contentIndex)],
     ['share_open_design_artifact_to_community', new ShareToCommunityTool()],
     ['publish_open_design_artifact_to_canva', new PublishCanvaTemplateTool()],
     ['publish_open_design_artifact_to_shop', new PublishToShopTool()],

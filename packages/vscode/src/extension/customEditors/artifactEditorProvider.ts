@@ -453,11 +453,23 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
             vscode.window.showWarningMessage('Open Design: this artifact must be inside an open workspace folder to promote it to app code.');
             break;
           }
-          this.log.info(`ArtifactEditorProvider: promoting ${location.entryPath} to app code`);
-          await vscode.commands.executeCommand('workbench.action.chat.open', {
-            query: `Use the port_open_design_artifact_to_app tool to promote the Open Design artifact at "${location.entryPath}" into this app's real production code.`,
-            isPartialQuery: true,
-          });
+          {
+            const picked = await vscode.window.showQuickPick(
+              [
+                { label: 'One component', detail: "Port this page into the app's code, following an existing component", set: false },
+                { label: 'A component set', detail: 'Build reusable components and a theme from this design, on MUI (Material 3) or shadcn/ui', set: true },
+              ],
+              { title: 'Promote to code', placeHolder: 'What should this design become?' },
+            );
+            if (!picked) break;
+            this.log.info(`ArtifactEditorProvider: promoting ${location.entryPath} to app code (${picked.set ? 'component set' : 'one component'})`);
+            await vscode.commands.executeCommand('workbench.action.chat.open', {
+              query: picked.set
+                ? `Use the prepare_open_design_component_library tool to build a reusable component set from the Open Design artifact at "${location.entryPath}" for this app.`
+                : `Use the port_open_design_artifact_to_app tool to promote the Open Design artifact at "${location.entryPath}" into this app's real production code.`,
+              isPartialQuery: true,
+            });
+          }
           break;
         case 'copy-for':
           if (!location) {

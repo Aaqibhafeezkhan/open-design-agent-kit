@@ -49,7 +49,7 @@ Sidecars are named after the entry file (`<entry>.artifact.json`, and so on), so
 | `collectionId`, `collectionName`, `screenRole`, `screenIndex` | string / number | Collection membership. See [Collections](../guides/generate-a-design.md#collections). |
 | `sources` | `{ path, sha256 }[]` | The documents the design was [built from](../guides/deck-from-a-document.md), with their hashes at registration, so [`get_open_design_artifact`](tools.md#get_open_design_artifact) can report sources that changed since. At most 10. |
 | `explorationId`, `directionId` | string | Exploration membership: a sketch carries both; a built-out or merged version carries only `explorationId`. See [Explore design directions](../guides/explore-directions.md). |
-| `metadata` | object | Free-form, at most 16 KB. Uses so far: `metadata.exports`, `metadata.format`, `metadata.fluid`, `metadata.shares` and `metadata.sync` (below), `metadata.remixedFrom` (the example a remix came from) and `metadata.description` (used for link previews when present). |
+| `metadata` | object | Free-form, at most 16 KB. Uses so far: `metadata.exports`, `metadata.format`, `metadata.fluid`, `metadata.shares`, `metadata.sync` and `metadata.componentLibrary` (below), `metadata.remixedFrom` (the example a remix came from) and `metadata.description` (used for link previews when present). |
 
 ### metadata.exports
 
@@ -107,6 +107,18 @@ Where the artifact has been published, recorded by [`publish_open_design_artifac
 ```
 
 Expired temporary entries are kept, but they're no longer offered as links.
+
+### metadata.componentLibrary
+
+The component set built from this design with [`prepare_open_design_component_library`](tools.md#prepare_open_design_component_library), written by its `record` call. A later call reads it to update the same set.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `library` | string | `mui` or `shadcn`. |
+| `outputDir` | string | Workspace-relative folder of the components. |
+| `themePath` | string | The theme file. |
+| `components` | `{ name, path, sourceSelectors? }`[] | Each component, its file, and the design selectors it came from (up to 10). |
+| `updatedAt` | ISO date | When it was recorded. |
 
 ## Exports by kind
 
