@@ -10,5 +10,5 @@
 
 ## 3. Baseline and docs
 
-- [ ] 3.1 Baseline run on current main; commit the first `RESULTS.md` section
+- [x] 3.1 Baseline run on current main; commit the first `RESULTS.md` section
 - [x] 3.2 `docs/contributing/README.md`: when to run evals and the before/after expectation
