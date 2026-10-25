@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 import { scanArtifactManifests } from '../../packages/core/src/workspace/collectionScan';
 import { findBrowser } from '../../packages/core/src/export/browserDiscovery';
 import { renderShapeSheetHtml } from '../../packages/core/src/poster/shapeSheet';
-import { countAssumptionLines, EVALS_DIR, loadBriefs, lookSignature, OUTPUT_DIR, REPO_ROOT, scoreTable, signatureKey, summary, total } from './lib.mjs';
+import { countAssumptionLines, DESIGN_FOLDERS, EVALS_DIR, htmlFiles, loadBriefs, lookSignature, REPO_ROOT, scoreTable, signatureKey, summary, total } from './lib.mjs';
 
 export * from './lib.mjs';
 const TSX = path.join(REPO_ROOT, 'node_modules', '.bin', 'tsx');
@@ -60,7 +60,8 @@ function countCodes(findings, severity) {
  * agent run knows (transcript, rounds, wall time); without it those columns are n/a.
  */
 export async function scoreWorkspace({ workspaceRoot, shotsDir, brief, run, env }) {
-  const manifests = (await scanArtifactManifests(workspaceRoot, OUTPUT_DIR)).filter(({ entryPath }) => !entryPath.includes('/.checks/'));
+  const manifests = await registeredDesigns(workspaceRoot);
+  const entries = new Set(manifests.map((m) => m.entryPath));
   const transcript = run?.transcript;
   const designs = [];
   for (const { entryPath, manifest } of manifests) {
@@ -85,6 +86,7 @@ export async function scoreWorkspace({ workspaceRoot, shotsDir, brief, run, env 
   }
   return {
     brief: brief?.id,
+    unregistered: designs.length === 0 ? (await htmlFiles(workspaceRoot)).filter((f) => !entries.has(f)) : [],
     repeat: run?.repeat,
     workspace: workspaceRoot,
     designs,
@@ -97,16 +99,22 @@ export async function scoreWorkspace({ workspaceRoot, shotsDir, brief, run, env 
   };
 }
 
+/** Every registered design in the workspace, wherever its design folder is. */
+export async function registeredDesigns(workspaceRoot) {
+  return (await scanArtifactManifests(workspaceRoot, '.')).filter(({ entryPath }) => !entryPath.split('/').includes('.checks'));
+}
+
 function slug(value) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'design';
 }
 
-/** Workspaces under dir: dir itself when it has .open-design/, else its direct subfolders that do. */
+/** Workspaces under dir: dir itself when it has a design folder (.open-design/ or Open Design/), else its direct subfolders that do. */
 export async function findWorkspaces(dir) {
-  if (existsSync(path.join(dir, OUTPUT_DIR))) return [dir];
+  const isWorkspace = (d) => DESIGN_FOLDERS.some((f) => existsSync(path.join(d, f)));
+  if (isWorkspace(dir)) return [dir];
   const out = [];
   for (const entry of await fs.readdir(dir, { withFileTypes: true })) {
-    if (entry.isDirectory() && existsSync(path.join(dir, entry.name, OUTPUT_DIR))) out.push(path.join(dir, entry.name));
+    if (entry.isDirectory() && isWorkspace(path.join(dir, entry.name))) out.push(path.join(dir, entry.name));
   }
   return out.sort();
 }
@@ -223,7 +231,7 @@ export async function appendResults({ scores, briefs, mode, model, label, contac
 export async function scoreOnly(dir, { label, writeResults = true, browser } = {}) {
   const root = path.resolve(dir);
   const workspaces = await findWorkspaces(root);
-  if (workspaces.length === 0) throw new Error(`No workspace with ${OUTPUT_DIR}/ found at ${root} or in its subfolders.`);
+  if (workspaces.length === 0) throw new Error(`No workspace with ${DESIGN_FOLDERS.join('/ or ')}/ found at ${root} or in its subfolders.`);
   const runDir = path.join(EVALS_DIR, 'runs', `${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}-score-only`);
   const { env, browserPath, problem } = await browserEnv(runDir, browser);
   if (problem) console.error(`Browser: ${problem}`);

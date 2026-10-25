@@ -9,6 +9,27 @@ import { fileURLToPath } from 'node:url';
 export const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 export const EVALS_DIR = path.join(REPO_ROOT, 'evals');
 export const OUTPUT_DIR = '.open-design';
+// A design can be registered under the workspace's .open-design/ or under a visible
+// "Open Design" folder (openspec desktop-visible-design-folder), so the whole workspace is scanned.
+export const DESIGN_FOLDERS = [OUTPUT_DIR, 'Open Design'];
+const SKIPPED_DIRS = new Set(['node_modules', '.checks', '.git', 'exports']);
+
+/** HTML files anywhere in the workspace, workspace-relative, posix (skipping node_modules, check runs and exports). */
+export async function htmlFiles(workspaceRoot, dir = '') {
+  const out = [];
+  let entries = [];
+  try {
+    entries = await fs.readdir(path.join(workspaceRoot, dir), { withFileTypes: true });
+  } catch {
+    return out;
+  }
+  for (const entry of entries) {
+    const rel = dir ? `${dir}/${entry.name}` : entry.name;
+    if (entry.isDirectory() && !SKIPPED_DIRS.has(entry.name)) out.push(...(await htmlFiles(workspaceRoot, rel)));
+    else if (entry.isFile() && /\.html?$/i.test(entry.name)) out.push(rel);
+  }
+  return out;
+}
 
 // js-yaml comes with gray-matter (a core dependency); resolve it from there.
 const requireFromCore = createRequire(path.join(REPO_ROOT, 'packages', 'core', 'package.json'));
@@ -219,7 +240,8 @@ export function scoreRows(scores, briefsById = new Map()) {
       time: s.wallSeconds === undefined ? 'n/a' : `${Math.round(s.wallSeconds)}s`,
     };
     if (s.designs.length === 0) {
-      rows.push({ ...common, design: s.agentError ? `no design (${s.agentError})` : 'no design', skill: '—', errors: '—', errorCodes: '—', warnings: '—', critic: 'n/a', assumptions: 'n/a', signature: '—' });
+      const why = s.agentError ?? (s.unregistered?.length ? `made ${s.unregistered.join(', ')} without registering it` : undefined);
+      rows.push({ ...common, design: why ? `no design (${why})` : 'no design', skill: '—', errors: '—', errorCodes: '—', warnings: '—', critic: 'n/a', assumptions: 'n/a', signature: '—' });
       continue;
     }
     for (const d of s.designs) {

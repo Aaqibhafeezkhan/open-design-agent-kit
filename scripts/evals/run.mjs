@@ -13,15 +13,15 @@ import { spawn } from 'node:child_process';
 import { existsSync, promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { scanArtifactManifests } from '../../packages/core/src/workspace/collectionScan';
 import {
   appendResults,
   browserEnv,
   countQuestions,
   EVALS_DIR,
   loadBriefs,
-  OUTPUT_DIR,
+  htmlFiles,
   parseTranscript,
+  registeredDesigns,
   REPO_ROOT,
   scoreOnly,
   scoreTable,
@@ -129,9 +129,6 @@ export function answerMessage(brief) {
   return [answers.length ? 'Here are my answers:' : undefined, ...answers, 'For anything else, you pick. Please go ahead and make it.'].filter(Boolean).join('\n');
 }
 
-async function registered(workspace) {
-  return (await scanArtifactManifests(workspace, OUTPUT_DIR)).filter(({ entryPath }) => !entryPath.includes('/.checks/'));
-}
 
 /** One brief, one repeat: up to maxRounds agent turns in a fresh workspace, answering questions in between. */
 async function runBrief(brief, repeat, ctx) {
@@ -163,10 +160,12 @@ async function runBrief(brief, repeat, ctx) {
     if (res.timedOut) error = `round ${rounds} timed out`;
     else if (!t.result) error = `claude exited ${res.code}: ${res.stderr.trim().split('\n').slice(-2).join(' ') || 'no result'}`;
     else if (t.result.is_error) error = String(t.result.result || t.result.subtype || 'agent error').trim();
-    if (error || (await registered(tmp)).length > 0) break;
-    // No design yet: the agent stopped to ask. Count its questions and answer them.
-    const last = t.result.result ?? t.texts.at(-1) ?? '';
-    questions += countQuestions(last);
+    // Done once something was built, registered or not (an unregistered page is scored as "no design").
+    if (error || (await registeredDesigns(tmp)).length > 0 || (await htmlFiles(tmp)).length > 0) break;
+    // Nothing built: if the agent stopped to ask, count its questions and answer them; otherwise it gave up.
+    const asked = countQuestions(t.result.result ?? t.texts.at(-1) ?? '');
+    if (asked === 0) break;
+    questions += asked;
     message = answerMessage(brief);
   }
   const wallSeconds = (Date.now() - started) / 1000;
