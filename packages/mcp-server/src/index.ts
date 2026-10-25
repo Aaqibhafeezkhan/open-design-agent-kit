@@ -484,9 +484,54 @@ const TOOL_DEFS: ToolDef[] = [
   },
   {
     tool: {
+      name: 'show_open_design_questions',
+      description:
+        "Asks the user up to four short questions inline as tappable choices, in hosts that render MCP Apps (Claude Desktop Chat), instead of a wall of chat text: surface and design-system questions before a build, a direction pick after an exploration, a \"fix these?\" question after a review. Each question has an id, text and kind (single, multi or text); single and multi take up to eight options (id, label, and optionally imageRef: designSystem:<id>, example:<skillId>, artifact:<entryPath> or checkRun:<entryPath>[#<runId>], never a URL). The view adds a \"You pick\" choice. Send posts one message here starting \"Answers:\" with a line <!-- od-answers {...} -->: read that JSON (question id to option id, option ids, typed text, or \"you-pick\", meaning choose for them). Don't repeat the questions in chat; accept typed answers too. Only listed to hosts that render MCP Apps; if called elsewhere it returns the questions as a numbered list to ask in one message.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          title: { type: 'string', description: 'A short heading, e.g. "A few quick questions".' },
+          questions: {
+            type: 'array',
+            maxItems: 4,
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string', description: 'A short key for the answer, e.g. "where".' },
+                text: { type: 'string', description: 'The question, in plain words.' },
+                kind: { type: 'string', enum: ['single', 'multi', 'text'], description: 'single (default): one choice; multi: any number; text: a short typed answer.' },
+                options: {
+                  type: 'array',
+                  maxItems: 8,
+                  items: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'string' },
+                      label: { type: 'string', description: 'At most 120 characters.' },
+                      imageRef: { type: 'string', description: 'designSystem:<id>, example:<skillId>, artifact:<entryPath> or checkRun:<entryPath>[#<runId>].' },
+                    },
+                    required: ['id', 'label'],
+                  },
+                },
+                default: { description: 'A preselected option id (single), option ids (multi) or text.' },
+              },
+              required: ['id', 'text'],
+            },
+          },
+        },
+        required: ['questions'],
+      },
+      _meta: previewAppToolMeta(),
+    },
+    handler: (ctx, args) => tools.showQuestions(ctx, args as { questions?: unknown; title?: unknown }),
+    appsHostOnly: true,
+    catalogOnly: true,
+  },
+  {
+    tool: {
       name: 'get_open_design_preview_state',
       description:
-        'Used by the Open Design preview page only: a view\'s data (the design with its comments and check screenshots, an exploration, a page of examples, design-system tiles, a campaign sheet), or one example\'s or design system\'s preview.',
+        'Used by the Open Design preview page only: a view\'s data (the design with its comments and check screenshots, an exploration, a page of examples, design-system tiles, a campaign sheet), one example\'s or design system\'s preview, or a question option\'s picture (imageRef).',
       inputSchema: {
         type: 'object',
         properties: {
@@ -501,6 +546,7 @@ const TOOL_DEFS: ToolDef[] = [
           cursor: { type: 'string' },
           exampleId: { type: 'string' },
           designSystemId: { type: 'string' },
+          imageRef: { type: 'string' },
         },
       },
       _meta: appOnlyToolMeta(),
@@ -508,7 +554,12 @@ const TOOL_DEFS: ToolDef[] = [
     handler: (ctx, args) => tools.previewAppState(ctx, args as tools.PreviewStateInput),
     appOnly: true,
     // The gallery and the design-system tiles, not a design in the workspace.
-    catalogOnly: (args) => args.view === 'examples' || args.view === 'design-systems' || typeof args.exampleId === 'string' || typeof args.designSystemId === 'string',
+    catalogOnly: (args) =>
+      args.view === 'examples' ||
+      args.view === 'design-systems' ||
+      typeof args.exampleId === 'string' ||
+      typeof args.designSystemId === 'string' ||
+      (typeof args.imageRef === 'string' && /^(designSystem|example):/.test(args.imageRef)),
   },
   {
     tool: {
@@ -1515,7 +1566,7 @@ async function main(): Promise<void> {
 
   // The preview MCP App's page (openspec add-mcp-app-preview).
   server.setRequestHandler(ListResourcesRequestSchema, async () => ({
-    resources: [{ uri: PREVIEW_APP_URI, name: 'Open Design preview', description: 'Shows an Open Design artifact inline, with comments, and the example, design-system and campaign pickers.', mimeType: MCP_APP_MIME_TYPE }],
+    resources: [{ uri: PREVIEW_APP_URI, name: 'Open Design preview', description: 'Shows an Open Design artifact inline, with comments, the example, design-system and campaign pickers, and questions as tappable choices.', mimeType: MCP_APP_MIME_TYPE }],
   }));
   server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
     if (request.params.uri !== PREVIEW_APP_URI) throw new Error(`Unknown resource: ${request.params.uri}`);

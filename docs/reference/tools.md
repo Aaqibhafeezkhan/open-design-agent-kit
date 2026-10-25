@@ -362,9 +362,29 @@ MCP hosts that render MCP Apps only, like `show_open_design_examples`; elsewhere
 
 **Result:** as for `show_open_design_examples`: only the view, filters and a title, or a short text list for a host without MCP Apps.
 
+### show_open_design_questions
+
+MCP hosts that render MCP Apps only, like `show_open_design_examples`. Asks the user up to four short questions [inline](../guides/inline-preview.md#answer-questions-with-taps) as tappable choices, instead of a list in chat: the surface and design-system questions before a build, which direction after an exploration, "fix these?" after a review. Each choice question also gets a **You pick** chip. **Send** posts one chat message: a readable line of `id = label` pairs, and a machine line the skills tell the agent to read.
+
+```text
+Answers: where = Printed; mood = Dark, Bold
+<!-- od-answers {"where":"printed","mood":["dark","bold"]} -->
+```
+
+Values are option ids (an array for `multi`), the typed text for `text`, or `you-pick` (the agent chooses and says what it chose). Unanswered questions are left out. The page calls no tool when you tap Send; if the host refuses the message, it shows the answers to copy and paste.
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `questions` | object[] | yes | 1–4 questions, each `{ id, text, kind?, options?, default? }`. `kind` is `single` (the default), `multi` or `text`. `single` and `multi` take 1–8 `options` of `{ id, label, imageRef? }`, labels of at most 120 characters; a `text` question takes none. `default` preselects an option id (an array for `multi`) or prefills the text. Ids are 1–40 letters, digits, `-` or `_`; `you-pick` is reserved. |
+| `title` | string | no | A short heading; default "A few quick questions". |
+
+The whole schema must be under 2 KB as JSON. An option's `imageRef` names a picture the server already makes, loaded by the page through `get_open_design_preview_state`: `designSystem:<id>` (its palette), `example:<skillId>` (its preview), `artifact:<entryPath>` (its latest check screenshot, else the page) or `checkRun:<entryPath>` (that entry's latest check screenshot; `checkRun:<entryPath>#<runId>` for one run). URLs and HTML are refused, with a message listing these forms.
+
+**Result:** in a host with MCP Apps, a short text telling the agent how to read the answer, and the checked questions as structured content for the page. Called anyway by a host without MCP Apps, it returns "Ask the user these in one message:" and the questions as a numbered list with their options.
+
 ### get_open_design_preview_state
 
-Called only by the inline preview page, never by the model: hosts that render MCP Apps keep it out of the model's tool list, and the server lists it only to those hosts. For an artifact it returns the design as one self-contained page (local fonts and images inlined, the preview bridge injected), its comments, its latest check screenshots and the export formats offered. Over 5 MiB, or for a kind that isn't HTML, the page shows the latest check screenshot instead. For the pickers it returns one page of examples, the design-system tiles, a campaign sheet's tiles, or one example's or design system's preview, so none of it passes through the model's context.
+Called only by the inline preview page, never by the model: hosts that render MCP Apps keep it out of the model's tool list, and the server lists it only to those hosts. For an artifact it returns the design as one self-contained page (local fonts and images inlined, the preview bridge injected), its comments, its latest check screenshots and the export formats offered. Over 5 MiB, or for a kind that isn't HTML, the page shows the latest check screenshot instead. For the pickers it returns one page of examples, the design-system tiles, a campaign sheet's tiles, one example's or design system's preview, or one question option's picture, so none of it passes through the model's context.
 
 | Argument | Type | Required | Meaning |
 |---|---|---|---|
@@ -379,6 +399,7 @@ Called only by the inline preview page, never by the model: hosts that render MC
 | `cursor` | string | no | The next page of examples, as the previous page returned it. |
 | `exampleId` | string | no | One example's view-only preview (text instead over 5 MiB). |
 | `designSystemId` | string | no | One design system's Visualize page. |
+| `imageRef` | string | no | One [`show_open_design_questions`](#show_open_design_questions) option's picture: swatches, a screenshot (at most 1 MiB) or a view-only page. |
 
 ### save_open_design_comment
 

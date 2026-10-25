@@ -60,6 +60,10 @@ Give the user the comparison page path (it opens in any browser straight from th
 - **merge** in parts of another direction ("B, with A's hero"), or
 - **save it as a design system** for later work.
 
+<!-- claude-only -->
+**In Claude Desktop Chat**, call `show_open_design_artifact` with the `explorationId` to show the directions side by side, and where `show_open_design_questions` is in your tool list, ask the choice through it instead of a chat message: a `direction` question with one option per direction (`imageRef: "artifact:<its entryPath>"`), a `next` question (Build it out, Merge in parts of another, Save as a design system) and a short `text` question for anything to change or take from another direction. Read the `<!-- od-answers {...} -->` line of the reply (`you-pick` means choose for them), then go on to step 5. If the user types their answer or taps "Take this one" instead, use that.
+<!-- /claude-only -->
+
 ## 5. Take the choice forward
 
 Call `choose_open_design_direction` with the `explorationId`, the chosen `directionId`, `next` (`build-out`, `merge` with `mergeFrom`, or `save-design-system`) and the user's own adjustments as `notes`. Follow the returned `instructions` and register the result as they say.

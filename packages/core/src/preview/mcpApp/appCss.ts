@@ -2,7 +2,8 @@
 // a fixed-height stage inline, the full window in fullscreen, the export
 // buttons, the fallback screenshot, the exploration grid, and the pickers
 // (openspec add-mcp-app-pickers): example cards, design-system tiles and the
-// campaign sheet. Colors come from the --od-* tokens, so the host's light or
+// campaign sheet, and the ask view and feedback chips (add-mcp-app-ask-view).
+// Colors come from the --od-* tokens, so the host's light or
 // dark theme carries through; only design previews keep a white ground.
 export const MCP_APP_CSS = `
   html, body { margin: 0; background: var(--od-bg); }
@@ -96,4 +97,35 @@ export const MCP_APP_CSS = `
   .od-dot.bad { background: var(--od-red); }
   .od-tile-errors { margin: 0; padding-left: 16px; font-size: 12px; color: var(--od-text-muted); }
   .od-tile-errors code { color: var(--od-red); }
+
+  .od-feedback { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px; border-top: 1px solid var(--od-border-soft); }
+  body.od-fullscreen .od-feedback { display: none; }
+
+  body.od-ask-view:not(.od-fullscreen) #root { height: auto; }
+  body.od-ask-view:not(.od-fullscreen) .od-stage.od-scroll { overflow: visible; }
+  .od-ask { display: flex; flex-direction: column; gap: 14px; padding: 14px 12px 16px; }
+  .od-ask-question { margin: 0; padding: 0; border: 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+  .od-ask-question legend { padding: 0; margin-bottom: 8px; font-size: 13px; font-weight: 600; color: var(--od-text-strong); }
+  .od-ask-options { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; }
+  .od-ask-option { display: inline-flex; flex-direction: column; align-items: stretch; min-height: 32px; padding: 0; border: 1px solid var(--od-border); border-radius: var(--od-radius-pill); background: var(--od-bg); color: var(--od-text); font: inherit; font-size: 13px; cursor: pointer; overflow: hidden; }
+  .od-ask-option .od-ask-label { padding: 6px 12px; }
+  .od-ask-option:hover:not(:disabled) { border-color: var(--od-border-strong); }
+  .od-ask-option:focus-visible, .od-ask-text:focus-visible { outline: 2px solid var(--od-accent-fill); outline-offset: 2px; }
+  .od-ask-option.active { background: var(--od-accent-fill); border-color: var(--od-accent-fill); color: var(--od-accent-contrast); }
+  .od-ask-option.you-pick:not(.active) { border-style: dashed; color: var(--od-text-muted); }
+  .od-ask-option.has-image { width: 150px; border-radius: var(--od-radius-md); text-align: left; }
+  .od-ask-image { position: relative; display: block; height: 96px; overflow: hidden; background: #fff; border-bottom: 1px solid var(--od-border-soft); }
+  .od-ask-image.empty { background: var(--od-bg-muted); }
+  .od-ask-image img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+  .od-ask-image iframe { position: absolute; left: 0; top: 0; width: 1280px; height: 1280px; border: 0; transform-origin: 0 0; pointer-events: none; }
+  .od-ask-image .od-swatches { height: 100%; margin: 0; border: 0; }
+  .od-ask-text { width: 100%; max-width: 480px; box-sizing: border-box; height: 32px; padding: 0 10px; border: 1px solid var(--od-border); border-radius: var(--od-radius-sm); background: var(--od-bg); color: var(--od-text); font: inherit; font-size: 13px; }
+  .od-ask-footer { display: flex; align-items: center; gap: 10px; }
+  .od-ask-footer .od-btn { height: 32px; }
+  .od-ask.sent .od-ask-option:not(.active), .od-ask.sent .od-ask-text { opacity: .6; }
+  .od-ask-copy { display: flex; flex-direction: column; gap: 6px; }
+  .od-ask-copy[hidden] { display: none; }
+  .od-ask-copy p { margin: 0; font-size: 12px; color: var(--od-text-muted); }
+  .od-ask-copy textarea { width: 100%; box-sizing: border-box; font: 12px/1.4 ui-monospace, monospace; }
+  .od-ask-copy .od-btn { align-self: flex-start; height: 28px; font-size: 12px; }
 `;

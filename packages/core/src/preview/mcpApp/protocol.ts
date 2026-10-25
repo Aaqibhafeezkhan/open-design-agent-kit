@@ -20,6 +20,7 @@ export const SHOW_EXAMPLES_TOOL = 'show_open_design_examples';
 export const SHOW_DESIGN_SYSTEMS_TOOL = 'show_open_design_design_systems';
 export const SAVE_COMMENT_TOOL = 'save_open_design_comment';
 export const PREVIEW_STATE_TOOL = 'get_open_design_preview_state';
+export const SHOW_QUESTIONS_TOOL = 'show_open_design_questions';
 
 /** Remote hosts every preview may load from: Google Fonts' stylesheets and font files. */
 export const PREVIEW_APP_BASE_DOMAINS: readonly string[] = ['https://fonts.googleapis.com', 'https://fonts.gstatic.com'];
@@ -69,7 +70,8 @@ export type ShowTarget =
   | { view: 'exploration'; explorationId: string; title: string }
   | ({ view: 'examples'; title: string } & ExampleFilters)
   | ({ view: 'design-systems'; title: string } & DesignSystemFilters)
-  | { view: 'campaign'; entryPath: string; title: string };
+  | { view: 'campaign'; entryPath: string; title: string }
+  | ({ view: 'ask'; title: string } & Pick<AskSchema, 'questions'>);
 
 export interface PreviewAppCheckImage {
   label: string;
@@ -242,4 +244,245 @@ export function fixCampaignPieceMessage(masterEntryPath: string, tile: Pick<Prev
   const piece = tile.entryPath ? `the piece "${tile.entryPath}"` : `the "${tile.shape ?? tile.label}" shape of "${masterEntryPath}"`;
   const errors = tile.errors.length ? `\n${tile.errors.map((e) => `- ${e.check}: ${e.message}`).join('\n')}` : ' It has no errors listed; ask me what to change.';
   return `Fix ${piece} on the Open Design campaign sheet (${tile.label}).${errors}\n\nThen export the master again with campaignSheet: true and call ${SHOW_ARTIFACT_TOOL} with entryPath "${masterEntryPath}" and campaign: true to show me the sheet.`;
+}
+
+// ── The ask view (openspec add-mcp-app-ask-view) ──────────────────────────
+// A fixed schema the kit owns, not a UI language: a few questions with
+// tappable options. Send posts one chat message with a readable line and a
+// machine line the skills tell the agent to read.
+
+export const ASK_MAX_QUESTIONS = 4;
+export const ASK_MAX_OPTIONS = 8;
+export const ASK_MAX_LABEL_CHARS = 120;
+export const ASK_MAX_TEXT_CHARS = 200;
+/** The whole schema, as JSON. */
+export const ASK_MAX_BYTES = 2048;
+/** The answer a "You pick" chip gives: the agent chooses for the user. No option may use this id. */
+export const ASK_YOU_PICK = 'you-pick';
+/** The machine line's marker: `<!-- od-answers {...} -->`. */
+export const ASK_ANSWERS_MARKER = 'od-answers';
+
+export type AskQuestionKind = 'single' | 'multi' | 'text';
+
+export interface AskOption {
+  id: string;
+  label: string;
+  /** Something the server already renders (see ASK_IMAGE_REF_KINDS), never a URL. */
+  imageRef?: string;
+}
+
+export interface AskQuestion {
+  id: string;
+  text: string;
+  kind: AskQuestionKind;
+  /** For single and multi: 1 to ASK_MAX_OPTIONS options. A text question has none. */
+  options?: AskOption[];
+  /** An option id (single), option ids (multi) or a prefilled answer (text). */
+  default?: string | string[];
+}
+
+export interface AskSchema {
+  title?: string;
+  questions: AskQuestion[];
+}
+
+/** What an `imageRef` may name: `designSystem:<id>`, `example:<skillId>`, `artifact:<entryPath>`, `checkRun:<entryPath>` or `checkRun:<entryPath>#<runId>`. */
+export const ASK_IMAGE_REF_KINDS = ['designSystem', 'example', 'artifact', 'checkRun'] as const;
+export type AskImageRefKind = (typeof ASK_IMAGE_REF_KINDS)[number];
+
+export interface AskImageRef {
+  kind: AskImageRefKind;
+  /** The design-system id, example skill id or entry path. */
+  value: string;
+  /** checkRun only: a run id; absent means the latest run. */
+  runId?: string;
+}
+
+const ASK_ID = /^[A-Za-z0-9][\w-]{0,39}$/;
+const IMAGE_REF_HELP = 'designSystem:<id>, example:<skillId>, artifact:<entryPath>, checkRun:<entryPath> or checkRun:<entryPath>#<runId>';
+
+export function parseAskImageRef(ref: string): AskImageRef | string {
+  const colon = ref.indexOf(':');
+  const kind = colon > 0 ? ref.slice(0, colon) : '';
+  const rest = colon > 0 ? ref.slice(colon + 1).trim() : '';
+  if (!(ASK_IMAGE_REF_KINDS as readonly string[]).includes(kind) || !rest || /^[a-z][a-z0-9+.-]*:\/\//i.test(ref) || /^(data|javascript):/i.test(rest)) {
+    return `imageRef "${ref.slice(0, 80)}" isn't allowed. Use one of: ${IMAGE_REF_HELP}. Raw URLs and HTML aren't accepted.`;
+  }
+  if (kind === 'checkRun') {
+    const hash = rest.lastIndexOf('#');
+    if (hash > 0) {
+      const runId = rest.slice(hash + 1);
+      if (!/^[\w-]+$/.test(runId)) return `imageRef "${ref.slice(0, 80)}": the run id after "#" may only hold letters, digits, "-" and "_".`;
+      return { kind, value: rest.slice(0, hash), runId };
+    }
+  }
+  return { kind: kind as AskImageRefKind, value: rest };
+}
+
+const isStr = (v: unknown): v is string => typeof v === 'string';
+
+/** Checks the agent's questions field by field and returns a clean copy, or a message saying what to fix. */
+export function parseAskSchema(value: unknown): { ok: true; schema: AskSchema } | { ok: false; message: string } {
+  const fail = (message: string) => ({ ok: false as const, message });
+  if (!value || typeof value !== 'object') return fail('Pass questions as an array.');
+  const v = value as Record<string, unknown>;
+  if (v.title !== undefined && (!isStr(v.title) || v.title.length > ASK_MAX_LABEL_CHARS)) return fail(`title must be a string of at most ${ASK_MAX_LABEL_CHARS} characters.`);
+  if (!Array.isArray(v.questions) || v.questions.length === 0) return fail('Pass at least one question.');
+  if (v.questions.length > ASK_MAX_QUESTIONS) return fail(`Ask at most ${ASK_MAX_QUESTIONS} questions at once (got ${v.questions.length}).`);
+  const questions: AskQuestion[] = [];
+  const ids = new Set<string>();
+  for (const [i, raw] of v.questions.entries()) {
+    const where = `questions[${i}]`;
+    if (!raw || typeof raw !== 'object') return fail(`${where} must be an object.`);
+    const q = raw as Record<string, unknown>;
+    if (!isStr(q.id) || !ASK_ID.test(q.id)) return fail(`${where}.id must be 1–40 letters, digits, "-" or "_", starting with a letter or digit.`);
+    if (ids.has(q.id)) return fail(`${where}.id "${q.id}" is used twice.`);
+    ids.add(q.id);
+    if (!isStr(q.text) || !q.text.trim() || q.text.length > ASK_MAX_TEXT_CHARS) return fail(`${where}.text must be a question of 1–${ASK_MAX_TEXT_CHARS} characters.`);
+    const kind = q.kind ?? 'single';
+    if (kind !== 'single' && kind !== 'multi' && kind !== 'text') return fail(`${where}.kind must be "single", "multi" or "text".`);
+    const question: AskQuestion = { id: q.id, text: q.text.trim(), kind };
+    if (kind === 'text') {
+      if (Array.isArray(q.options) && q.options.length) return fail(`${where} is a text question: it takes no options.`);
+      if (q.default !== undefined) {
+        if (!isStr(q.default) || q.default.length > ASK_MAX_TEXT_CHARS) return fail(`${where}.default must be a string of at most ${ASK_MAX_TEXT_CHARS} characters.`);
+        question.default = q.default;
+      }
+      questions.push(question);
+      continue;
+    }
+    if (!Array.isArray(q.options) || q.options.length === 0) return fail(`${where} needs options (a "${kind}" question).`);
+    if (q.options.length > ASK_MAX_OPTIONS) return fail(`${where} has ${q.options.length} options; at most ${ASK_MAX_OPTIONS}.`);
+    const options: AskOption[] = [];
+    const optionIds = new Set<string>();
+    for (const [j, rawOpt] of q.options.entries()) {
+      const at = `${where}.options[${j}]`;
+      if (!rawOpt || typeof rawOpt !== 'object') return fail(`${at} must be an object with id and label.`);
+      const o = rawOpt as Record<string, unknown>;
+      if (!isStr(o.id) || !ASK_ID.test(o.id)) return fail(`${at}.id must be 1–40 letters, digits, "-" or "_", starting with a letter or digit.`);
+      if (o.id === ASK_YOU_PICK) return fail(`${at}.id "${ASK_YOU_PICK}" is reserved: the view adds a "You pick" choice itself.`);
+      if (optionIds.has(o.id)) return fail(`${at}.id "${o.id}" is used twice in ${where}.`);
+      optionIds.add(o.id);
+      if (!isStr(o.label) || !o.label.trim() || o.label.length > ASK_MAX_LABEL_CHARS) return fail(`${at}.label must be 1–${ASK_MAX_LABEL_CHARS} characters.`);
+      const option: AskOption = { id: o.id, label: o.label.trim() };
+      if (o.imageRef !== undefined) {
+        if (!isStr(o.imageRef)) return fail(`${at}.imageRef must be a string: one of ${IMAGE_REF_HELP}.`);
+        const ref = parseAskImageRef(o.imageRef);
+        if (typeof ref === 'string') return fail(`${at}: ${ref}`);
+        option.imageRef = o.imageRef;
+      }
+      options.push(option);
+    }
+    question.options = options;
+    if (q.default !== undefined) {
+      const known = (id: unknown): boolean => isStr(id) && (optionIds.has(id) || id === ASK_YOU_PICK);
+      if (kind === 'single' && !known(q.default)) return fail(`${where}.default must be one of its option ids.`);
+      if (kind === 'multi' && !(Array.isArray(q.default) && q.default.every(known))) return fail(`${where}.default must be an array of its option ids.`);
+      question.default = Array.isArray(q.default) ? [...(q.default as string[])] : (q.default as string);
+    }
+    questions.push(question);
+  }
+  const schema: AskSchema = v.title && (v.title as string).trim() ? { title: (v.title as string).trim(), questions } : { questions };
+  const bytes = new TextEncoder().encode(JSON.stringify(schema)).length;
+  if (bytes > ASK_MAX_BYTES) return fail(`The questions are ${bytes} bytes as JSON; keep them under ${ASK_MAX_BYTES} (shorter labels, fewer options).`);
+  return { ok: true, schema };
+}
+
+/** Answers by question id: an option id (single), option ids (multi), the typed text, or ASK_YOU_PICK. Unanswered questions are left out. */
+export type AskAnswers = Record<string, string | string[]>;
+
+function answerLabel(question: AskQuestion, id: string): string {
+  if (id === ASK_YOU_PICK) return 'You pick';
+  return question.options?.find((o) => o.id === id)?.label ?? id;
+}
+
+/** The chat message Send posts: a readable `id = label` line for the user, and a JSON line in an HTML comment for the agent. */
+export function askAnswersMessage(schema: AskSchema, answers: AskAnswers): string {
+  const pairs: string[] = [];
+  const machine: AskAnswers = {};
+  for (const q of schema.questions) {
+    const a = answers[q.id];
+    if (a === undefined || (Array.isArray(a) && a.length === 0) || (!Array.isArray(a) && !a.trim())) continue;
+    if (q.kind === 'text') {
+      const text = (Array.isArray(a) ? a.join(', ') : a).trim().replace(/\s+/g, ' ').slice(0, ASK_MAX_TEXT_CHARS);
+      pairs.push(`${q.id} = ${text}`);
+      machine[q.id] = text;
+    } else {
+      const picked = Array.isArray(a) ? a : [a];
+      pairs.push(`${q.id} = ${picked.map((id) => answerLabel(q, id)).join(', ')}`);
+      machine[q.id] = q.kind === 'multi' ? picked : picked[0];
+    }
+  }
+  // Escaped so a typed answer can't close the comment or start markup.
+  const json = JSON.stringify(machine).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/-(?=-)/g, '\\u002d');
+  return `Answers: ${pairs.join('; ') || '(none)'}\n<!-- ${ASK_ANSWERS_MARKER} ${json} -->`;
+}
+
+/** Reads the answers back from a message: the machine line, else the readable `id = label` pairs. */
+export function parseAskAnswersMessage(text: string): AskAnswers | undefined {
+  const machine = new RegExp(`<!--\\s*${ASK_ANSWERS_MARKER}\\s+(\\{[\\s\\S]*?\\})\\s*-->`).exec(text);
+  if (machine) {
+    try {
+      const parsed = JSON.parse(machine[1]) as unknown;
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed as AskAnswers;
+    } catch {
+      // Fall through to the readable line.
+    }
+  }
+  const line = /^Answers:\s*(.*)$/m.exec(text);
+  if (!line) return undefined;
+  const out: AskAnswers = {};
+  for (const pair of line[1].split(';')) {
+    const eq = pair.indexOf('=');
+    if (eq > 0) out[pair.slice(0, eq).trim()] = pair.slice(eq + 1).trim();
+  }
+  return out;
+}
+
+/** What a host without MCP Apps gets: the questions as one numbered message to ask. */
+export function askFallbackText(schema: AskSchema): string {
+  const lines = schema.questions.map((q, i) => {
+    const options = q.kind === 'text' ? ' (a short answer)' : `${q.kind === 'multi' ? ' (pick any)' : ''}: ${[...(q.options ?? []).map((o) => o.label), 'You pick'].join(' / ')}`;
+    return `${i + 1}. ${q.text}${options}`;
+  });
+  return `This host doesn't show MCP Apps inline. Ask the user these in one message:\n${schema.title ? `${schema.title}\n` : ''}${lines.join('\n')}\n\nAccept "you pick" as an answer, and continue with whatever they answer.`;
+}
+
+/** What a host with MCP Apps gets alongside the inline questions. */
+export function askShowText(schema: AskSchema): string {
+  return `Showing ${schema.questions.length} question${schema.questions.length === 1 ? '' : 's'} inline; don't repeat them in chat. The user taps answers and Send, which posts a message starting "Answers:" with a line <!-- ${ASK_ANSWERS_MARKER} {...} -->. Read that JSON: keys are question ids, values are option ids (an array for multi), typed text, or "${ASK_YOU_PICK}" (choose for them and say what you chose). The user may type answers instead; accept those too.`;
+}
+
+/** An option picture for the ask view, from get_open_design_preview_state with `imageRef`. */
+export interface PreviewAppAskImage {
+  imageRef: string;
+  /** A `data:image/…` URL (an artifact's or check run's screenshot). */
+  image?: string;
+  /** A view-only page (an example, or an artifact with no screenshot yet), shown scaled. */
+  html?: string;
+  /** A design system's palette. */
+  swatches?: string[];
+  /** Why there's nothing to show. */
+  fallback?: string;
+}
+
+// ── Feedback chips under a design ─────────────────────────────────────────
+
+export const FEEDBACK_CHIPS = [
+  { id: 'good', label: 'Looks good' },
+  { id: 'change', label: 'Change something' },
+  { id: 'another', label: 'Try another direction' },
+] as const;
+export type FeedbackChipId = (typeof FEEDBACK_CHIPS)[number]['id'];
+
+/** The chat message a feedback chip sends. */
+export function feedbackChipMessage(entryPath: string, chip: FeedbackChipId): string {
+  switch (chip) {
+    case 'good':
+      return `The Open Design artifact "${entryPath}" looks good to me. Ask me whether I want it exported or shared, or something else made next.`;
+    case 'change':
+      return `I'd like to change something in the Open Design artifact "${entryPath}". Ask me what to change, in one short question; I can also comment on elements in the preview.`;
+    case 'another':
+      return `Try another direction for the Open Design artifact "${entryPath}". Suggest two or three directions that differ from it (ask with ${SHOW_QUESTIONS_TOOL} if it's in your tools), then build the one I pick.`;
+  }
 }
