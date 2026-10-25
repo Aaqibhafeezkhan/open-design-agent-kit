@@ -23,7 +23,7 @@ Open Design is set up for your host: [VS Code](../getting-started/vscode.md), [C
 4. **The agent gets instructions.** [`prepare_open_design_brief`](../reference/tools.md#prepare_open_design_brief) combines:
    - the recipe's workflow;
    - your [active design system](design-systems.md), if any;
-   - the craft rules the recipe asks for (for example typography, color, accessibility, or avoiding a generic "AI" look);
+   - the craft rules the recipe asks for (for example typography, color, accessibility, or avoiding a generic "AI" look). Prototypes, landing pages, dashboards and mobile apps also get the state and words rules: every list and form shows its loading, empty and error states, buttons say what they do ("Save changes", not "Submit"), errors say how to fix them, and a busy button keeps its focus and label;
    - your brief, with your answers and anything the agent assumed;
    - a short list of your recent designs, so this one doesn't look the same (see [Why designs vary](#why-designs-vary)).
 

@@ -48,6 +48,14 @@ Two pieces of the 3D critic loop (openspec `add-3d-critic-loop`) are adapted fro
 
 [OpenMontage](https://github.com/calesthio/OpenMontage) is AGPL-3.0. Its ideas informed the critique rules (cite evidence, look for more of the same kind of flaw, give a fix), but none of its code or text is used. Keep it that way.
 
+## Microcopy rules from ux-ui-agent-skills
+
+The `ux-writing` craft doc (`packages/content/local/craft/ux-writing.md`, openspec `add-states-and-microcopy-craft`) takes two ideas from the `ux-writing` skill in [plugin87/ux-ui-agent-skills](https://github.com/plugin87/ux-ui-agent-skills) at commit `55156b40e3a9`, licensed MIT (Copyright (c) 2026 Thientan Soparat): the confirm button restates the action and object, and errors go what happened, why, how to fix. The text is the kit's own. It is recorded in `packages/content/local/ports.json` with `"kind": "craft"`, so the content check verifies its provenance header, and the MIT notice ships as `notices/LICENSE-ux-ui-agent-skills.txt`.
+
+| Craft doc | Source | Divergences |
+|---|---|---|
+| `ux-writing` | `.claude/skills/ux-writing/SKILL.md` | A craft doc pasted into briefs, not a skill; no voice-and-tone files or checklist script; adds the kit's empty-state, loading, filler and invented-number rules. |
+
 ## Rules for porting
 
 1. Start every ported file with a header naming the upstream file and commit, and the license.

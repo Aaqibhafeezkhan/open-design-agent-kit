@@ -138,6 +138,7 @@ program
   .option('--views <list|none>', '3D scenes exposing odScene handles: review views on the sheet, comma-separated from overview,closeup,low,wireframe (default all), or none')
   .option('--screenshots <dir>', 'Write the screenshots (JPEG) to this directory')
   .option('--fail-on <error|warning>', 'Exit 1 when a finding at or above this severity exists (for CI)')
+  .option('--json', 'Print the result as JSON (findings, saved run, screenshot files) instead of text')
   .option('--browser <path>', 'Browser executable (default: OPEN_DESIGN_BROWSER_PATH, then auto-detect)')
   .option('--workspace <dir>', 'Workspace root (default: nearest ancestor containing .open-design/)')
   .action(async (entryPath: string, options: CheckCliOptions) => {

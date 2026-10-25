@@ -6,7 +6,7 @@
 import type { App } from '@modelcontextprotocol/ext-apps';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import type { ArtifactComment } from '../../workspace/artifactCommentTypes';
-import { PREVIEW_APP_VIEWS, PREVIEW_STATE_TOOL, SAVE_COMMENT_TOOL, type PreviewAppDesignSystemPreview, type PreviewAppExamplePreview, type PreviewAppState, type ShowTarget } from './protocol';
+import { PREVIEW_APP_VIEWS, PREVIEW_STATE_TOOL, SAVE_COMMENT_TOOL, type PreviewAppAskImage, type PreviewAppDesignSystemPreview, type PreviewAppExamplePreview, type PreviewAppState, type ShowTarget } from './protocol';
 
 export interface McpAppTransport {
   /** A view's data from get_open_design_preview_state: the design with its comments, or one page of a picker (`cursor` for the next). */
@@ -15,6 +15,8 @@ export interface McpAppTransport {
   loadExamplePreview(exampleId: string): Promise<PreviewAppExamplePreview>;
   /** One design system's Visualize page. */
   loadDesignSystemPreview(designSystemId: string): Promise<PreviewAppDesignSystemPreview>;
+  /** One question option's picture, by its imageRef. */
+  loadAskImage(imageRef: string): Promise<PreviewAppAskImage>;
   /** Persists the comment controller's changes: one save_open_design_comment call per comment. */
   persist(entryPath: string, changed: ArtifactComment[], deletedIds: string[]): Promise<void>;
   /** Posts a message into the chat as the user. */
@@ -69,6 +71,9 @@ export function createMcpAppTransport(app: App): McpAppTransport {
     },
     async loadDesignSystemPreview(designSystemId) {
       return structured<PreviewAppDesignSystemPreview>(app, { designSystemId });
+    },
+    async loadAskImage(imageRef) {
+      return structured<PreviewAppAskImage>(app, { imageRef });
     },
     async persist(entryPath, changed, deletedIds) {
       for (const comment of changed) await callTool(app, SAVE_COMMENT_TOOL, { entryPath, comment });

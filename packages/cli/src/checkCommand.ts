@@ -30,6 +30,8 @@ export interface CheckCliOptions {
   at?: string;
   /** 3D review views: comma-separated names, or "none". */
   views?: string;
+  /** Print the result as JSON instead of text (for scripts such as the evals scorer). */
+  json?: boolean;
 }
 
 export type FailOn = 'error' | 'warning';
@@ -90,6 +92,12 @@ export function screenshotFileName(label: string): string {
   return `${slug || 'screenshot'}.jpg`;
 }
 
+/** The result as `check --json` prints it: images become their labels, sizes and written files. */
+export function checkResultJson(result: Extract<CheckArtifactResult, { ok: true }>, files: readonly string[] = []): Record<string, unknown> {
+  const { images, ...rest } = result;
+  return { ...rest, images: images.map((image, i) => ({ label: image.label, width: image.width, height: image.height, file: files[i] })) };
+}
+
 export async function runCheck(
   entryArg: string,
   flags: CheckCliOptions,
@@ -110,20 +118,26 @@ export async function runCheck(
     lookupAspectHint: async (id) => (await contentIndex.getSkill(id))?.aspectHint,
   });
   if (!result.ok) {
-    console.error(formatCheckResult(result));
-    console.error(`See ${TROUBLESHOOTING_URL}`);
+    if (flags.json) console.log(JSON.stringify(result));
+    else {
+      console.error(formatCheckResult(result));
+      console.error(`See ${TROUBLESHOOTING_URL}`);
+    }
     return 1;
   }
-  console.log(formatCheckResult(result));
+  if (!flags.json) console.log(formatCheckResult(result));
+  const written: string[] = [];
   if (flags.screenshots !== undefined && result.images.length > 0) {
     const dir = path.resolve(cwd, flags.screenshots);
     await fs.mkdir(dir, { recursive: true });
     for (const image of result.images) {
       const file = path.join(dir, screenshotFileName(image.label));
       await fs.writeFile(file, image.data);
-      console.log(file);
+      written.push(file);
+      if (!flags.json) console.log(file);
     }
   }
+  if (flags.json) console.log(JSON.stringify(checkResultJson(result, written)));
   if (failOn === 'error' && result.findings.some((f) => f.severity === 'error')) return 1;
   if (failOn === 'warning' && result.findings.some((f) => f.severity === 'error' || f.severity === 'warning')) return 1;
   return 0;

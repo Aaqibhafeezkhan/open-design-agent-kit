@@ -1,0 +1,13 @@
+id: analytics-dashboard
+request: "Make an analytics dashboard for our support team: tickets opened and closed this week, response times, and which agents are overloaded"
+expect:
+  surface: data-report
+  skills: [dashboard, data-report]
+  questions: { max: 1 }
+designSystem: linear-app
+answers:
+  data: "No file. Use realistic sample data and say it is sample data"
+must:
+  - "Has an empty state"
+  - "The overloaded agents stand out without reading every number"
+  - "Sample data is labelled as sample data"

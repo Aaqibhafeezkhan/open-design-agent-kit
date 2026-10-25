@@ -1,0 +1,58 @@
+{
+  "$comment": "Extra craft docs per skill or design-template id, added after its own od.craft.requires when content loads, so upstream SKILL.md files stay unedited (openspec add-states-and-microcopy-craft). The content check fails on an unknown skill or craft id. Keys starting with $ are comments.",
+  "web-prototype": [
+    "state-coverage",
+    "ux-writing",
+    "action-states"
+  ],
+  "web-prototype-taste-brutalist": [
+    "state-coverage",
+    "ux-writing",
+    "action-states"
+  ],
+  "web-prototype-taste-editorial": [
+    "state-coverage",
+    "ux-writing",
+    "action-states"
+  ],
+  "web-prototype-taste-soft": [
+    "state-coverage",
+    "ux-writing",
+    "action-states"
+  ],
+  "saas-landing": [
+    "state-coverage",
+    "ux-writing",
+    "action-states"
+  ],
+  "pricing-page": [
+    "state-coverage",
+    "ux-writing",
+    "action-states"
+  ],
+  "waitlist-page": [
+    "state-coverage",
+    "ux-writing",
+    "action-states"
+  ],
+  "dashboard": [
+    "state-coverage",
+    "ux-writing",
+    "action-states"
+  ],
+  "mobile-app": [
+    "state-coverage",
+    "ux-writing",
+    "action-states"
+  ],
+  "mobile-onboarding": [
+    "state-coverage",
+    "ux-writing",
+    "action-states"
+  ],
+  "gamified-app": [
+    "state-coverage",
+    "ux-writing",
+    "action-states"
+  ]
+}

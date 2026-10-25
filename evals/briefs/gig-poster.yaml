@@ -1,0 +1,15 @@
+id: gig-poster
+request: "Make a poster for our jazz night at The Blue Room on 4 May"
+expect:
+  surface: poster
+  skills: [poster-hero, magazine-poster, image-poster]
+  questions: { max: 1 }
+designSystem: null
+answers:
+  where: "Both: A3 print for the venue and a version for Instagram"
+  time: "Doors 7:30 pm, music from 8 pm"
+  price: "£12 on the door"
+must:
+  - "Date, time and venue readable from 3 m"
+  - "One clear focal image or type"
+  - "Price or how to get in is on it"

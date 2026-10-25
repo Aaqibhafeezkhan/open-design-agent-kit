@@ -30,6 +30,10 @@ If no design system is active and the request names no look, also call `recommen
 
 Keep the answers by question id, and note anything you decide without asking (a theme, a layout, how many sections) as a short assumption.
 
+<!-- claude-only -->
+**Asking with taps (Claude Desktop Chat).** Where `show_open_design_questions` is in your tool list (it is listed only where the host shows MCP Apps inline), ask these questions through it instead of a chat message: all of them in one call, at most four, each with a short `id`, its `text` and its choices as `options`. Give a design-system option `imageRef: "designSystem:<id>"` so the user sees its palette. Don't repeat the questions in chat. The answer arrives as a message starting "Answers:" with a line `<!-- od-answers {...} -->`: read that JSON (`you-pick` means choose for them). If the user types their answers instead, use those.
+<!-- /claude-only -->
+
 ## 3. Build it
 
 - If the surface has a `prompt` (for example `open-design-poster` or `open-design-social-post`), follow that flow from its first step with the user's request as the brief. In Copilot Chat it's the `/` command of the same name; in Claude Code and Codex it's the skill of the same name.

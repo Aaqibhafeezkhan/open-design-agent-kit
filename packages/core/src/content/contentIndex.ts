@@ -544,6 +544,39 @@ async function loadUserDesignSystems(dir: string | undefined): Promise<Map<strin
   return result;
 }
 
+/**
+ * The kit's extra craft docs per skill or template id (openspec
+ * add-states-and-microcopy-craft): `<assetsRoot>/craft-requires.json`, copied
+ * from packages/content/local/ so upstream SKILL.md files stay unedited. Keys
+ * starting with `$` are comments. Empty when absent or malformed; the content
+ * check is what rejects a bad map.
+ */
+async function loadCraftRequiresMap(assetsRoot: string): Promise<Map<string, string[]>> {
+  const result = new Map<string, string[]>();
+  let raw: unknown;
+  try {
+    raw = JSON.parse(await fs.readFile(path.join(assetsRoot, 'craft-requires.json'), 'utf8'));
+  } catch {
+    return result;
+  }
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return result;
+  for (const [id, craftIds] of Object.entries(raw as Record<string, unknown>)) {
+    if (!id.startsWith('$')) result.set(id, normalizeStringArray(craftIds));
+  }
+  return result;
+}
+
+/** Adds each mapped entry's extra craft docs after its own `od.craft.requires`, without duplicates. */
+function applyCraftRequiresMap(skills: Map<string, SkillDetail>, map: Map<string, string[]>): Map<string, SkillDetail> {
+  if (map.size === 0) return skills;
+  const result = new Map<string, SkillDetail>();
+  for (const [publicId, skill] of skills) {
+    const extra = map.get(skill.id);
+    result.set(publicId, extra ? { ...skill, craftRequires: [...new Set([...skill.craftRequires, ...extra])] } : skill);
+  }
+  return result;
+}
+
 async function loadCraft(assetsRoot: string): Promise<CraftSection[]> {
   const craftDir = path.join(assetsRoot, 'craft');
   const result: CraftSection[] = [];
@@ -642,8 +675,9 @@ export class ContentIndex {
         loadSurfaces(this.assetsRoot),
         loadGoals(this.assetsRoot),
         loadDesignSystemDescriptors(this.assetsRoot),
-      ]).then(([skills, templates, examples, designSystems, craft, surfaces, goals, descriptors]) => ({
-        skills: mergeSkillPools(skills, templates, examples),
+        loadCraftRequiresMap(this.assetsRoot),
+      ]).then(([skills, templates, examples, designSystems, craft, surfaces, goals, descriptors, craftRequiresMap]) => ({
+        skills: applyCraftRequiresMap(mergeSkillPools(skills, templates, examples), craftRequiresMap),
         designSystems,
         craft,
         surfaces,
