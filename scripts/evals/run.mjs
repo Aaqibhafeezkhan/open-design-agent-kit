@@ -39,6 +39,8 @@ const EVAL_SYSTEM_PROMPT =
 // Variables of a parent Claude Code session that would make the child think it is that session.
 const PARENT_SESSION_ENV = ['CLAUDECODE', 'CLAUDE_CODE_SESSION_ID', 'CLAUDE_CODE_REMOTE_SESSION_ID', 'CLAUDE_CODE_INCLUDE_PARTIAL_MESSAGES', 'CLAUDE_CODE_ENTRYPOINT'];
 
+const ACCOUNT_ERROR = /session limit|usage limit|rate limit|log ?in|authenticat|credit balance/i;
+
 const USAGE = `Usage: npm run evals -- [options]
   --only <id,...>         Run only these briefs
   --repeat <n>            Runs per brief (default ${DEFAULTS.repeat})
@@ -160,7 +162,7 @@ async function runBrief(brief, repeat, ctx) {
     costUsd += t.result?.total_cost_usd ?? 0;
     if (res.timedOut) error = `round ${rounds} timed out`;
     else if (!t.result) error = `claude exited ${res.code}: ${res.stderr.trim().split('\n').slice(-2).join(' ') || 'no result'}`;
-    else if (t.result.is_error) error = t.result.subtype ?? 'agent error';
+    else if (t.result.is_error) error = String(t.result.result || t.result.subtype || 'agent error').trim();
     if (error || (await registered(tmp)).length > 0) break;
     // No design yet: the agent stopped to ask. Count its questions and answer them.
     const last = t.result.result ?? t.texts.at(-1) ?? '';
@@ -220,6 +222,8 @@ async function main() {
     const score = await runBrief(brief, repeat, ctx);
     console.error(`  ${score.designs.length} design(s), ${score.questions ?? 0} question(s), ${Math.round(score.wallSeconds)}s${score.agentError ? `, ${score.agentError}` : ''}`);
     scores.push(score);
+    // A usage limit or sign-in problem fails every later run the same way: stop instead of recording noise.
+    if (score.designs.length === 0 && ACCOUNT_ERROR.test(score.agentError ?? '')) throw new Error(`Claude Code can't run: ${score.agentError}. Nothing was appended to RESULTS.md; try again later.`);
   }
   await fs.writeFile(path.join(runDir, 'scores.json'), JSON.stringify(scores, null, 2) + '\n');
   const contactSheet = await writeContactSheet(scores, path.join(runDir, 'contact-sheet.png'), browserPath);
