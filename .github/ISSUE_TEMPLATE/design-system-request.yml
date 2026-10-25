@@ -1,0 +1,27 @@
+name: Design system request
+description: A brand look or style you'd like as a design system.
+labels: ["design system", "needs triage"]
+body:
+  - type: input
+    id: name
+    attributes:
+      label: Name
+      placeholder: "A brand, a product, or a style such as 'Swiss editorial'"
+    validations:
+      required: true
+  - type: input
+    id: url
+    attributes:
+      label: Website
+      description: For a brand, its site. The kit can measure a design system from a website; say if you tried that and how it went.
+  - type: textarea
+    id: why
+    attributes:
+      label: What would you use it for?
+  - type: checkboxes
+    id: rights
+    attributes:
+      label: Brand use
+      options:
+        - label: I understand a brand design system copies a look for reference, and doesn't mean the brand endorses anything made with it.
+          required: true

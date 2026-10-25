@@ -1,0 +1,50 @@
+name: Bug report
+description: Something broke, or a design came out wrong.
+labels: ["bug", "needs triage"]
+body:
+  - type: dropdown
+    id: agent
+    attributes:
+      label: Where were you using it?
+      options:
+        - VS Code (GitHub Copilot Chat)
+        - Claude Code
+        - Claude Desktop (Chat)
+        - Claude Desktop (Code tab)
+        - Codex
+        - Cursor or another MCP agent
+        - The CLI
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The extension, plugin or npm package version, if you know it.
+      placeholder: "0.3.0"
+  - type: textarea
+    id: asked
+    attributes:
+      label: What did you ask for?
+      description: Paste the prompt you gave the agent.
+    validations:
+      required: true
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened?
+      description: What went wrong, and what you expected instead. Screenshots help a lot.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error messages or logs
+      description: Anything the agent or the Open Design output channel printed.
+      render: text
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: "macOS 15, Windows 11, Ubuntu 24.04…"

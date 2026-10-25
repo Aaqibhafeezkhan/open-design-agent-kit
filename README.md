@@ -121,6 +121,13 @@ Everything lives in [`docs/`](docs/README.md):
 - **Automation:** [social media pipeline](docs/automation/social-pipeline.md).
 - **Contributing:** [architecture](docs/contributing/architecture.md), [content sync](docs/contributing/content-sync.md), [adding a skill or prompt](docs/contributing/adding-a-skill-or-prompt.md), [upstream ports](docs/contributing/upstream-ports.md), [releasing](docs/contributing/releasing.md).
 
+## Community
+
+- **Gallery:** remixable designs from the community live in [awesome-open-design](https://github.com/feimacode/awesome-open-design). Made something good? Add it there.
+- **Questions and show-and-tell:** [GitHub Discussions](https://github.com/feimacode/open-design-agent-kit/discussions).
+- **Bugs and requests:** [open an issue](https://github.com/feimacode/open-design-agent-kit/issues/new/choose).
+- **Contributing:** start with [CONTRIBUTING.md](CONTRIBUTING.md) and the [`good first issue`](https://github.com/feimacode/open-design-agent-kit/labels/good%20first%20issue) label.
+
 ## Provenance
 
 Some code is adapted from open-design (Apache-2.0): the artifact manifest logic, parts of the preview editor, and deck export. See [Upstream ports](docs/contributing/upstream-ports.md), and [`packages/core/src/vendored/SOURCE.md`](packages/core/src/vendored/SOURCE.md) for the exact record.
