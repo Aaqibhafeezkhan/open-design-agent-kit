@@ -48,6 +48,16 @@ Two pieces of the 3D critic loop (openspec `add-3d-critic-loop`) are adapted fro
 
 [OpenMontage](https://github.com/calesthio/OpenMontage) is AGPL-3.0. Its ideas informed the critique rules (cite evidence, look for more of the same kind of flaw, give a fix), but none of its code or text is used. Keep it that way.
 
+## Taste and state checks from OpenPencil and ux-ui-agent-skills
+
+The taste checks in `collectPreflight` (`packages/core/src/poster/pageScripts.ts`) and the state accessibility checks (`collectStateTargets`, `compareStateStyles`, `collectTapTargets`, `collectRunningMotion`, driven from `packages/core/src/export/checkArtifact.ts`) follow the detectors of two MIT-licensed projects. No code or fixture was copied: the detectors were written for the rendered page here, and the fixtures under `packages/core/src/test/fixtures/taste/` were written for this kit (see its `NOTICE.md`).
+
+| Ours | Idea from | Divergences |
+|---|---|---|
+| `slop-glow`, `card-row`, `uniform-surface` | [OpenPencil](https://github.com/ZSeven-W/openpencil) `crates/op-design-lint/src/detectors/slop.rs` (`purple-glow-gradient`, `three-card-feature-row`, `rounded-card-wall`) | Measured on computed styles and boxes in the export browser, not a design document. Warnings, never blocking, and silenced by `data-od-allow`. The indigo list is upstream Open Design's (`anti-ai-slop.md`). |
+| `type-scale`, `intent` | [ux-ui-agent-skills](https://github.com/plugin87/ux-ui-agent-skills) (XIAS) `lint_intent.mjs`, `slop_tells.mjs`, `taste_audit.mjs` | Same: rendered DOM instead of source files, warnings only. The destructive-words list is English; other languages use `data-intent`. |
+| `state-contrast`, `focus-visible`, `tap-target`, `reflow`, `reduced-motion` | XIAS `verify_states`, `verify_target_size`, `verify_overflow`, `verify_reduced_motion` | One pass inside `check_open_design_artifact` instead of separate scripts; states forced through CDP `CSS.forcePseudoState`; reflow at 320 px (WCAG 1.4.10), not 280. |
+
 ## Rules for porting
 
 1. Start every ported file with a header naming the upstream file and commit, and the license.

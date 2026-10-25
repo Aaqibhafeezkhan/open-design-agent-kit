@@ -154,4 +154,16 @@ describe('resolveCraftSections (upstream craft resolution)', () => {
     const text = composeInstructions({ skillName: 'S', skillBody: 'body', craftSections: [], brief: 'b', suggestedEntryPath: 'x.html' });
     assert.doesNotMatch(text, /Craft rules/);
   });
+
+  it('adds the "Checked in this kit" note with the check codes when anti-ai-slop or accessibility-baseline is included', () => {
+    const brief = (ids: string[]) => composeInstructions({ skillName: 'S', skillBody: 'body', craftSections: ids.map((id) => ({ id, body: `${id} rules` })), brief: 'b', suggestedEntryPath: 'x.html' });
+    const slop = brief(['typography', 'anti-ai-slop']);
+    assert.match(slop, /### anti-ai-slop\n\nanti-ai-slop rules\n\n### Checked in this kit\n\n- \*\*anti-ai-slop\.\*\* The daemon `lint-artifact` linter that section mentions does not run in this kit/);
+    for (const code of ['slop-glow', 'card-row', 'uniform-surface', 'type-scale', 'intent', 'emoji']) assert.ok(slop.includes(`\`${code}\``), code);
+    assert.doesNotMatch(slop, /accessibility-baseline\.\*\*/);
+    const a11y = brief(['accessibility-baseline']);
+    for (const code of ['state-contrast', 'focus-visible', 'tap-target', 'reflow', 'reduced-motion']) assert.ok(a11y.includes(`\`${code}\``), code);
+    assert.doesNotMatch(a11y, /lint-artifact/);
+    assert.doesNotMatch(brief(['typography']), /Checked in this kit/);
+  });
 });

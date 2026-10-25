@@ -9,6 +9,7 @@ interface CheckArtifactInput {
   maxImages?: number;
   at?: number[];
   views?: ReviewView[] | false;
+  states?: boolean;
 }
 
 export class CheckArtifactTool implements vscode.LanguageModelTool<CheckArtifactInput> {

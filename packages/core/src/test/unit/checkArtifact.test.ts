@@ -235,3 +235,84 @@ describe('visual check (real browser; skipped when none is installed)', function
     assert.ok(!slides.ok && slides.code === 'invalid-args');
   });
 });
+
+describe('state accessibility checks (real browser; skipped when none is installed)', function () {
+  this.timeout(120000);
+  let browserPath: string | undefined;
+  before(async function () {
+    const found = await findBrowser();
+    if (!found.ok) this.skip();
+    else browserPath = found.executablePath;
+  });
+  const findings = async (html: string, extra: Partial<Parameters<typeof checkArtifact>[0]> = {}, manifest: Record<string, unknown> = {}) =>
+    ok(await checkArtifact({ workspaceRoot: await workspace(html, manifest), entryPath: ENTRY, browserPath, settleMs: 0, maxImages: 0, ...extra })).findings;
+  const STATE = ['state-contrast', 'focus-visible', 'tap-target', 'reflow', 'reduced-motion'];
+  const stateCodes = (list: Awaited<ReturnType<typeof findings>>) => list.filter((f) => STATE.includes(f.check) && f.severity !== 'info');
+
+  it('reports a hover colour that drops below 4.5:1, naming the button and the state', async () => {
+    const found = await findings(page('<button class="go">Continue</button>', '.go{background:#fff;color:#222;border:2px solid #222;padding:12px 20px;font:16px sans-serif} .go:hover{color:#aaa;border-color:#aaa}'));
+    const hits = found.filter((f) => f.check === 'state-contrast');
+    assert.strictEqual(hits.length, 1, JSON.stringify(found));
+    assert.match(hits[0].message, /button\.go "Continue" drops to 2\.\d+:1 contrast on hover \(needs 4\.5:1/);
+  });
+
+  it('reports links whose focus outline is removed as one grouped focus-visible error, and keeps the browser outline as visible', async () => {
+    const links = Array.from({ length: 30 }, (_, i) => `<a href="#${i}" class="l">Link ${i + 1}</a> `).join('');
+    const found = await findings(page(`<nav>${links}</nav>`, 'a:focus{outline:none} nav{display:flex;flex-wrap:wrap;gap:16px} a{padding:12px}'));
+    const hits = found.filter((f) => f.check === 'focus-visible');
+    assert.strictEqual(hits.length, 1, JSON.stringify(found));
+    assert.strictEqual(hits[0].severity, 'error');
+    assert.match(hits[0].message, /^30 elements: a\.l "Link 1"; a\.l "Link 2"; a\.l "Link 3"; a\.l "Link 4"; a\.l "Link 5" and 25 more\. The first: a\.l "Link 1" shows no change when focused/);
+    const fine = await findings(page(`<nav>${links}</nav>`, 'nav{display:flex;flex-wrap:wrap;gap:16px} a{padding:12px}'));
+    assert.deepStrictEqual(fine.filter((f) => f.check === 'focus-visible'), []);
+  });
+
+  it('reports a small icon button next to another on the phone, but not a link inside a paragraph', async () => {
+    const found = await findings(
+      page('<div class="bar"><button class="close" aria-label="Close">×</button><button class="pin" aria-label="Pin">+</button></div><p>Read <a href="#t">the terms</a> before you start.</p>',
+        '.bar{display:flex;gap:4px} .bar button{width:20px;height:20px;padding:0;border:0;background:#eee;color:#111;font:14px sans-serif}'),
+    );
+    const hits = found.filter((f) => f.check === 'tap-target');
+    assert.strictEqual(hits.length, 1, JSON.stringify(found));
+    assert.strictEqual(hits[0].severity, 'warning');
+    assert.strictEqual(hits[0].viewport, 'mobile');
+    assert.match(hits[0].message, /^2 elements: button\.close "×"; button\.pin "\+"\. The first: button\.close "×" is 20×20px on a phone, too close to button\.pin/);
+    assert.ok(!found.some((f) => f.check === 'tap-target' && /terms/.test(f.message)));
+  });
+
+  it('reports a layout with a 360px minimum width as a reflow error at 320px', async () => {
+    // 360px with main's 24px padding: fits the 390px phone, scrolls at 320px.
+    const found = await findings(page('<div class="wide">Pricing</div>', 'main{min-width:312px}'));
+    const hits = found.filter((f) => f.check === 'reflow');
+    assert.ok(hits.length >= 1, JSON.stringify(found));
+    assert.ok(hits.every((f) => f.severity === 'error' && f.viewport === '320px'));
+    assert.ok(!found.some((f) => f.check === 'horizontal-scroll'));
+  });
+
+  it('reports an endless marquee that ignores reduced motion, and not one that honours it', async () => {
+    const marquee = '<div class="m">Now booking</div>';
+    const css = '@keyframes slide{from{transform:translateX(0)}to{transform:translateX(-100px)}} .m{animation:slide 4s linear infinite}';
+    const hits = (await findings(page(marquee, css))).filter((f) => f.check === 'reduced-motion');
+    assert.strictEqual(hits.length, 1);
+    assert.match(hits[0].message, /div\.m "Now booking" keeps its animation "slide" \(looping\)/);
+    const honoured = await findings(page(marquee, `${css} @media (prefers-reduced-motion: reduce){.m{animation:none}}`));
+    assert.deepStrictEqual(honoured.filter((f) => f.check === 'reduced-motion'), []);
+  });
+
+  it('runs none of the state checks with states: false, or on a fixed-format poster', async () => {
+    const bad = page('<div class="m">x</div><button style="width:10px;height:10px;padding:0"></button><button style="width:10px;height:10px;padding:0"></button>', 'main{min-width:360px} a:focus,button:focus{outline:none} @keyframes s{to{opacity:.2}} .m{animation:s 1s infinite}');
+    assert.ok(stateCodes(await findings(bad)).length > 0);
+    assert.deepStrictEqual(stateCodes(await findings(bad, { states: false })), []);
+    const poster = `<!doctype html><html><head><style>body{margin:0}[data-od-card]{width:1080px;height:1350px;background:#fff;font:64px sans-serif}
+      @keyframes s{to{opacity:.2}} h1{animation:s 1s infinite}</style></head><body><div data-od-card><h1>Gig</h1><a href="#" style="outline:none">Tickets</a></div></body></html>`;
+    assert.deepStrictEqual(stateCodes(await findings(poster, {}, { metadata: { format: 'ig-portrait' } })), []);
+  });
+
+  it('attaches a crop of the unfocused element and the 320px render when they fail, within maxImages', async () => {
+    const root = await workspace(page('<a href="#x" class="bare">Read more</a>', 'a:focus{outline:none} main{min-width:312px}'));
+    const result = ok(await checkArtifact({ workspaceRoot: root, entryPath: ENTRY, browserPath, settleMs: 0, maxImages: 4, saveRun: false }));
+    assert.deepStrictEqual(result.images.map((i) => i.label), ['desktop', 'mobile', 'focus: a.bare "Read more"', 'reflow 320px']);
+    const capped = ok(await checkArtifact({ workspaceRoot: root, entryPath: ENTRY, browserPath, settleMs: 0, maxImages: 2, saveRun: false }));
+    assert.deepStrictEqual(capped.omitted, ['focus: a.bare "Read more"', 'reflow 320px']);
+  });
+});

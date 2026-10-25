@@ -46,6 +46,14 @@ Screenshots: none unless an error, then one crop per pass, counted against `maxI
 - **CDP is Chromium-only.** Fine for the kit's export browser; the code checks for a CDP session and skips with a note otherwise.
 - **More findings at once.** A page could jump from 2 to 15 findings. Mitigation: findings are grouped by code with the first 5 selectors listed, and the skill's two-round limit stays.
 
+### Implementation notes
+
+- `state-contrast` reports only a drop the state causes (lower than the default-state ratio and under the bar); low contrast in the default state stays the `contrast` check's.
+- `:focus` is forced together with `:focus-visible`, so a page's `:focus { outline: none }` rule applies, as it would for a keyboard user.
+- `tap-target` runs at every checked viewport up to 480 px wide (the phone viewport by default). Touching circles count as intersecting (half a pixel of tolerance).
+- `reflow` skips its sideways-scroll finding when the phone viewport already reported `horizontal-scroll` as an error, and its clipped-text findings for elements already reported as `overflow`.
+- Measured on three bundled examples (web-prototype, dashboard, docs-page), two runs each, `maxImages: 3`: 3.1–3.2 s without the state checks, 3.6–3.7 s with them (+0.4–0.6 s).
+
 ## Open Questions
 
 - Should axe-core be bundled as an optional pass later? Out of scope here; the bundle-size question deserves its own change.

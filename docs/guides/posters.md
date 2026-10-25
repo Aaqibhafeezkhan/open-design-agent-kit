@@ -90,6 +90,7 @@ Every image or page-PDF export checks the design before capturing it, and lists 
 | `overlap` | Text drawn over other text, typically a long value from a spreadsheet running into the next line |
 | `fixed-size` | Fluid posters only: text or images that didn't grow when the poster was rendered 1.5× larger, because they're sized in `px` or `mm` |
 | `broken-asset` | An image, font or stylesheet that failed to load |
+| `slop-glow`, `intent` | Taste warnings, on every design: a purple-blue gradient or glow, or a default Tailwind indigo accent; a destructive button not coloured as danger, or a primary action styled like the others. See [Taste and accessibility checks](../reference/tools.md#taste-and-accessibility-checks) |
 
 ## Change the shape
 

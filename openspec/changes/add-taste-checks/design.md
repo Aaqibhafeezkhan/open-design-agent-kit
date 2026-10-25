@@ -18,9 +18,9 @@ Source scanning (XIAS `slop_tells.mjs` works on files) misses styles set by scri
 
 | Code | Fires when | Taken from |
 |---|---|---|
-| `slop-glow` | a `background-image` gradient, or a blurred element (`filter: blur` ≥ 40px), whose stops are in hue 235–300°, saturation ≥ 0.45, covering ≥ 25% of the first viewport; or `--accent`/button background equal to one of the indigo values listed in `anti-ai-slop.md` | OpenPencil `purple-glow-gradient`; the craft doc's list |
+| `slop-glow` | a `background-image` gradient, or a blurred element (`filter: blur` ≥ 40px), with at least one stop in hue 235–300°, saturation ≥ 0.45, and every other coloured stop blue, cyan or pink (hue 180–340°; an orange or green stop makes it a brand gradient), covering ≥ 25% of the first viewport, reported once per card; or `--accent`/button background equal to one of the indigo values listed in `anti-ai-slop.md` | OpenPencil `purple-glow-gradient`; the craft doc's list |
 | `card-row` | 3–4 siblings, each ≥ 160px wide, widths within 4px, same child tag sequence, each starting with an icon (svg/img ≤ 64px or emoji) then a heading | OpenPencil `three-card-feature-row`, XIAS slop tells |
-| `uniform-surface` | ≥ 6 boxes with a border or shadow and a background differing from their parent, all with one radius and one shadow value | OpenPencil `rounded-card-wall` |
+| `uniform-surface` | ≥ 6 boxes with a border or shadow and a background differing from their parent, all with one radius (≥ 4px) and one shadow value (not `none`). Tuning: flat bordered boxes (docs callouts, memo tables) fired on 20 of 229 bundled examples, so a radius and a drop shadow are both required, as in the "rounded card wall" | OpenPencil `rounded-card-wall` |
 | `type-scale` | the page defines `--text-*` or `--font-display`, and an `h1`/`h2` uses a size not within 1px of any `--text-*` value, or a family other than `--font-display`/`--font-body` | XIAS `lint_intent.mjs` |
 | `intent` | a `button`/`[role=button]`/`a` with destructive text (an English list plus `data-intent="destructive"`) whose background or text hue is outside 345–20° and is not `--danger`; or two or more visible buttons in one group with identical styles where one is `type=submit` or `data-intent="primary"` | XIAS `lint_intent.mjs` |
 
@@ -39,6 +39,11 @@ English only in the first round (delete, remove, discard, erase, cancel subscrip
 - **False positives on the examples.** Mitigation: run the check over every bundled remixable example before merging and tune thresholds until no example that a human picked as good fires more than one taste warning; record the counts in the PR.
 - **Run time.** Five more DOM walks per viewport. Mitigation: one shared walk of candidate boxes, capped at 2,000 elements like the existing checks.
 - **Agents gaming the check** (adding `data-od-allow`). Mitigation: the skill rule above; the critic (`add-design-critic`) sees the attribute.
+
+### Implementation notes
+
+- `type-scale` reads the page's own `--text-*`, `--font-display` and `--font-body` custom properties in the page (from its stylesheets, resolved through a probe element), so export preflight gets it too without `checkArtifact.ts` passing tokens in. The active design system's tokens are what the brief tells the agent to put in `:root`, so this is the same contract.
+- Tuning over the 229 bundled example pages (decks checked slide by slide, as `check_open_design_artifact` does): 222 report no taste warning, 7 report one (three purple-blue backgrounds, one blurred glow hero, one feature card row, the tweaks panel's Reset button twice), none report more.
 
 ## Open Questions
 
