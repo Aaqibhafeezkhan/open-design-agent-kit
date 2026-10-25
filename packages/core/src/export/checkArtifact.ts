@@ -26,7 +26,7 @@ import { usesWebgl, webglFindings } from './webgl';
 import { captureReviewViews, composeReviewSheet, formatSceneEvidence, measureHero, probeScene, REVIEW_VIEWS, reviewUnavailableNote, sceneSpecFindings, type ReviewView, type SceneEvidence } from './sceneReview';
 import { ELEMENT_LAYOUT_VIEWPORT, isValidDimension, resolveExportSize } from './exportSize';
 import { getFormat, isFluidHtml } from '../poster/formats';
-import { applyShape, collectHorizontalScroll, fitBoundText, type ShapeCss } from '../poster/pageScripts';
+import { applyShape, collectHorizontalScroll, collectRunningMotion, collectStateTargets, collectTapTargets, compareStateStyles, fitBoundText, type ShapeCss, type StateLook } from '../poster/pageScripts';
 import { formatPreflight, runPreflight, type Finding } from '../poster/preflight';
 import { renderShapeSheetHtml, type ShapeThumbnail } from '../poster/shapeSheet';
 
@@ -67,6 +67,8 @@ export interface CheckArtifactOptions {
   views?: ReviewView[] | false;
   /** Save the run's images and findings under <outputDir>/.checks/ for the user (default true; openspec add-browser-preview). */
   saveRun?: boolean;
+  /** Pages: also run the states pass (hover, focus), tap targets, reflow at 320 px and reduced motion (default true; openspec add-state-accessibility-checks). */
+  states?: boolean;
 }
 
 export interface CheckImage {
@@ -120,6 +122,17 @@ const MAX_TILES_PER_VIEWPORT = 8;
 const SHEET_SLIDES = 12;
 /** Viewports up to this wide get horizontal-scroll as an error, wider ones as a warning. */
 const PHONE_MAX_WIDTH = 480;
+/** States pass: at most this many interactive elements get :hover and :focus-visible forced. */
+const MAX_STATE_TARGETS = 60;
+/** WCAG 1.4.10 Reflow: content must work at 320 CSS px wide. */
+const REFLOW_WIDTH = 320;
+const REFLOW_HEIGHT = 800;
+/** Reduced motion: wait this long after load, then report motion longer than REDUCED_MOTION_MIN_MS still running. */
+const REDUCED_MOTION_WAIT_MS = 500;
+const REDUCED_MOTION_MIN_MS = 200;
+/** State-check findings are grouped per code, listing this many selectors. */
+const GROUP_SELECTORS = 5;
+const STATE_CODES = new Set(['state-contrast', 'focus-visible', 'tap-target', 'reflow', 'reduced-motion']);
 
 function fail(code: ExportErrorCode, error: string): CheckArtifactResult {
   return { ok: false, code, error };
@@ -129,6 +142,7 @@ function validateOptions(o: CheckArtifactOptions): string | undefined {
   if (o.maxImages !== undefined && !(Number.isInteger(o.maxImages) && o.maxImages >= 0 && o.maxImages <= MAX_IMAGES_CAP)) {
     return `maxImages must be an integer between 0 and ${MAX_IMAGES_CAP}.`;
   }
+  if (o.states !== undefined && typeof o.states !== 'boolean') return 'states must be true or false.';
   if (o.slides !== undefined && (!Array.isArray(o.slides) || o.slides.length === 0 || !o.slides.every((n) => Number.isInteger(n) && n >= 1))) {
     return 'slides must be a non-empty list of 1-based slide numbers.';
   }
@@ -317,7 +331,8 @@ async function runCheck(options: CheckArtifactOptions): Promise<CheckArtifactRes
     }
     // The review sheet goes second, after the first viewport's first screen; other screens fill the rest of the budget.
     const sheetSlot = reviewable && maxImages > 0 ? 1 : 0;
-    const result: { findings: Finding[]; images: CheckImage[]; omitted: string[]; scene3d?: SceneEvidence } = await checkPage(instance, page, viewports, maxImages - sheetSlot, isDiagram);
+    const stateChecks = options.states !== false && !isDiagram ? { url: session.url, readyTimeoutMs: options.readyTimeoutMs ?? 15000, scripted: /requestAnimationFrame/.test(artifact.entryContent) } : undefined;
+    const result: { findings: Finding[]; images: CheckImage[]; omitted: string[]; scene3d?: SceneEvidence } = await checkPage(instance, page, viewports, maxImages - sheetSlot, isDiagram, stateChecks, warnings);
     if (probe && reviewable) {
       await page.setViewport({ width: viewports[0].width, height: viewports[0].height, deviceScaleFactor: 1 });
       await page.evaluate('window.scrollTo(0, 0)');
@@ -375,8 +390,26 @@ async function captureAtTimes(options: CheckArtifactOptions, executablePath: str
   }
 }
 
-/** Every viewport: preflight + horizontal-scroll, its first screen, then further screens down the page while images remain. */
-async function checkPage(browser: Browser, page: Page, viewports: CheckViewport[], maxImages: number, diagram = false): Promise<{ findings: Finding[]; images: CheckImage[]; omitted: string[] }> {
+interface StateCheckOptions {
+  url: string;
+  readyTimeoutMs: number;
+  /** The entry calls requestAnimationFrame, so a reduced-motion render is worth it even with no CSS animation running. */
+  scripted: boolean;
+}
+
+/**
+ * Every viewport: preflight + horizontal-scroll (and tap-target at phone widths), its first screen; then the state
+ * checks (states pass, reflow, reduced motion), whose error crops come before further screens down the page.
+ */
+async function checkPage(
+  browser: Browser,
+  page: Page,
+  viewports: CheckViewport[],
+  maxImages: number,
+  diagram = false,
+  states?: StateCheckOptions,
+  warnings: string[] = [],
+): Promise<{ findings: Finding[]; images: CheckImage[]; omitted: string[] }> {
   const findings: Finding[] = [];
   const screens: Array<{ viewport: CheckViewport; tops: number[] }> = [];
   const images: CheckImage[] = [];
@@ -403,6 +436,7 @@ async function checkPage(browser: Browser, page: Page, viewports: CheckViewport[
     if (diagram) for (const f of (await page.evaluate(collectDiagramFindings)) as Finding[]) findings.push({ ...f, viewport: v.name });
     findings.push(...preflight.filter((f) => !(f.check === 'overflow' && / (extends outside|runs past the edge of) the card/.test(f.message))));
     for (const f of (await page.evaluate(collectHorizontalScroll, PHONE_MAX_WIDTH)) as Finding[]) findings.push({ ...f, viewport: v.name });
+    if (states && v.width <= PHONE_MAX_WIDTH) for (const f of (await page.evaluate(collectTapTargets)) as Finding[]) findings.push({ ...f, viewport: v.name });
     const pageHeight = Number(await page.evaluate('Math.max(document.documentElement.scrollHeight, document.body ? document.body.scrollHeight : 0)'));
     const count = Math.min(1 + MAX_TILES_PER_VIEWPORT, Math.max(1, Math.ceil(pageHeight / v.height)));
     const tops = Array.from({ length: count }, (_, k) => Math.min(k * v.height, Math.max(0, pageHeight - v.height)));
@@ -411,10 +445,23 @@ async function checkPage(browser: Browser, page: Page, viewports: CheckViewport[
     else omitted.push(label(v, 0, count));
   }
 
+  let current: CheckViewport | undefined = viewports[viewports.length - 1];
+  if (states) {
+    const shoot = async (label: string, take: () => Promise<Buffer>): Promise<void> => {
+      if (images.length < maxImages) images.push(await toCheckImage(browser, label, await take()));
+      else omitted.push(label);
+    };
+    const desktop = viewports.find((v) => v.width > PHONE_MAX_WIDTH) ?? viewports[0];
+    await useViewport(desktop);
+    findings.push(...(await statesPass(page, desktop, shoot, warnings)));
+    findings.push(...(await reflowPass(page, findings, shoot)));
+    findings.push(...(await reducedMotionPass(browser, page, desktop, states)));
+    current = undefined;
+  }
+
   // Pass 2: further screens, round-robin across viewports, while the image budget lasts.
   const extras: Array<{ s: (typeof screens)[number]; k: number }> = [];
   for (let k = 1; k <= MAX_TILES_PER_VIEWPORT; k++) for (const s of screens) if (k < s.tops.length) extras.push({ s, k });
-  let current: CheckViewport | undefined = viewports[viewports.length - 1];
   for (const { s, k } of extras) {
     const name = label(s.viewport, k, s.tops.length);
     if (images.length >= maxImages) {
@@ -427,7 +474,123 @@ async function checkPage(browser: Browser, page: Page, viewports: CheckViewport[
     }
     images.push(await toCheckImage(browser, name, await shootAt(s.viewport, s.tops[k])));
   }
-  return { findings: mergeAcrossViewports(findings), images, omitted };
+  return { findings: mergeAcrossViewports(groupStateFindings(findings)), images, omitted };
+}
+
+/**
+ * Forces :hover, then :focus + :focus-visible, on up to MAX_STATE_TARGETS interactive elements through CDP
+ * (CSS.forcePseudoState: no events, so computed styles can be read directly), with transitions off so each
+ * read is the end state. One crop of the first element with no focus indicator, while it's forced.
+ */
+async function statesPass(page: Page, viewport: CheckViewport, shoot: (label: string, take: () => Promise<Buffer>) => Promise<void>, warnings: string[]): Promise<Finding[]> {
+  const names = (await page.evaluate(collectStateTargets, MAX_STATE_TARGETS)) as string[];
+  if (names.length === 0) return [];
+  const findings: Finding[] = [];
+  const noTransitions = await page.addStyleTag({ content: '*, *::before, *::after { transition: none !important; }' });
+  let cdp: Awaited<ReturnType<Page['createCDPSession']>> | undefined;
+  try {
+    cdp = await page.createCDPSession();
+    await cdp.send('DOM.enable');
+    await cdp.send('CSS.enable');
+    const { root } = await cdp.send('DOM.getDocument', { depth: 0 });
+    const { nodeIds } = await cdp.send('DOM.querySelectorAll', { nodeId: root.nodeId, selector: '[data-od-state-target]' });
+    const force = async (classes: string[]): Promise<void> => {
+      for (const nodeId of nodeIds) await cdp!.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: classes });
+      await settle(page, 0);
+    };
+    const base = (await page.evaluate(compareStateStyles, 'default', null)) as { looks: StateLook[] };
+    let skipped = 0;
+    for (const [state, classes] of [['hover', ['hover']], ['focus-visible', ['focus', 'focus-visible']]] as const) {
+      await force([...classes]);
+      const run = (await page.evaluate(compareStateStyles, state, base.looks)) as { findings: Finding[]; skipped: number };
+      skipped += run.skipped;
+      findings.push(...run.findings.map((f) => ({ ...f, viewport: viewport.name })));
+      const firstMissing = run.findings.findIndex((f) => f.check === 'focus-visible');
+      if (firstMissing >= 0) {
+        const index = names.indexOf(run.findings[firstMissing].selector ?? '');
+        const handle = index >= 0 ? await page.$(`[data-od-state-target="${index}"]`) : null;
+        if (handle) {
+          await handle.evaluate((el) => (el as unknown as { scrollIntoView(o: object): void }).scrollIntoView({ block: 'center' }));
+          await shoot(`focus: ${run.findings[firstMissing].selector}`, async () => Buffer.from(await handle.screenshot({ type: 'png' })));
+        }
+      }
+      await force([]);
+    }
+    if (skipped > 0) findings.push({ check: 'state-contrast', severity: 'info', message: `Contrast in hover and focus states not checked for ${skipped} element(s) on gradient, image or translucent backgrounds — check those by eye.` });
+  } catch (err) {
+    warnings.push(`The hover and focus checks were skipped: ${err instanceof Error ? err.message : String(err)}`);
+  } finally {
+    await cdp?.detach().catch(() => undefined);
+    await noTransitions.evaluate((el) => (el as unknown as { remove(): void }).remove());
+    await page.evaluate("document.querySelectorAll('[data-od-state-target]').forEach((el) => el.removeAttribute('data-od-state-target'))");
+    await page.evaluate('window.scrollTo(0, 0)');
+  }
+  return findings;
+}
+
+/** Reflow (WCAG 1.4.10): one render at 320 CSS px; sideways scroll or clipped text there is an error. Skips what the phone viewport already reported. */
+async function reflowPass(page: Page, earlier: Finding[], shoot: (label: string, take: () => Promise<Buffer>) => Promise<void>): Promise<Finding[]> {
+  await page.setViewport({ width: REFLOW_WIDTH, height: REFLOW_HEIGHT, deviceScaleFactor: 1 });
+  await page.evaluate('window.scrollTo(0, 0)');
+  await settle(page);
+  const findings: Finding[] = [];
+  const scrolledOnPhone = earlier.some((f) => f.check === 'horizontal-scroll' && f.severity === 'error');
+  if (!scrolledOnPhone) {
+    for (const f of (await page.evaluate(collectHorizontalScroll, PHONE_MAX_WIDTH)) as Finding[]) {
+      findings.push({ ...f, check: 'reflow', severity: 'error', message: `At ${REFLOW_WIDTH}px wide (WCAG reflow, a phone with large text or a zoomed window): ${f.message}` });
+    }
+  }
+  const clippedBefore = new Set(earlier.filter((f) => f.check === 'overflow').map((f) => f.selector));
+  const clipped = (await runPreflight(page, { cardSelector: CARD_SELECTOR })).filter(
+    (f) => f.check === 'overflow' && f.selector !== undefined && !/ (extends outside|runs past the edge of) the card/.test(f.message) && !clippedBefore.has(f.selector),
+  );
+  for (const f of clipped) findings.push({ ...f, check: 'reflow', severity: 'error', message: `At ${REFLOW_WIDTH}px wide (WCAG reflow), ${f.message}` });
+  if (findings.length > 0) await shoot(`reflow ${REFLOW_WIDTH}px`, async () => Buffer.from(await page.screenshot({ type: 'png' })));
+  return findings.map((f) => ({ ...f, viewport: `${REFLOW_WIDTH}px` }));
+}
+
+/** Reduced motion: when the page animates, one more render with prefers-reduced-motion: reduce emulated, in a second tab. */
+async function reducedMotionPass(browser: Browser, page: Page, viewport: CheckViewport, states: StateCheckOptions): Promise<Finding[]> {
+  const animating = Number(await page.evaluate('document.getAnimations ? document.getAnimations().length : 0')) > 0;
+  if (!animating && !states.scripted) return [];
+  const reduced = await browser.newPage();
+  try {
+    await reduced.evaluateOnNewDocument('globalThis.__name = globalThis.__name || ((fn) => fn)');
+    await reduced.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
+    await reduced.setViewport({ width: viewport.width, height: viewport.height, deviceScaleFactor: 1 });
+    await reduced.goto(states.url, { waitUntil: 'load', timeout: states.readyTimeoutMs }).catch(() => undefined);
+    await new Promise((r) => setTimeout(r, REDUCED_MOTION_WAIT_MS));
+    return ((await reduced.evaluate(collectRunningMotion, REDUCED_MOTION_MIN_MS)) as Finding[]).map((f) => ({ ...f, viewport: viewport.name }));
+  } finally {
+    await reduced.close();
+  }
+}
+
+/** The state checks can fire on dozens of links at once: one finding per code, severity and viewport, listing GROUP_SELECTORS selectors and the count. */
+function groupStateFindings(findings: Finding[]): Finding[] {
+  const groups = new Map<string, Finding[]>();
+  const out: Array<Finding | string> = [];
+  for (const f of findings) {
+    if (!STATE_CODES.has(f.check) || f.severity === 'info') {
+      out.push(f);
+      continue;
+    }
+    const key = `${f.check}|${f.severity}|${f.viewport ?? ''}`;
+    const list = groups.get(key);
+    if (list) list.push(f);
+    else {
+      groups.set(key, [f]);
+      out.push(key);
+    }
+  }
+  return out.map((entry) => {
+    if (typeof entry !== 'string') return entry;
+    const list = groups.get(entry)!;
+    if (list.length === 1) return list[0];
+    const names = list.map((f) => f.selector ?? '').filter(Boolean);
+    const more = names.length > GROUP_SELECTORS ? ` and ${names.length - GROUP_SELECTORS} more` : '';
+    return { ...list[0], message: `${list.length} elements: ${names.slice(0, GROUP_SELECTORS).join('; ')}${more}. The first: ${list[0].message}` };
+  });
 }
 
 /** The same finding at several viewports is reported once, tagged with every viewport it appears at. */

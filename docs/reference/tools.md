@@ -694,12 +694,41 @@ What it renders depends on the artifact:
 | `maxImages` | integer 0–6 | no | How many screenshots to attach. Default 3. `0` returns findings only. |
 | `at` | number[] (up to 6) | no | Animations: also capture the artifact at these times in seconds, on a virtual clock, labelled `t=<seconds>s`. They come first and share `maxImages`. |
 | `views` | (`overview` · `closeup` · `low` · `wireframe`)[] or `false` | no | 3D scenes that expose their handles (below): which review views go on the review sheet. Default all four; `false` for no sheet. |
+| `states` | boolean | no | Pages: run the [state accessibility checks](#taste-and-accessibility-checks) (hover and focus, tap targets, 320 px reflow, reduced motion). Default `true`; `false` for a faster check. |
 
 Screenshots are JPEG, at most 1568 px on the long edge. A page's first screen at each viewport comes first; further screens down a tall page fill the remaining images, and the result lists what was left out.
 
 **Result:** text with the findings (errors first), the attached screenshots' labels and sizes, what wasn't attached, and any warnings; then the screenshots. In VS Code they're image parts of the tool result; over MCP they're `image` content items after the text. A client that ignores images still gets every finding in the text.
 
 When the artifact was registered with `sources` and any of them changed since, the findings include `stale-sources` (info).
+
+#### Taste and accessibility checks
+
+Besides the [preflight checks](../guides/posters.md#preflight-checks), the check reports two more groups.
+
+**Taste** (always warnings, never failing an export or a registration). They point at the looks that make a design read as default AI output. The agent fixes them unless the brief or the design system asks for that look.
+
+| Check | Finds |
+|---|---|
+| `slop-glow` | A gradient or blurred glow (`filter: blur` ≥ 40 px) in the purple-blue band (hue 235–300°, saturation ≥ 0.45, other stops blue, cyan or pink) covering at least a quarter of the first screen (or of the card), reported once; or `--accent` or a button filled with a default Tailwind indigo (`#6366f1`, `#4f46e5`, `#4338ca`, `#3730a3`, `#8b5cf6`, `#7c3aed`, `#a855f7`) |
+| `card-row` | Pages: a row of three or four cards of the same width (within 4 px, each ≥ 160 px) and structure, each an icon (≤ 64 px), then a heading, then text. Reported once per row |
+| `uniform-surface` | Pages: six or more card-like boxes (a border or shadow, a background unlike their parent's) that all share one radius (≥ 4 px) and one shadow |
+| `type-scale` | Pages that declare `--text-*` or `--font-display`/`--font-body`: an `h1`/`h2` whose size is more than 1 px from every `--text-*` step (the finding names the nearest), or whose font is neither display nor body |
+| `intent` | A button or button-like link whose text says it destroys something (delete, remove, discard, erase, revoke, reset, cancel subscription, close account) or that has `data-intent="destructive"`, coloured neither red nor with `--danger`; or a primary action (`type="submit"` or `data-intent="primary"`) styled exactly like a button next to it |
+
+For a deliberate exception (a brand that really is purple, three equal pricing tiers), put `data-od-allow` on the element or an ancestor, listing the codes: `<html data-od-allow="slop-glow">`. The agent doesn't add it just to pass. The destructive words are English; on other pages use `data-intent`.
+
+**Accessibility in states** (pages only; decks, posters and cards skip them; `states: false` turns them off):
+
+| Check | Finds |
+|---|---|
+| `state-contrast` | At desktop width, with `:hover`, then `:focus` and `:focus-visible` forced on up to 60 buttons, links, inputs and `[tabindex]` elements: text below 4.5:1 (3:1 for large text) in a state that changes the element. Text over images or gradients is listed as not checked |
+| `focus-visible` | An error: an element that shows no visible change when focused (no outline, and no change of shadow, border, background, text decoration or `::before`/`::after`). The browser's own outline counts, so only pages that remove it without a replacement fail |
+| `tap-target` | On the phone viewport: an interactive element smaller than 24×24 px whose 24 px circle touches another target (WCAG 2.2 target size, with its spacing exception). An error below 16 px. Links inside running text and labelled checkboxes are exempt |
+| `reflow` | An error: at 320 px wide (WCAG 1.4.10), the page scrolls sideways or clips text. Not repeated when the phone viewport already scrolls sideways |
+| `reduced-motion` | When the page animates: with `prefers-reduced-motion: reduce`, an animation or transition longer than 200 ms still running, or an element with `will-change: transform` or an inline transform still moving. Canvases (three.js) are exempt |
+
+Hover and focus are forced through the Chrome DevTools Protocol, so effects run by scripts (`mouseenter`) aren't seen. Several elements failing the same check are reported as one finding listing five of them and the count. These checks add no screenshots unless they find an error; then a crop of the first element with no focus indicator (`focus: …`) and the 320 px render (`reflow 320px`) come after each viewport's first screen, within `maxImages`. They add about half a second to a typical page check.
 
 #### Saved check runs
 

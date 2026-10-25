@@ -136,6 +136,7 @@ program
   .option('--max-images <n>', 'Screenshots to write with --screenshots, 0-6 (default 3)')
   .option('--at <seconds>', 'Animations: also capture these moments, comma-separated, e.g. 0,1.5,3 (needs --screenshots to see them)')
   .option('--views <list|none>', '3D scenes exposing odScene handles: review views on the sheet, comma-separated from overview,closeup,low,wireframe (default all), or none')
+  .option('--no-states', 'Pages: skip the hover and focus, tap-target, 320 px reflow and reduced-motion checks (a faster check)')
   .option('--screenshots <dir>', 'Write the screenshots (JPEG) to this directory')
   .option('--fail-on <error|warning>', 'Exit 1 when a finding at or above this severity exists (for CI)')
   .option('--json', 'Print the result as JSON (findings, saved run, screenshot files) instead of text')

@@ -1005,7 +1005,7 @@ export async function listIntegrations(ctx: ToolContext, input: ListIntegrations
 /** check_open_design_artifact: renders the artifact and returns findings plus screenshots; writes nothing. */
 export async function checkArtifact(
   ctx: ToolContext,
-  input: { entryPath: string; viewports?: CheckViewport[]; slides?: number[]; maxImages?: number; at?: number[]; views?: ReviewView[] | false },
+  input: { entryPath: string; viewports?: CheckViewport[]; slides?: number[]; maxImages?: number; at?: number[]; views?: ReviewView[] | false; states?: boolean },
 ): Promise<ToolOutput> {
   // Browser path: OPEN_DESIGN_BROWSER_PATH is read by core's discovery itself.
   const result = await checkArtifactCore({

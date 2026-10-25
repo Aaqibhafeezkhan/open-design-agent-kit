@@ -185,6 +185,26 @@ export interface ComposeInstructionsInput {
   recentDesigns?: RecentDesignsContext;
 }
 
+/**
+ * "Checked in this kit" (openspec add-taste-checks, add-state-accessibility-checks): the craft docs are upstream's,
+ * unedited, and anti-ai-slop.md says the daemon's lint-artifact enforces some rules. That linter doesn't run here;
+ * check_open_design_artifact does, so say which rules it reports and under which code.
+ */
+export function checkedInThisKitNote(craftIds: readonly string[]): string | undefined {
+  const lines: string[] = [];
+  if (craftIds.includes('anti-ai-slop')) {
+    lines.push(
+      '- **anti-ai-slop.** The daemon `lint-artifact` linter that section mentions does not run in this kit; nothing blocks on these rules. `check_open_design_artifact` reports, as warnings: default Tailwind indigo as the accent and purple-blue "trust" gradients or glows (`slop-glow`), emoji in text (`emoji`), h1/h2 off the `--text-*` scale or not in `--font-display`/`--font-body` (`type-scale`), a row of three or four identical icon-heading-text cards (`card-row`), every card with one radius and one shadow (`uniform-surface`), and destructive buttons (delete, remove, discard, erase, revoke, reset, cancel subscription, close account, or `data-intent="destructive"`) not coloured as danger, or a primary action styled like the secondary ones (`intent`). The other rules (left-border cards, invented metrics, filler copy, the section sequence) are not checked: follow them yourself. Fix taste warnings unless the brief or design system asks for that look; `data-od-allow="<code> …"` on an element marks a deliberate exception, never a way to pass.',
+    );
+  }
+  if (craftIds.includes('accessibility-baseline')) {
+    lines.push(
+      '- **accessibility-baseline.** On pages, `check_open_design_artifact` also forces hover and keyboard focus on up to 60 interactive elements (`state-contrast` for text below 4.5:1 in those states, `focus-visible` as an error when focus shows no visible change), measures tap targets on the phone viewport (`tap-target`, WCAG 2.2 target size: under 24×24 px with no room around them), renders at 320 px wide (`reflow`, an error when the page scrolls sideways or clips text) and with reduced motion (`reduced-motion`, animations still running). Default-state `contrast` is checked too. Screen-reader naming, ARIA and keyboard traps are not checked.',
+    );
+  }
+  return lines.length > 0 ? `### Checked in this kit\n\n${lines.join('\n')}` : undefined;
+}
+
 export function composeInstructions(input: ComposeInstructionsInput): string {
   const parts: string[] = [];
 
@@ -224,6 +244,8 @@ export function composeInstructions(input: ComposeInstructionsInput): string {
         .map((s) => `### ${s.id}\n\n${s.body.trim()}`)
         .join('\n\n')}`,
     );
+    const checked = checkedInThisKitNote(input.craftSections.map((s) => s.id));
+    if (checked) parts.push(`\n\n${checked}`);
   }
 
   if (input.existingAppFrameworks && input.existingAppFrameworks.length > 0) {

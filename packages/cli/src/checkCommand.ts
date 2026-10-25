@@ -30,6 +30,8 @@ export interface CheckCliOptions {
   at?: string;
   /** 3D review views: comma-separated names, or "none". */
   views?: string;
+  /** false with --no-states: skip the hover/focus, tap-target, reflow and reduced-motion checks. */
+  states?: boolean;
   /** Print the result as JSON instead of text (for scripts such as the evals scorer). */
   json?: boolean;
 }
@@ -83,7 +85,7 @@ export function parseCheckFlags(flags: CheckCliOptions): { options: Omit<CheckAr
       views = names as ReviewView[];
     }
   }
-  return { options: { viewports, slides, maxImages, browserPath: flags.browser, at, views }, failOn };
+  return { options: { viewports, slides, maxImages, browserPath: flags.browser, at, views, states: flags.states === false ? false : undefined }, failOn };
 }
 
 /** A screenshot label as a file name: "desktop 2/3" → "desktop-2-3.jpg". */

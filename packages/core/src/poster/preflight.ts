@@ -256,5 +256,11 @@ export function formatPreflight(findings: Finding[], recheck = 're-check with ch
       lines.push(`- INFO [${f.check}] ${where}: ${f.message}`);
     }
   }
+  if (findings.some((f) => TASTE_CHECKS.has(f.check))) {
+    lines.push('Taste warnings (slop-glow, card-row, uniform-surface, type-scale, intent) point at common "default AI" looks: fix them unless the brief or the design system asks for that look. Don\'t add data-od-allow just to silence one.');
+  }
   return [head, ...lines];
 }
+
+/** The taste check codes (openspec add-taste-checks): judgement calls, always warnings. */
+export const TASTE_CHECKS: ReadonlySet<string> = new Set(['slop-glow', 'card-row', 'uniform-surface', 'type-scale', 'intent']);

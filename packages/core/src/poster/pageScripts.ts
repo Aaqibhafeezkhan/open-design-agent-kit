@@ -71,6 +71,100 @@ export async function collectPreflight(opts: PagePreflightOptions): Promise<Page
   const inset = (box: any, d: number): any => ({ left: box.left + d, top: box.top + d, right: box.right - d, bottom: box.bottom - d });
   const area = (r: any): number => Math.max(0, r.right - r.left) * Math.max(0, r.bottom - r.top);
 
+  // Taste (openspec add-taste-checks): warnings only, each silenced by data-od-allow="<code> …" on the element or an ancestor.
+  // Page-only detectors (card-row, uniform-surface, type-scale) skip cards and slides, whose layouts need their own thresholds.
+  const TASTE_MAX_ELEMENTS = 2000;
+  const GLOW_HUE_MIN = 235;
+  const GLOW_HUE_MAX = 300;
+  const GLOW_MIN_SATURATION = 0.45;
+  // The other stops of a "trust" gradient: blue, cyan, pink. A stop outside this band (orange, green) makes it a brand gradient.
+  const GLOW_COMPANION_HUE_MIN = 180;
+  const GLOW_COMPANION_HUE_MAX = 340;
+  const GLOW_MIN_COVERAGE = 0.25;
+  const GLOW_MIN_BLUR_PX = 40;
+  // anti-ai-slop.md's list (upstream AI_DEFAULT_INDIGO).
+  const AI_DEFAULT_INDIGO = ['#6366f1', '#4f46e5', '#4338ca', '#3730a3', '#8b5cf6', '#7c3aed', '#a855f7'];
+  const CARD_ROW_MIN_WIDTH = 160;
+  const CARD_ROW_WIDTH_TOLERANCE = 4;
+  const CARD_ROW_MAX_ICON = 64;
+  const UNIFORM_SURFACE_MIN = 6;
+  // The "rounded card wall": a radius and a drop shadow on every box. Flat bordered boxes (docs callouts, memo tables) don't count.
+  const UNIFORM_SURFACE_MIN_RADIUS_PX = 4;
+  const TYPE_SCALE_TOLERANCE_PX = 1;
+  const DANGER_HUE_MIN = 345;
+  const DANGER_HUE_MAX = 20;
+  const DANGER_MIN_SATURATION = 0.35;
+  const DANGER_TOKENS = ['--danger', '--color-danger', '--destructive', '--error'];
+  const DESTRUCTIVE_WORDS = /\b(delete|remove|discard|erase|revoke|reset)\b|\bcancel (my |your )?subscription\b|\bclose (my |your )?account\b/i;
+  const pageMode = cardEls.length === 0;
+
+  const allowed = (el: any, code: string): boolean => {
+    for (let a = el; a && a.getAttribute; a = a.parentElement) {
+      const v = a.getAttribute('data-od-allow');
+      if (v && String(v).split(/\s+/).indexOf(code) >= 0) return true;
+    }
+    return false;
+  };
+  const hsl = (c: any): { h: number; s: number; l: number } => {
+    const r = c.r / 255;
+    const g = c.g / 255;
+    const b = c.b / 255;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const l = (max + min) / 2;
+    const d = max - min;
+    if (d === 0) return { h: 0, s: 0, l };
+    const s = d / (1 - Math.abs(2 * l - 1));
+    let h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    h *= 60;
+    if (h < 0) h += 360;
+    return { h, s, l };
+  };
+  const hex = (c: any): string => '#' + [c.r, c.g, c.b].map((v: number) => ('0' + Math.round(v).toString(16)).slice(-2)).join('');
+  const colorsIn = (value: string): any[] => (String(value || '').match(/rgba?\([^)]+\)/g) || []).map(parseColor).filter(Boolean);
+  const isRed = (c: any): boolean => {
+    if (!c || c.a < 0.1) return false;
+    const x = hsl(c);
+    return x.s >= DANGER_MIN_SATURATION && x.l > 0.15 && x.l < 0.9 && (x.h >= DANGER_HUE_MIN || x.h <= DANGER_HUE_MAX);
+  };
+  // A purple-blue "trust" gradient: at least one stop in the purple-blue band, the other coloured stops blue, cyan or pink.
+  const trustColors = (colors: any[]): boolean => {
+    let inBand = 0;
+    for (const c of colors) {
+      if (c.a < 0.05) continue;
+      const x = hsl(c);
+      if (x.s < GLOW_MIN_SATURATION || x.l > 0.92 || x.l < 0.08) continue;
+      if (x.h >= GLOW_HUE_MIN && x.h <= GLOW_HUE_MAX) inBand++;
+      else if (x.h < GLOW_COMPANION_HUE_MIN || x.h > GLOW_COMPANION_HUE_MAX) return false;
+    }
+    return inBand > 0;
+  };
+  const ownText = (el: any): string =>
+    Array.prototype.filter.call(el.childNodes, (n: any) => n.nodeType === 3).map((n: any) => String(n.nodeValue || '')).join('').trim();
+  // The page's own custom properties (from its stylesheets and inline styles on <html>/<body>), for the token-aware checks.
+  const declaredTokens = (): string[] => {
+    const names = new Set<string>();
+    const fromStyle = (style: any): void => {
+      for (let i = 0; style && i < style.length; i++) if (String(style[i]).indexOf('--') === 0) names.add(String(style[i]));
+    };
+    const scan = (rules: any): void => {
+      for (const rule of Array.prototype.slice.call(rules || [])) {
+        if (rule.style) fromStyle(rule.style);
+        if (rule.cssRules) scan(rule.cssRules);
+      }
+    };
+    for (const sheet of Array.prototype.slice.call(document.styleSheets)) {
+      try {
+        scan(sheet.cssRules);
+      } catch {
+        // Cross-origin stylesheet: unreadable.
+      }
+    }
+    fromStyle(document.documentElement.style);
+    if (document.body) fromStyle(document.body.style);
+    return Array.from(names);
+  };
+
   for (let ci = 0; ci < cards.length; ci++) {
     const card = cards[ci];
     const cardNo = multi ? ci + 1 : undefined;
@@ -313,6 +407,196 @@ export async function collectPreflight(opts: PagePreflightOptions): Promise<Page
         const ppi = size === 'cover' ? 96 * Math.min(sx, sy) : size === 'contain' ? 96 * Math.max(sx, sy) : 96;
         ppiFinding('background image of ' + describe(el).split(' "')[0], ppi);
       }
+    }
+
+    // ---- Taste: one shared walk of the card's boxes ----
+    const boxes: any[] = [];
+    const candidates = (pageMode ? [document.documentElement, card] : [card]).concat(Array.prototype.slice.call(card.querySelectorAll('*')));
+    for (const el of candidates) {
+      if (boxes.length >= TASTE_MAX_ELEMENTS) break;
+      const tag = String(el.tagName || '').toLowerCase();
+      if (tag === 'script' || tag === 'style' || tag === 'noscript' || tag === 'template' || tag === 'head' || (tag !== 'svg' && el.closest('svg'))) continue;
+      const cs = getComputedStyle(el);
+      if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+      const r = el.getBoundingClientRect();
+      if (r.width < 1 || r.height < 1) continue;
+      boxes.push({ el, cs, r, tag });
+    }
+    const probe = document.createElement('div');
+    probe.setAttribute('style', 'position:absolute;left:0;top:0;width:0;height:0;overflow:hidden;visibility:hidden;pointer-events:none');
+    (document.body || document.documentElement).appendChild(probe);
+    try {
+      const rootStyle = getComputedStyle(document.documentElement);
+      const tokenValue = (name: string): string => String(rootStyle.getPropertyValue(name) || '').trim();
+      const tokenColor = (name: string): any => {
+        if (!tokenValue(name)) return null;
+        probe.style.color = '';
+        probe.style.color = 'var(' + name + ')';
+        return parseColor(getComputedStyle(probe).color);
+      };
+      const sameColor = (a: any, b: any): boolean => !!a && !!b && Math.abs(a.r - b.r) < 1.5 && Math.abs(a.g - b.g) < 1.5 && Math.abs(a.b - b.b) < 1.5;
+
+      // slop-glow: a purple-blue gradient or blurred glow over a quarter of the first screen (the card, for cards and slides).
+      const region = pageMode ? { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight } : box;
+      const regionArea = area(region);
+      // One finding per card: the outermost glow, not every layer of the same hero.
+      for (const b of boxes) {
+        if (regionArea <= 0) break;
+        const inter = { left: Math.max(b.r.left, region.left), top: Math.max(b.r.top, region.top), right: Math.min(b.r.right, region.right), bottom: Math.min(b.r.bottom, region.bottom) };
+        const coverage = area(inter) / regionArea;
+        if (coverage < GLOW_MIN_COVERAGE || allowed(b.el, 'slop-glow')) continue;
+        let hit = '';
+        const styles = [b.cs, window.getComputedStyle(b.el, '::before'), window.getComputedStyle(b.el, '::after')];
+        for (const s of styles) {
+          if (!s) continue;
+          const image = String(s.backgroundImage || '');
+          const blur = /blur\(([\d.]+)px\)/.exec(String(s.filter || ''));
+          if (image.indexOf('gradient(') >= 0 && trustColors(colorsIn(image))) hit = 'gradient';
+          else if (blur && Number(blur[1]) >= GLOW_MIN_BLUR_PX && trustColors(colorsIn(image + ' ' + s.backgroundColor))) hit = 'blurred glow';
+          if (hit) break;
+        }
+        if (!hit) continue;
+        const name = b.tag === 'html' ? 'the page background' : describe(b.el).split(' "')[0];
+        add({ check: 'slop-glow', severity: 'warning', message: name + ' has a purple-blue ' + hit + ' behind ' + Math.round(coverage * 100) + '% of the ' + (pageMode ? 'first screen' : 'card') + ', the most common "default AI" look. Use a flat surface from the design system (--bg, --surface) and let --accent carry the colour.', selector: name });
+        break;
+      }
+      // ...and the default Tailwind indigo as the accent.
+      const accent = tokenColor('--accent');
+      if (accent && AI_DEFAULT_INDIGO.indexOf(hex(accent)) >= 0 && !allowed(document.documentElement, 'slop-glow')) {
+        add({ check: 'slop-glow', severity: 'warning', message: 'The page\'s --accent is ' + hex(accent) + ', a default Tailwind indigo. Take the accent from the design system, or choose one for this brand.', selector: '--accent' });
+      } else {
+        for (const b of boxes) {
+          if (!(b.tag === 'button' || b.tag === 'a' || b.el.getAttribute('role') === 'button')) continue;
+          const bg = parseColor(b.cs.backgroundColor);
+          if (!bg || bg.a < 0.99 || AI_DEFAULT_INDIGO.indexOf(hex(bg)) < 0 || allowed(b.el, 'slop-glow')) continue;
+          add({ check: 'slop-glow', severity: 'warning', message: describe(b.el) + ' is filled with ' + hex(bg) + ', a default Tailwind indigo. Use --accent from the design system.', selector: describe(b.el) });
+          break;
+        }
+      }
+
+      // intent: a destructive action that doesn't look dangerous, and a primary action styled like the others.
+      const danger = DANGER_TOKENS.map(tokenColor).filter(Boolean);
+      const actions = boxes.filter((b: any) => {
+        if (b.tag === 'button' || b.el.getAttribute('role') === 'button') return true;
+        if (b.tag === 'input') return /^(submit|button|reset)$/i.test(String(b.el.getAttribute('type') || ''));
+        if (b.tag !== 'a') return false;
+        const bg = parseColor(b.cs.backgroundColor);
+        // Links only when drawn as buttons (a fill or a border), or explicitly marked.
+        return b.el.hasAttribute('data-intent') || (bg && bg.a > 0.1) || (parseFloat(b.cs.borderTopWidth) > 0 && b.cs.borderTopStyle !== 'none');
+      });
+      const label = (el: any): string => String(el.innerText || el.value || el.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim();
+      for (const b of actions) {
+        const declared = b.el.getAttribute('data-intent');
+        const text = label(b.el);
+        const destructive = declared ? declared === 'destructive' : text.length <= 60 && DESTRUCTIVE_WORDS.test(text);
+        if (!destructive || allowed(b.el, 'intent')) continue;
+        const border = parseFloat(b.cs.borderTopWidth) > 0 && b.cs.borderTopStyle !== 'none' ? parseColor(b.cs.borderTopColor) : null;
+        const shown = [parseColor(b.cs.backgroundColor), parseColor(b.cs.color), border].filter((c: any) => c && c.a > 0.1);
+        if (shown.some((c: any) => isRed(c) || danger.some((d: any) => sameColor(c, d)))) continue;
+        add({ check: 'intent', severity: 'warning', message: describe(b.el) + ' destroys something but looks like any other action. Colour it with the design system\'s --danger (or a red), so it can\'t be clicked by mistake.', selector: describe(b.el) });
+      }
+      const groups = new Map();
+      for (const b of actions) {
+        const list = groups.get(b.el.parentElement) || [];
+        list.push(b);
+        groups.set(b.el.parentElement, list);
+      }
+      const look = (cs: any): string => [cs.backgroundColor, cs.color, cs.borderTopColor, cs.borderTopWidth, cs.fontWeight, cs.boxShadow, cs.textDecorationLine].join('|');
+      groups.forEach((list: any[]) => {
+        if (list.length < 2) return;
+        for (const p of list) {
+          const isPrimary = p.el.getAttribute('data-intent') === 'primary' || String(p.el.getAttribute('type') || '').toLowerCase() === 'submit';
+          if (!isPrimary || allowed(p.el, 'intent')) continue;
+          const twin = list.find((o: any) => o !== p && o.el.getAttribute('data-intent') !== 'primary' && String(o.el.getAttribute('type') || '').toLowerCase() !== 'submit' && look(o.cs) === look(p.cs));
+          if (twin) add({ check: 'intent', severity: 'warning', message: describe(p.el) + ' is the primary action but is styled exactly like ' + describe(twin.el) + '. Make the primary one stand out (fill it with --accent) and keep the others quieter.', selector: describe(p.el) });
+        }
+      });
+
+      if (pageMode) {
+        // card-row: three or four identical cards in a row, each an icon, then a heading, then text.
+        const startsWithIcon = (kid: any): boolean => {
+          const heading = kid.querySelector('h1,h2,h3,h4,h5,h6,[role="heading"]');
+          if (!heading) return false;
+          for (const d of Array.prototype.slice.call(kid.querySelectorAll('*'))) {
+            if (d === heading || heading.contains(d)) return false;
+            const tag = String(d.tagName).toLowerCase();
+            const r = d.getBoundingClientRect();
+            const small = r.width >= 1 && r.height >= 1 && r.width <= CARD_ROW_MAX_ICON && r.height <= CARD_ROW_MAX_ICON;
+            if (tag === 'svg' || tag === 'img') return small;
+            const t = ownText(d);
+            if (t) return t.length <= 4 && emoji.test(t);
+            if (small && /icon/i.test(String(d.className && d.className.baseVal !== undefined ? d.className.baseVal : d.className || ''))) return true;
+          }
+          return false;
+        };
+        const rows: any[] = [];
+        for (const b of boxes) {
+          if (rows.some((r: any) => r.contains(b.el))) continue;
+          const kids = Array.prototype.slice.call(b.el.children).filter((k: any) => {
+            const r = k.getBoundingClientRect();
+            return r.width >= 1 && r.height >= 1 && getComputedStyle(k).display !== 'none';
+          });
+          if (kids.length < 3 || kids.length > 4) continue;
+          const widths = kids.map((k: any) => k.getBoundingClientRect().width);
+          if (Math.min.apply(null, widths) < CARD_ROW_MIN_WIDTH || Math.max.apply(null, widths) - Math.min.apply(null, widths) > CARD_ROW_WIDTH_TOLERANCE) continue;
+          const shape = (k: any): string => Array.prototype.map.call(k.children, (c: any) => c.tagName).join(',');
+          if (!kids.every((k: any) => shape(k) === shape(kids[0]) && startsWithIcon(k)) || allowed(b.el, 'card-row')) continue;
+          rows.push(b.el);
+          const name = describe(b.el).split(' "')[0];
+          add({ check: 'card-row', severity: 'warning', message: name + ' is a row of ' + kids.length + ' identical cards, each an icon, a heading and a line of text: the textbook AI feature section. Vary them (one large, the rest small), or use a list, a table or a single strong example.', selector: name });
+        }
+
+        // uniform-surface: every card-like box with the same radius and shadow.
+        const backgroundOf = (el: any): any => {
+          for (let a = el.parentElement; a; a = a.parentElement) {
+            const c = parseColor(getComputedStyle(a).backgroundColor);
+            if (c && c.a > 0.05) return c;
+          }
+          return { r: 255, g: 255, b: 255, a: 1 };
+        };
+        const surfaces = boxes.filter((b: any) => {
+          if (/^(html|body|button|a|input|select|textarea|label|img|svg|video|canvas|iframe)$/.test(b.tag) || b.r.width < 100 || b.r.height < 60) return false;
+          const edged = (parseFloat(b.cs.borderTopWidth) > 0 && b.cs.borderTopStyle !== 'none') || (b.cs.boxShadow && b.cs.boxShadow !== 'none');
+          const bg = parseColor(b.cs.backgroundColor);
+          return edged && bg && bg.a > 0.05 && !sameColor(bg, backgroundOf(b.el)) && !allowed(b.el, 'uniform-surface');
+        });
+        const surfaceLook = (b: any): string => b.cs.borderTopLeftRadius + ' | ' + b.cs.boxShadow;
+        if (surfaces.length >= UNIFORM_SURFACE_MIN && surfaces.every((b: any) => surfaceLook(b) === surfaceLook(surfaces[0])) && parseFloat(surfaces[0].cs.borderTopLeftRadius) >= UNIFORM_SURFACE_MIN_RADIUS_PX && surfaces[0].cs.boxShadow !== 'none') {
+          add({ check: 'uniform-surface', severity: 'warning', message: 'All ' + surfaces.length + ' card-like boxes share one radius (' + surfaces[0].cs.borderTopLeftRadius + ') and one shadow (' + surfaces[0].cs.boxShadow + '), so nothing stands out. Give the important ones more weight (size, fill, elevation) and flatten the rest.', selector: describe(surfaces[0].el).split(' "')[0] });
+        }
+
+        // type-scale: h1/h2 off the design system's display tokens, when the page declares them.
+        const tokens = declaredTokens();
+        const sizes = tokens
+          .filter((n: string) => n.indexOf('--text-') === 0 && window.CSS && window.CSS.supports('font-size', tokenValue(n)))
+          .map((n: string) => {
+            probe.style.fontSize = '';
+            probe.style.fontSize = 'var(' + n + ')';
+            return { name: n, px: parseFloat(getComputedStyle(probe).fontSize) || 0 };
+          })
+          .filter((t: any) => t.px > 0);
+        const family = (v: string): string => String(v || '').replace(/["']/g, '').replace(/\s*,\s*/g, ',').trim().toLowerCase();
+        const families = ['--font-display', '--font-body'].filter((n: string) => tokenValue(n)).map((n: string) => {
+          probe.style.fontFamily = '';
+          probe.style.fontFamily = 'var(' + n + ')';
+          return family(getComputedStyle(probe).fontFamily);
+        });
+        if (sizes.length > 0 || families.length > 0) {
+          for (const b of boxes) {
+            if ((b.tag !== 'h1' && b.tag !== 'h2') || !String(b.el.innerText || '').trim() || allowed(b.el, 'type-scale')) continue;
+            const px = parseFloat(b.cs.fontSize) || 0;
+            const name = describe(b.el);
+            if (sizes.length > 0 && !sizes.some((t: any) => Math.abs(t.px - px) <= TYPE_SCALE_TOLERANCE_PX)) {
+              const nearest = sizes.slice().sort((x: any, y: any) => Math.abs(x.px - px) - Math.abs(y.px - px))[0];
+              add({ check: 'type-scale', severity: 'warning', message: name + ' is ' + Math.round(px * 10) / 10 + 'px, which isn\'t on the design system\'s type scale; the nearest step is ' + nearest.name + ' (' + Math.round(nearest.px * 10) / 10 + 'px). Use var(' + nearest.name + ') or another --text-* step.', selector: name });
+            } else if (families.length > 0 && families.indexOf(family(b.cs.fontFamily)) < 0) {
+              add({ check: 'type-scale', severity: 'warning', message: name + ' is set in ' + String(b.cs.fontFamily).split(',')[0].replace(/["']/g, '') + ', not the design system\'s display or body font. Use var(--font-display).', selector: name });
+            }
+          }
+        }
+      }
+    } finally {
+      probe.remove();
     }
   }
   return findings;
@@ -619,4 +903,249 @@ export function fitBoundText(cardSelector: string): Array<{ name: string; percen
     out.push({ name: describe(el), percent, fits: ok });
   }
   return out;
+}
+
+/**
+ * States pass (openspec add-state-accessibility-checks): marks up to `cap` visible,
+ * enabled interactive elements with data-od-state-target="<index>", in document
+ * order, so Node can force :hover and :focus-visible on them through CDP. Returns
+ * their descriptions.
+ */
+export function collectStateTargets(cap: number): string[] {
+  const describe = (el: any): string => {
+    let s = String(el.tagName || '').toLowerCase();
+    if (el.id) s += '#' + el.id;
+    else if (el.classList && el.classList.length > 0) s += '.' + el.classList[0];
+    const text = String(el.innerText || el.textContent || el.value || el.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim();
+    if (text) s += ' "' + (text.length > 40 ? text.slice(0, 39) + '…' : text) + '"';
+    return s;
+  };
+  Array.prototype.slice.call(document.querySelectorAll('[data-od-state-target]')).forEach((el: any) => el.removeAttribute('data-od-state-target'));
+  const out: string[] = [];
+  const all = document.querySelectorAll('button, a[href], input:not([type="hidden"]), select, textarea, summary, [role="button"], [tabindex]:not([tabindex="-1"])');
+  for (const el of Array.prototype.slice.call(all)) {
+    if (out.length >= cap) break;
+    if (el.disabled || el.closest('[inert], [aria-hidden="true"]')) continue;
+    const cs = getComputedStyle(el);
+    if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0) continue;
+    const r = el.getBoundingClientRect();
+    if (r.width < 1 || r.height < 1) continue;
+    el.setAttribute('data-od-state-target', String(out.length));
+    out.push(describe(el));
+  }
+  return out;
+}
+
+export interface StateLook {
+  /** Outline, shadow, border, background, text decoration and pseudo-element content: what a focus indicator changes. */
+  look: string;
+  color: string;
+  /** Text contrast against the nearest solid background, or null when it can't be measured. */
+  ratio: number | null;
+}
+
+/**
+ * Reads every state target's styles in the state Node has forced. With `state`
+ * "default" it only returns the looks (the baseline). Otherwise it reports
+ * `state-contrast` where the forced state lowers the element's text contrast
+ * below 4.5:1 (3:1 large), and, for "focus-visible", a
+ * `focus-visible` error where nothing visible changed and no outline shows.
+ */
+export function compareStateStyles(state: string, baseline: StateLook[] | null): { looks: StateLook[]; findings: PageFinding[]; skipped: number } {
+  const describe = (el: any): string => {
+    let s = String(el.tagName || '').toLowerCase();
+    if (el.id) s += '#' + el.id;
+    else if (el.classList && el.classList.length > 0) s += '.' + el.classList[0];
+    const text = String(el.innerText || el.textContent || el.value || el.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim();
+    if (text) s += ' "' + (text.length > 40 ? text.slice(0, 39) + '…' : text) + '"';
+    return s;
+  };
+  const parseColor = (value: string): any => {
+    const m = /rgba?\(([^)]+)\)/.exec(String(value || ''));
+    if (!m) return null;
+    const p = m[1].split(/[\s,/]+/).filter(Boolean).map(Number);
+    return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1 };
+  };
+  const luminance = (c: any): number => {
+    const ch = [c.r, c.g, c.b].map((v: number) => {
+      const s = v / 255;
+      return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+  };
+  const lookOf = (s: any): string =>
+    s ? [s.outlineStyle, s.outlineWidth, s.outlineColor, s.boxShadow, s.borderTopColor, s.borderBottomColor, s.borderTopWidth, s.borderBottomWidth, s.backgroundColor, s.textDecorationLine, s.content].join('|') : '';
+  const outlined = (s: any): boolean => {
+    if (!s || s.outlineStyle === 'none' || parseFloat(s.outlineWidth) < 1) return false;
+    const c = parseColor(s.outlineColor);
+    return !c || c.a > 0.1;
+  };
+  const label = state === 'focus-visible' ? 'keyboard focus' : state;
+  const targets = Array.prototype.slice.call(document.querySelectorAll('[data-od-state-target]'));
+  targets.sort((a: any, b: any) => Number(a.getAttribute('data-od-state-target')) - Number(b.getAttribute('data-od-state-target')));
+  const looks: StateLook[] = [];
+  const findings: PageFinding[] = [];
+  let skipped = 0;
+  targets.forEach((el: any, i: number) => {
+    const cs = getComputedStyle(el);
+    const before = window.getComputedStyle(el, '::before');
+    const after = window.getComputedStyle(el, '::after');
+    const look = [lookOf(cs), lookOf(before), lookOf(after)].join('#');
+    const base = baseline ? baseline[i] : null;
+    const name = describe(el);
+    if (state === 'focus-visible' && base && look === base.look && !outlined(cs) && !outlined(before) && !outlined(after)) {
+      findings.push({ check: 'focus-visible', severity: 'error', message: name + ' shows no change when focused from the keyboard (no outline, ring, border or background change), so keyboard users lose their place. Keep the browser\'s outline or style :focus-visible with --focus-ring.', selector: name });
+    }
+    const now: StateLook = { look, color: String(cs.color), ratio: null };
+    looks.push(now);
+    if (!String(el.innerText || el.value || '').trim()) return;
+    let bg: any = null;
+    for (let a = el; a; a = a.parentElement) {
+      const acs = getComputedStyle(a);
+      if (acs.backgroundImage && acs.backgroundImage !== 'none') break;
+      const c = parseColor(acs.backgroundColor);
+      if (c && c.a >= 0.99) {
+        bg = c;
+        break;
+      }
+      if (c && c.a > 0.01) break;
+      if (!a.parentElement) bg = { r: 255, g: 255, b: 255, a: 1 };
+    }
+    const fg0 = parseColor(cs.color);
+    if (!bg || !fg0) {
+      if (state !== 'default') skipped++;
+      return;
+    }
+    const fg = { r: fg0.r * fg0.a + bg.r * (1 - fg0.a), g: fg0.g * fg0.a + bg.g * (1 - fg0.a), b: fg0.b * fg0.a + bg.b * (1 - fg0.a) };
+    const l1 = luminance(fg);
+    const l2 = luminance(bg);
+    const ratio = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+    const px = parseFloat(cs.fontSize) || 0;
+    const large = px >= 24 || (px >= 18.66 && Number(cs.fontWeight) >= 700);
+    const need = large ? 3 : 4.5;
+    now.ratio = ratio;
+    // Only a drop the state causes: low contrast in the default state is the contrast check's.
+    if (state !== 'default' && base && ratio < need && (base.ratio === null || ratio < base.ratio - 0.05)) {
+      findings.push({ check: 'state-contrast', severity: 'warning', message: name + ' drops to ' + Math.floor(ratio * 100) / 100 + ':1 contrast on ' + label + ' (needs ' + need + ':1 for ' + (large ? 'large' : 'body') + ' text).', selector: name });
+    }
+  });
+  return { looks, findings, skipped };
+}
+
+/**
+ * tap-target (WCAG 2.2 SC 2.5.8), for the phone viewport: interactive elements
+ * smaller than 24×24 CSS px whose 24px circle, centred on them, touches another
+ * target or another small target's circle. Inline links in running text and
+ * labelled checkboxes and radios are exempt. Error below 16px, else warning.
+ */
+export function collectTapTargets(): PageFinding[] {
+  const MIN = 24;
+  const ERROR_BELOW = 16;
+  const MAX_TARGETS = 400;
+  const describe = (el: any): string => {
+    let s = String(el.tagName || '').toLowerCase();
+    if (el.id) s += '#' + el.id;
+    else if (el.classList && el.classList.length > 0) s += '.' + el.classList[0];
+    const text = String(el.innerText || el.textContent || el.value || el.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim();
+    if (text) s += ' "' + (text.length > 40 ? text.slice(0, 39) + '…' : text) + '"';
+    return s;
+  };
+  const sel = 'a[href], button, input:not([type="hidden"]), select, textarea, summary, [role="button"], [role="link"], [role="checkbox"], [role="tab"], [role="menuitem"]';
+  const targets: any[] = [];
+  for (const el of Array.prototype.slice.call(document.querySelectorAll(sel))) {
+    if (targets.length >= MAX_TARGETS) break;
+    if (el.disabled || (el.parentElement && el.parentElement.closest(sel))) continue;
+    const cs = getComputedStyle(el);
+    if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0 || cs.pointerEvents === 'none') continue;
+    const r = el.getBoundingClientRect();
+    if (r.width < 1 || r.height < 1) continue;
+    const tag = String(el.tagName).toLowerCase();
+    const type = String(el.getAttribute('type') || '').toLowerCase();
+    const inlineInText = cs.display === 'inline' && el.parentElement && String(el.parentElement.innerText || '').trim().length > String(el.innerText || '').trim().length + 1;
+    const labelled = tag === 'input' && (type === 'checkbox' || type === 'radio') && (!!el.closest('label') || (!!el.id && Array.prototype.some.call(document.querySelectorAll('label'), (l: any) => l.htmlFor === el.id)));
+    targets.push({ el, r, exempt: inlineInText || labelled, small: r.width < MIN - 0.01 || r.height < MIN - 0.01 });
+  }
+  const centre = (r: any): any => ({ x: (r.left + r.right) / 2, y: (r.top + r.bottom) / 2 });
+  const toRect = (p: any, r: any): number => {
+    const dx = Math.max(r.left - p.x, 0, p.x - r.right);
+    const dy = Math.max(r.top - p.y, 0, p.y - r.bottom);
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+  const findings: PageFinding[] = [];
+  for (const t of targets) {
+    if (!t.small || t.exempt) continue;
+    const c = centre(t.r);
+    // Touching counts: half a pixel of tolerance on the SC's "do not intersect".
+    const near = targets.find((o: any) => {
+      if (o === t || o.el.contains(t.el) || t.el.contains(o.el)) return false;
+      if (toRect(c, o.r) < MIN / 2 + 0.5) return true;
+      if (!o.small) return false;
+      const d = centre(o.r);
+      return Math.sqrt((c.x - d.x) * (c.x - d.x) + (c.y - d.y) * (c.y - d.y)) < MIN + 0.5;
+    });
+    if (!near) continue;
+    const name = describe(t.el);
+    const w = Math.round(t.r.width * 10) / 10;
+    const h = Math.round(t.r.height * 10) / 10;
+    findings.push({
+      check: 'tap-target',
+      severity: Math.min(t.r.width, t.r.height) < ERROR_BELOW ? 'error' : 'warning',
+      message: name + ' is ' + w + '×' + h + 'px on a phone, too close to ' + describe(near.el) + ' to tap reliably. Make it at least 24×24px (padding, min-width/min-height) or leave more room around it.',
+      selector: name,
+    });
+  }
+  return findings;
+}
+
+/**
+ * reduced-motion: with prefers-reduced-motion: reduce emulated, the CSS
+ * animations and transitions longer than `minDurationMs` still running, and
+ * elements with will-change: transform or an inline transform that move between
+ * two samples 200 ms apart (a script loop). Canvases (three.js) are exempt.
+ */
+export async function collectRunningMotion(minDurationMs: number): Promise<PageFinding[]> {
+  const describe = (el: any): string => {
+    let s = String(el.tagName || '').toLowerCase();
+    if (el.id) s += '#' + el.id;
+    else if (el.classList && el.classList.length > 0) s += '.' + el.classList[0];
+    const text = String(el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim();
+    if (text) s += ' "' + (text.length > 40 ? text.slice(0, 39) + '…' : text) + '"';
+    return s;
+  };
+  const fix = ' Add a @media (prefers-reduced-motion: reduce) rule that stops it or swaps it for a fade.';
+  const findings: PageFinding[] = [];
+  const reported = new Set();
+  const anims = document.getAnimations ? document.getAnimations() : [];
+  for (const a of anims) {
+    if (a.playState !== 'running' || !a.effect || !a.effect.target) continue;
+    const timing = a.effect.getComputedTiming();
+    const duration = Number(timing.duration) || 0;
+    const forever = timing.iterations === Infinity;
+    if (duration <= minDurationMs || (!forever && !(Number(timing.endTime) - Number(timing.localTime || 0) > 0))) continue;
+    const target = a.effect.target;
+    if (String(target.tagName).toLowerCase() === 'canvas' || reported.has(target)) continue;
+    reported.add(target);
+    const what = a.animationName ? 'animation "' + a.animationName + '"' : a.transitionProperty ? 'transition of ' + a.transitionProperty : 'animation';
+    const name = describe(target) + (a.effect.pseudoElement ? ' ' + a.effect.pseudoElement : '');
+    findings.push({ check: 'reduced-motion', severity: 'warning', message: name + ' keeps its ' + what + ' (' + (forever ? 'looping' : Math.round(duration) + 'ms') + ') when the user asks for reduced motion.' + fix, selector: name });
+  }
+  const movers = Array.prototype.slice.call(document.body ? document.body.querySelectorAll('*') : [])
+    .filter((el: any) => {
+      if (reported.has(el) || String(el.tagName).toLowerCase() === 'canvas') return false;
+      return String(getComputedStyle(el).willChange).indexOf('transform') >= 0 || !!(el.style && el.style.transform);
+    })
+    .slice(0, 200);
+  const sample = (): string[] => movers.map((el: any) => {
+    const r = el.getBoundingClientRect();
+    return Math.round(r.left * 2) + ',' + Math.round(r.top * 2) + ',' + getComputedStyle(el).transform;
+  });
+  const first = sample();
+  await new Promise((resolve) => window.setTimeout(resolve, 200));
+  const second = sample();
+  movers.forEach((el: any, i: number) => {
+    if (first[i] === second[i]) return;
+    const name = describe(el);
+    findings.push({ check: 'reduced-motion', severity: 'warning', message: name + ' keeps moving (a script animation) when the user asks for reduced motion. Check matchMedia(\'(prefers-reduced-motion: reduce)\') before starting the loop.', selector: name });
+  });
+  return findings;
 }
