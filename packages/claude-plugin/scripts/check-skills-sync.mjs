@@ -14,6 +14,7 @@ import { loadLocalPrompts, promptIsForHost, renderPromptBody } from '../../conte
 import { buildRemixableExamplesReference } from '../../content/scripts/remixableExamplesReference.mjs';
 import { checkIntegrationUsage } from '../../content/scripts/integrations.mjs';
 import { loadVoice, voiceRegionIsCurrent } from '../../content/scripts/voice.mjs';
+import { rubricFromPrompts, rubricRegionIsCurrent } from '../../content/scripts/critiqueRubric.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const pluginRoot = path.resolve(__dirname, '..');
@@ -194,6 +195,11 @@ async function main() {
   ]) {
     if ((await pathExists(file)) && !voiceRegionIsCurrent(await fs.readFile(file, 'utf8'), voice)) problems.push(`stale or missing voice block in ${path.relative(repoRoot, file)}`);
   }
+
+  // The design-critic agent carries the critique skill's rubric (openspec add-design-critic).
+  const criticAgent = path.join(pluginRoot, 'agents', 'design-critic.md');
+  if (!(await pathExists(criticAgent))) problems.push('missing agents/design-critic.md');
+  else if (!rubricRegionIsCurrent(await fs.readFile(criticAgent, 'utf8'), rubricFromPrompts(localPrompts))) problems.push('stale rubric in agents/design-critic.md');
 
   // Skills name tools by their bare names, so they work with the plugin's server
   // and with the desktop extension's (openspec add-desktop-extension-bundle).

@@ -26,6 +26,8 @@ import {
   appOnlyToolMeta,
   clientSupportsMcpApps,
   ContentIndex,
+  CRITIQUE_AREAS,
+  CRITIQUE_VERDICTS,
   DESIGN_INDUSTRIES,
   DESIGN_MOODS,
   DESIGN_SURFACES,
@@ -70,6 +72,34 @@ interface ToolDef {
 }
 
 const SKILL_MODES = ['prototype', 'deck', 'design-system', 'image', 'video', 'template', 'utility', 'audio', 'other'];
+
+// register_open_design_artifact's `critique` (openspec add-design-critic); validated again on write.
+const CRITIQUE_INPUT_SCHEMA = {
+  type: 'object',
+  description:
+    "The design critic's latest opinion (from the open-design-critique skill), stored as metadata.critique; only the latest is kept and it must be at most 4 KB. checkRunId defaults to the latest saved check run and at to now.",
+  properties: {
+    verdict: { type: 'string', enum: [...CRITIQUE_VERDICTS], description: 'ship (nothing worth a round), polish (one round of the listed fixes) or rework (the direction is wrong).' },
+    findings: {
+      type: 'array',
+      maxItems: 5,
+      items: {
+        type: 'object',
+        properties: {
+          area: { type: 'string', enum: [...CRITIQUE_AREAS], description: 'The rubric area.' },
+          where: { type: 'string', description: 'Where on the design (section, element, slide, viewport).' },
+          problem: { type: 'string', description: 'What is wrong.' },
+          fix: { type: 'string', description: 'The change to make.' },
+        },
+        required: ['area', 'fix'],
+      },
+      description: 'At most five, ordered by impact.',
+    },
+    checkRunId: { type: 'string', description: 'The check run the critic judged.' },
+    at: { type: 'string', description: 'ISO time of the critique.' },
+  },
+  required: ['verdict', 'findings'],
+};
 
 const TOOL_DEFS: ToolDef[] = [
   {
@@ -397,6 +427,7 @@ const TOOL_DEFS: ToolDef[] = [
             },
             description: "What was asked and assumed for this design, stored as the manifest's metadata.brief (the latest replaces the earlier one) so later edits and checks can see it. Leave it out on an edit that changed none of it.",
           },
+          critique: CRITIQUE_INPUT_SCHEMA,
         },
         required: ['entryPath', 'kind', 'title'],
       },
@@ -421,6 +452,7 @@ const TOOL_DEFS: ToolDef[] = [
           format?: string;
           resolvedCommentIds?: string[];
           brief?: unknown;
+          critique?: unknown;
         },
       ),
   },
@@ -428,14 +460,17 @@ const TOOL_DEFS: ToolDef[] = [
     tool: {
       name: 'get_open_design_artifact',
       description:
-        "Reads back a registered Open Design artifact: its manifest, entry file content, supporting file list, and the user's unaddressed comments from the browser preview or VS Code ('openComments', status open or sent). Each comment names its element (selector, text excerpt, htmlHint, rect) and its note; up to 4 comment screenshots are attached as images, newest first, and every comment's screenshot path is listed. Call it when the user says they left comments; address each one, then pass their ids as resolvedCommentIds to register_open_design_artifact.",
+        "Reads back a registered Open Design artifact: its manifest, entry file content, supporting file list, and the user's unaddressed comments from the browser preview or VS Code ('openComments', status open or sent). Each comment names its element (selector, text excerpt, htmlHint, rect) and its note; up to 4 comment screenshots are attached as images, newest first, and every comment's screenshot path is listed. Call it when the user says they left comments; address each one, then pass their ids as resolvedCommentIds to register_open_design_artifact. With critique: true it instead returns what the design critic judges (the open-design-critique skill): the recorded brief, title and skill id, the design system's DESIGN.md, the latest saved check run's findings and screenshot paths, and the last critique, with that run's screenshots attached.",
       inputSchema: {
         type: 'object',
-        properties: { entryPath: { type: 'string', description: "Workspace-relative path to the artifact's entry file." } },
+        properties: {
+          entryPath: { type: 'string', description: "Workspace-relative path to the artifact's entry file." },
+          critique: { type: 'boolean', description: 'Return the critique input instead of the entry content and comments. Default false.' },
+        },
         required: ['entryPath'],
       },
     },
-    handler: (ctx, args) => tools.getArtifact(ctx, args as { entryPath: string }),
+    handler: (ctx, args) => tools.getArtifact(ctx, args as { entryPath: string; critique?: boolean }),
   },
   {
     tool: {

@@ -165,6 +165,12 @@ describe('preview server', () => {
     const { runs } = (await (await fetch(`${server.shellBaseUrl}api/checks?entry=${encodeURIComponent(ENTRY)}`)).json()) as { runs: { id: string; errors: number; images: { file: string }[] }[] };
     assert.strictEqual(runs.length, 1);
     assert.strictEqual(runs[0].errors, 1);
+    const manifestPath = path.join(root, `${ENTRY}.artifact.json`);
+    const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
+    await fs.writeFile(manifestPath, JSON.stringify({ ...manifest, metadata: { critique: { verdict: 'polish', findings: [{ area: 'copy', fix: 'Name the action' }], at: '2026-10-24T12:00:00.000Z' } } }));
+    const { critique } = (await (await fetch(`${server.shellBaseUrl}api/checks?entry=${encodeURIComponent(ENTRY)}`)).json()) as { critique?: { verdict: string } };
+    assert.strictEqual(critique?.verdict, 'polish');
+    await fs.writeFile(manifestPath, JSON.stringify(manifest));
     const img = await fetch(`${server.shellBaseUrl}api/check-image?entry=${encodeURIComponent(ENTRY)}&run=${runs[0].id}&file=${runs[0].images[0].file}`);
     assert.strictEqual(await img.text(), 'jpg');
     assert.strictEqual((await fetch(`${server.shellBaseUrl}api/check-image?entry=${encodeURIComponent(ENTRY)}&run=${runs[0].id}&file=..%2Frun.json`)).status, 404);

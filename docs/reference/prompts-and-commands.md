@@ -37,6 +37,7 @@ All of them are explicit-only. To see the current list, type `/od-` in the chat 
 | `/open-design-social-post` | [Design a social media post](../guides/social-posts.md) for a platform and export ready-to-upload files. |
 | `/open-design-poster` | [Design a poster or flyer](../guides/posters.md) for print or screens, check it, and export print-ready PDFs or images, in other sizes or one per spreadsheet row. |
 | `/open-design-explore` | [Explore 2–4 design directions](../guides/explore-directions.md) side by side, then take one forward. |
+| `/open-design-critique` | Get a [second opinion](../guides/generate-a-design.md#second-opinion) on a design: a verdict and at most five fixes. |
 | `/open-design-publish` | [Share a design](../guides/share-and-publish.md) as a link or as one HTML file. |
 | `/open-design-deck-from-source` | [Turn a document into a deck](../guides/deck-from-a-document.md), outline first. |
 | `/open-design-recurring` | [Set up a recurring job](../guides/recurring-jobs.md) and write its job file. Scheduled runs need Claude Code or Claude Desktop. |
@@ -95,11 +96,14 @@ Installed by the plugin (`/plugin install open-design`) or by [`init --tools cla
 | `open-design-recurring` | `/open-design:open-design-recurring` (plugin) or `/open-design-recurring` (init) | yes, from requests for a design every day, week or month, and from "Run the Open Design job …" prompts. See [Recurring design jobs](../guides/recurring-jobs.md) |
 | `open-design-preview` | `/open-design:open-design-preview` (plugin) or `/open-design-preview` (init) | yes, from requests to see, preview or comment on a design. Opens the [browser preview](../guides/browser-preview.md) |
 | `open-design-design-system-from-url` | `/open-design:open-design-design-system-from-url` (plugin) or `/open-design-design-system-from-url` (init) | yes, from requests to take a design system, theme or tokens from a website |
+| `open-design-critique` | `/open-design:open-design-critique` (plugin) or `/open-design-critique` (init) | yes, before a design is called done and from requests for a second opinion. See [Second opinion](../guides/generate-a-design.md#second-opinion) |
 | curated entries | see [Curated entries](#curated-entries) | no |
+
+The plugin also has one agent, `design-critic` (`open-design:design-critic`): the read-only critic `open-design-critique` hands the review to, so it runs in a fresh context. `init` doesn't install it; there the skill uses a general subagent or reviews inline.
 
 The MCP server also offers **MCP prompts**. In Claude Code they appear as `/mcp__open-design__<name>`:
 
-- `open-design-new`, `open-design-campaign`, `open-design-docs`, `open-design-social-post`, `open-design-poster`, `open-design-explore`, `open-design-publish`, `open-design-deck-from-source`, `open-design-integrations`, `open-design-recurring`, `open-design-preview` and `open-design-design-system-from-url` take an optional `brief` argument.
+- `open-design-new`, `open-design-campaign`, `open-design-docs`, `open-design-social-post`, `open-design-poster`, `open-design-explore`, `open-design-publish`, `open-design-deck-from-source`, `open-design-integrations`, `open-design-recurring`, `open-design-preview`, `open-design-design-system-from-url` and `open-design-critique` take an optional `brief` argument.
 - There's one prompt per remixable example, named `od-<mode>-<id>`, e.g. `od-deck-deck-guizang-editorial-example`. Selecting one prefills a remix request; nothing runs until you send it.
 
 ## Codex
@@ -121,6 +125,7 @@ Skills in `.agents/skills/` (from [`init --tools codex`](cli.md#init) or copied 
 | `open-design-preview` | yes |
 | `open-design-recurring` | yes |
 | `open-design-design-system-from-url` | yes |
+| `open-design-critique` | yes |
 | curated entries (`guizang-ppt`, `card-twitter`, …) | no: each has `agents/openai.yaml` with `policy.allow_implicit_invocation: false` |
 
 MCP prompts are the same as for Claude Code, if your Codex version surfaces them.

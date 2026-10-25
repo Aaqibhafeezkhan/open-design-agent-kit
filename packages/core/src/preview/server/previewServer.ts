@@ -15,6 +15,7 @@ import * as path from 'node:path';
 import { injectPreviewBridge, injectPreviewErrorReporter } from '../../content/exampleHtml';
 import { findBrowser } from '../../export/browserDiscovery';
 import { listCheckRuns, onCheckRunSaved, readCheckRunImage } from '../../export/checkHistory';
+import { readCritique } from '../../workspace/critique';
 import { extractHtmlReferences, resolveReferencedPath } from '../../export/htmlReferences';
 import { startStaticServer, urlForPath, type StaticServer } from '../../export/staticServer';
 import { scanArtifactManifests } from '../../workspace/collectionScan';
@@ -218,6 +219,10 @@ export async function startPreviewServer(options: PreviewServerOptions): Promise
         debounced(entryPath, 'comments', () => void sendComments(entryPath));
         return;
       }
+      if (rel === `${entryBase}.artifact.json`) {
+        debounced(entryPath, 'manifest', () => broadcast(entryPath, 'manifest-updated', { at: Date.now() }));
+        return;
+      }
       if (/\.tmp$|\.artifact\.json$|\.comments\.json$|(^|\/)[^/]+\.comments\/|(^|\/)\.checks\//.test(rel)) return;
       debounced(entryPath, 'source', () => broadcast(entryPath, 'source-updated', { at: Date.now() }));
     };
@@ -381,7 +386,8 @@ export async function startPreviewServer(options: PreviewServerOptions): Promise
     }
     if (method === 'GET' && route === '/api/checks') {
       const entryPath = await resolveEntry(entryParam);
-      sendJson(res, 200, { runs: await listCheckRuns(workspaceRoot, outputDir, entryPath) });
+      const manifest = JSON.parse(await fs.readFile(path.join(workspaceRoot, `${entryPath}.artifact.json`), 'utf8').catch(() => '{}')) as unknown;
+      sendJson(res, 200, { runs: await listCheckRuns(workspaceRoot, outputDir, entryPath), critique: readCritique(manifest) });
       return;
     }
     if (method === 'GET' && route === '/api/check-image') {
