@@ -34,3 +34,16 @@ test('a missing header, a missing example and a missing docs entry are each repo
   f = await fixture({ listed: false });
   assert.ok((await checkPorts(f.root, f.doc)).some((p) => p.includes('upstream-ports.md')));
 });
+
+test('a craft port is checked in local/craft/', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'od-ports-craft-'));
+  await fs.writeFile(path.join(root, 'ports.json'), JSON.stringify({ ports: [{ id: 'ux-writing', kind: 'craft', commit: COMMIT, license: 'MIT' }] }));
+  const doc = path.join(root, 'ports.md');
+  await fs.writeFile(doc, '| `ux-writing` | XIAS |');
+  assert.deepEqual(await checkPorts(root, doc), ['ux-writing: local/craft/ux-writing.md is missing']);
+  await fs.mkdir(path.join(root, 'craft'));
+  await fs.writeFile(path.join(root, 'craft', 'ux-writing.md'), 'no header');
+  assert.match((await checkPorts(root, doc))[0], /ux-writing\.md lacks a "Ported from/);
+  await fs.writeFile(path.join(root, 'craft', 'ux-writing.md'), `<!-- Ported from x at commit ${COMMIT.slice(0, 12)}. -->\n# UX writing`);
+  assert.deepEqual(await checkPorts(root, doc), []);
+});
