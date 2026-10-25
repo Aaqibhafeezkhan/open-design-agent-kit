@@ -153,7 +153,50 @@ export interface Surface {
   prompt?: string;
   /** Catalog directory ids; each expands to every non-stub entry with that id. */
   entries: string[];
-  questions: string[];
+  questions: SurfaceQuestion[];
+}
+
+/**
+ * One clarifying question a surface asks (openspec add-brief-questions). A
+ * plain-string question in older or community content loads with an id
+ * slugged from its text and no options.
+ */
+export interface SurfaceQuestion {
+  id: string;
+  text: string;
+  /** Two to four short answers to offer. */
+  options?: string[];
+  /** The option used when the user says "you pick". */
+  default?: string;
+  /** What the answer changes in the design, e.g. "size, bleed and file type". */
+  changes?: string;
+}
+
+function questionSlug(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'question';
+}
+
+export function normalizeSurfaceQuestions(value: unknown): SurfaceQuestion[] {
+  if (!Array.isArray(value)) return [];
+  const out: SurfaceQuestion[] = [];
+  for (const item of value) {
+    if (typeof item === 'string') {
+      if (item.trim()) out.push({ id: questionSlug(item), text: item });
+      continue;
+    }
+    if (!item || typeof item !== 'object') continue;
+    const q = item as Record<string, unknown>;
+    if (typeof q.text !== 'string' || !q.text.trim()) continue;
+    const options = normalizeStringArray(q.options);
+    out.push({
+      id: typeof q.id === 'string' && q.id ? q.id : questionSlug(q.text),
+      text: q.text,
+      ...(options.length > 0 ? { options } : {}),
+      ...(typeof q.default === 'string' && options.includes(q.default) ? { default: q.default } : {}),
+      ...(typeof q.changes === 'string' && q.changes ? { changes: q.changes } : {}),
+    });
+  }
+  return out;
 }
 
 /** A plain-language aim that routes to ready surfaces, in order (openspec desktop-first-run-welcome). */
@@ -197,7 +240,7 @@ async function loadSurfaces(assetsRoot: string): Promise<Surface[]> {
       status: s.status === 'ready' ? 'ready' : 'planned',
       prompt: typeof s.prompt === 'string' ? s.prompt : undefined,
       entries: normalizeStringArray(s.entries),
-      questions: normalizeStringArray(s.questions),
+      questions: normalizeSurfaceQuestions(s.questions),
     });
   }
   return out;
