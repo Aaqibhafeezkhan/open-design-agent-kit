@@ -139,6 +139,7 @@ program
   .option('--no-states', 'Pages: skip the hover and focus, tap-target, 320 px reflow and reduced-motion checks (a faster check)')
   .option('--screenshots <dir>', 'Write the screenshots (JPEG) to this directory')
   .option('--fail-on <error|warning>', 'Exit 1 when a finding at or above this severity exists (for CI)')
+  .option('--json', 'Print the result as JSON (findings, saved run, screenshot files) instead of text')
   .option('--browser <path>', 'Browser executable (default: OPEN_DESIGN_BROWSER_PATH, then auto-detect)')
   .option('--workspace <dir>', 'Workspace root (default: nearest ancestor containing .open-design/)')
   .action(async (entryPath: string, options: CheckCliOptions) => {

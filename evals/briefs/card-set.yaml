@@ -1,0 +1,15 @@
+id: card-set
+request: "Design a set of 12 recipe cards for my grandma's Sunday dinners, to print and give to the family"
+expect:
+  surface: cards
+  skills: [card-set]
+  questions: { max: 2 }
+designSystem: null
+answers:
+  size: "A6 postcards, printed at home"
+  cards: "You pick 12 classic Sunday dinner dishes"
+  art: "No art. Use type and simple shapes"
+must:
+  - "Every card has the dish name, ingredients and steps"
+  - "Text fits on every card at print size"
+  - "The set looks like one family"

@@ -541,6 +541,16 @@ describe('ContentIndex community content', () => {
 describe('ContentIndex against the real vendored assets', () => {
   const assetsRoot = path.resolve(__dirname, '..', '..', '..', '..', 'content', 'assets', 'open-design');
 
+  it('gives prototype and mobile templates the state and microcopy craft docs (openspec add-states-and-microcopy-craft)', async () => {
+    const index = new ContentIndex(assetsRoot);
+    const ids = new Set((await index.craftSections()).map((c) => c.id));
+    for (const id of ['ux-writing', 'action-states', 'state-coverage']) assert.ok(ids.has(id), `craft doc ${id}`);
+    for (const dir of ['web-prototype', 'saas-landing', 'dashboard', 'mobile-app']) {
+      const skill = await index.getSkill(dir);
+      for (const id of ['state-coverage', 'ux-writing', 'action-states']) assert.ok(skill?.craftRequires.includes(id), `${dir} requires ${id}`);
+    }
+  });
+
   it('finds the local-overlay YouTube thumbnail skill by query, with its aspect hint', async () => {
     const index = new ContentIndex(assetsRoot);
     const results = await index.listSkills('youtube thumbnail');
@@ -559,5 +569,17 @@ describe('ContentIndex against the real vendored assets', () => {
     assert.deepStrictEqual(ds?.craftApplies, ['accessibility-baseline']);
     assert.deepStrictEqual(ds?.craftExemptions, ['anti-ai-slop']);
     assert.deepStrictEqual(ds?.craftSuggested, ['typography', 'color']);
+  });
+
+  it("merges craft-requires.json after a skill's own requires, without duplicates", async () => {
+    const root = await makeFixture();
+    await fs.writeFile(
+      path.join(root, 'craft-requires.json'),
+      JSON.stringify({ $comment: 'ignored', 'landing-page': ['color', 'ux-writing'], 'growth-deck': ['state-coverage'] }),
+    );
+    const index = new ContentIndex(root);
+    assert.deepStrictEqual((await index.getSkill('landing-page'))?.craftRequires, ['color', 'anti-ai-slop', 'ux-writing']);
+    assert.deepStrictEqual((await index.getSkill('growth-deck'))?.craftRequires, ['state-coverage']);
+    assert.deepStrictEqual((await index.getSkill('no-mode-skill'))?.craftRequires, []);
   });
 });

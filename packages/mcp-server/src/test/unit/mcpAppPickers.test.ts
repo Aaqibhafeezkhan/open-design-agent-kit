@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
-// The preview MCP App's pickers end to end (openspec add-mcp-app-pickers): the
+// The preview MCP App's pickers end to end (openspec add-mcp-app-pickers, and
+// the ask view from add-mcp-app-ask-view): the
 // real server over stdio, driven by a scripted MCP client with and without the
 // MCP Apps extension, then each view rendered in a reference host page
 // (ext-apps' AppBridge in headless Chromium; skipped when no browser is found).
@@ -13,6 +14,10 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { findBrowser, MCP_APP_MIME_TYPE, MCP_APPS_EXTENSION_ID, PREVIEW_APP_URI, writeArtifactManifest, writeCampaignSheetSidecar, writeExplorationPlan } from '@feimacode/open-design-agent-kit-core';
 
 const MASTER = '.open-design/launch/launch.html';
+const QUESTIONS = [
+  { id: 'where', text: 'Where will it be used?', options: [{ id: 'printed', label: 'Printed' }, { id: 'screen', label: 'On screen' }] },
+  { id: 'mood', text: 'Which moods?', kind: 'multi', options: [{ id: 'dark', label: 'Dark' }, { id: 'bold', label: 'Bold' }] },
+];
 const LANDING = '.open-design/launch-landing/index.html';
 // A 1×1 PNG.
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
@@ -159,6 +164,39 @@ describe('preview MCP App pickers over MCP', function () {
     });
   });
 
+  describe('show_open_design_questions in a host with MCP Apps', () => {
+    let client: Client;
+    before(async () => {
+      client = await connect(root, true);
+    });
+    after(() => client?.close());
+
+    it('is model-visible against the preview resource and returns the checked questions as the ask target', async () => {
+      const tool = (await client.listTools()).tools.find((t) => t.name === 'show_open_design_questions');
+      assert.strictEqual((tool?._meta as { ui?: { resourceUri?: string } })?.ui?.resourceUri, PREVIEW_APP_URI);
+      const shown = await client.callTool({ name: 'show_open_design_questions', arguments: { questions: QUESTIONS } });
+      const target = shown.structuredContent as { view: string; title: string; questions: Array<{ kind: string }> };
+      assert.strictEqual(target.view, 'ask');
+      assert.strictEqual(target.title, 'A few quick questions');
+      assert.deepStrictEqual(target.questions.map((q) => q.kind), ['single', 'multi']);
+      assert.match(text(shown), /od-answers/);
+    });
+
+    it('refuses a raw image URL, naming the allowed references', async () => {
+      const refused = await client.callTool({ name: 'show_open_design_questions', arguments: { questions: [{ id: 'look', text: 'Which?', options: [{ id: 'a', label: 'A', imageRef: 'https://example.com/a.png' }] }] } });
+      assert.strictEqual(refused.isError, true);
+      assert.match(text(refused), /designSystem:<id>/);
+    });
+
+    it('serves an option picture by imageRef through the app-only tool', async () => {
+      const all = (await client.callTool({ name: 'get_open_design_preview_state', arguments: { view: 'design-systems' } })).structuredContent as { systems: Array<{ id: string }> };
+      const picture = (await client.callTool({ name: 'get_open_design_preview_state', arguments: { imageRef: `designSystem:${all.systems[0].id}` } })).structuredContent as { swatches?: string[] };
+      assert.ok(picture.swatches && picture.swatches.length > 0);
+      const shot = (await client.callTool({ name: 'get_open_design_preview_state', arguments: { imageRef: `artifact:${LANDING}` } })).structuredContent as { html?: string };
+      assert.match(shot.html ?? '', /Landing/);
+    });
+  });
+
   describe('a host without MCP Apps (Codex, Claude Code terminal)', () => {
     let client: Client;
     before(async () => {
@@ -171,6 +209,13 @@ describe('preview MCP App pickers over MCP', function () {
       assert.ok(names.includes('show_open_design_artifact'));
       assert.ok(!names.includes('show_open_design_examples'));
       assert.ok(!names.includes('show_open_design_design_systems'));
+      assert.ok(!names.includes('show_open_design_questions'));
+    });
+
+    it('answers a questions call anyway with one numbered message to ask', async () => {
+      const asked = await client.callTool({ name: 'show_open_design_questions', arguments: { questions: QUESTIONS } });
+      assert.strictEqual(asked.structuredContent, undefined);
+      assert.match(text(asked), /Ask the user these in one message:\n1\. Where will it be used\?: Printed \/ On screen \/ You pick\n2\. Which moods\? \(pick any\)/);
     });
 
     it('answers a picker call anyway with a short text list naming the list tool', async () => {
@@ -189,6 +234,7 @@ describe('preview MCP App pickers over MCP', function () {
     let page: import('puppeteer-core').Page;
     let resource: string;
     const messages: string[] = [];
+    const calledTools: string[] = [];
 
     before(async function () {
       const found = await findBrowser();
@@ -229,7 +275,11 @@ describe('preview MCP App pickers over MCP', function () {
       browser = await puppeteer.launch({ executablePath: found.executablePath, headless: true, args: process.getuid?.() === 0 ? ['--no-sandbox'] : [] });
       page = await browser.newPage();
       await page.setViewport({ width: 1100, height: 760 });
-      await page.exposeFunction('hostCallTool', async (json: string) => JSON.stringify(await client.callTool(JSON.parse(json))));
+      await page.exposeFunction('hostCallTool', async (json: string) => {
+        const params = JSON.parse(json) as { name: string };
+        calledTools.push(params.name);
+        return JSON.stringify(await client.callTool(params));
+      });
       await page.exposeFunction('hostMessage', async (json: string) => {
         messages.push(text(JSON.parse(json)));
       });
@@ -291,6 +341,28 @@ describe('preview MCP App pickers over MCP', function () {
       const message = await clickAndWaitForMessage('[data-save-tile="b"]');
       assert.match(message, /"Cool" \(b\)/);
       assert.match(message, /next: "save-design-system"/);
+    });
+
+    it('questions: taps become one answers message, and nothing else is called', async () => {
+      await show('show_open_design_questions', { questions: QUESTIONS }, '#od-ask-send');
+      const app = appFrame();
+      calledTools.length = 0;
+      assert.strictEqual(await app.$eval('#od-ask-send', (el) => (el as HTMLButtonElement).disabled), true, 'Send waits for an answer');
+      assert.strictEqual(await app.$$eval('[data-q="where"]', (els) => els.length), 3, 'two options and "You pick"');
+      await app.click('[data-q="where"][data-option="printed"]');
+      await app.click('[data-q="mood"][data-option="dark"]');
+      await app.click('[data-q="mood"][data-option="bold"]');
+      const message = await clickAndWaitForMessage('#od-ask-send');
+      assert.strictEqual(message.split('\n')[0], 'Answers: where = Printed; mood = Dark, Bold');
+      assert.match(message, /<!-- od-answers \{"where":"printed","mood":\["dark","bold"\]\} -->/);
+      await until(async () => (await app.$eval('#od-ask-status', (el) => el.textContent ?? '')) === 'Sent.', 'the sent state');
+      assert.deepStrictEqual(calledTools, [], 'the page called no tool');
+    });
+
+    it('artifact: feedback chips post a quick reply', async () => {
+      await show('show_open_design_artifact', { entryPath: LANDING }, '[data-feedback]');
+      const message = await clickAndWaitForMessage('[data-feedback="change"]');
+      assert.match(message, /change something in the Open Design artifact "\.open-design\/launch-landing\/index\.html"/);
     });
 
     it('campaign: error dot and "Fix this piece", and a page-type tile opens the artifact view', async () => {

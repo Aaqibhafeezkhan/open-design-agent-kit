@@ -7,7 +7,7 @@ The skills, design templates, design systems, craft rules and examples come from
 ```mermaid
 flowchart TD
   up["upstream open-design<br/>pinned tag (DEFAULT_OPEN_DESIGN_REF)"] -->|"sparse clone"| sync["packages/content/scripts/<br/>sync-open-design-content.mjs"]
-  local["packages/content/local/<br/>skills/, prompts/, design-systems/, curated.json"] -->|"apply-local-overlay.mjs"| assets
+  local["packages/content/local/<br/>skills/, craft/, prompts/, design-systems/, curated.json"] -->|"apply-local-overlay.mjs"| assets
   sync --> assets["packages/content/assets/open-design/<br/>+ MANIFEST.json"]
   assets -->|"copy-content-assets.mjs"| vsassets["packages/vscode/assets/open-design/"]
   assets -->|"generate-featured-prompts.mjs"| vsprompts["packages/vscode/prompts/featured/ + prompts/local/<br/>+ package.json chatPromptFiles"]
@@ -34,6 +34,8 @@ To update: check the [upstream tags](https://github.com/nexu-io/open-design/tags
 Files under `packages/content/assets/open-design/` are never hand-edited. This project's own content lives in `packages/content/local/` and is layered on top by `apply-local-overlay.mjs`, which runs at the end of every sync or alone via `npm run apply-overlay --workspace=@feimacode/open-design-agent-kit-content`:
 
 - `local/skills/<id>/SKILL.md`: extension-authored skills (e.g. `social-youtube-thumbnail`). An id that collides with an upstream skill or template fails the sync.
+- `local/craft/<id>.md`: craft docs the kit owns (e.g. `ux-writing`, `action-states`), copied beside upstream's into `assets/open-design/craft/` and resolved like any craft doc. An id that collides with an upstream craft doc fails the sync. To change an upstream rule, write a separate doc that says which one it supersedes with a `Supersedes \`<id>.md\`: "<quoted upstream text>"` line; the content check fails when the quoted text disappears upstream, so a sync that changes it gets a second look.
+- `local/craft-requires.json`: extra craft docs per skill or design-template id (`{ "web-prototype": ["state-coverage", "ux-writing", "action-states"] }`), added after the entry's own `od.craft.requires` when content loads, so upstream `SKILL.md` files stay unedited. An unknown skill or craft id fails the content check.
 - `local/prompts/<name>.md`: host-agnostic prompts (e.g. `social-post.md`), rendered per host by the generators.
 - `local/design-systems/<id>/tokens.override.css` and `DESIGN.sections.md`: generated fixes for an upstream design system whose `DESIGN.md` and `tokens.css` describe different looks. The first is applied on top of the vendored `tokens.css` when tokens resolve; the second replaces whole sections (Color, Typography, Spacing & Grid) of the loaded `DESIGN.md`. Neither vendored file is touched. The id must exist upstream and the folder may hold only these two files; see `local/README.md`.
 - `local/design-system-sources.json`: which side is the truth, per system, for colour and for type. See [Design system consistency](#design-system-consistency).
@@ -64,7 +66,7 @@ An entry gets a one-step command when upstream frontmatter has `featured`, `reco
 
 | Check | Fails when |
 |---|---|
-| `packages/content/scripts/check-content-sync.mjs` | The pinned ref and `MANIFEST.json` disagree, an overlay file is missing or stale in `assets/`, a vendored `tokens.css` is missing, a token override repeats a value upstream now has (delete it), or a template design system whose `DESIGN.md` and `tokens.css` disagree has no confirmed decision or a stale generated overlay. |
+| `packages/content/scripts/check-content-sync.mjs` | The pinned ref and `MANIFEST.json` disagree, an overlay file is missing or stale in `assets/`, a vendored `tokens.css` is missing, a token override repeats a value upstream now has (delete it), `craft-requires.json` names an unknown skill or craft id, a local craft doc's `Supersedes` quote no longer matches upstream, or a template design system whose `DESIGN.md` and `tokens.css` disagree has no confirmed decision or a stale generated overlay. |
 | `packages/vscode/scripts/check-content-mirror.mjs` | The VS Code mirror differs from `packages/content`. |
 | `packages/claude-plugin/scripts/check-skills-sync.mjs` | Generated Claude skills don't match the curated set and local prompts. |
 | `packages/codex/scripts/check-codex-skills-sync.mjs` | Generated Codex skills don't match, or a local-prompt skill gained an explicit-only policy. |

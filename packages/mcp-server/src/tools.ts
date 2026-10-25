@@ -59,7 +59,14 @@ import {
   formatPreviewOutcome,
   loadPreviewAssets,
   buildArtifactPreviewState,
+  askFallbackText,
+  askShowText,
+  buildArtifactAskImage,
   buildExplorationPreviewState,
+  designSystemTile,
+  parseAskImageRef,
+  parseAskSchema,
+  type PreviewAppAskImage,
   buildCampaignState,
   buildDesignSystemPreview,
   buildDesignSystemsState,
@@ -581,7 +588,37 @@ export async function showDesignSystems(ctx: ToolContext, input: ShowDesignSyste
   };
 }
 
+/** show_open_design_questions: the questions, checked, as the ask view's target; a host without MCP Apps gets them as one numbered message to ask. */
+export async function showQuestions(ctx: ToolContext, input: { questions?: unknown; title?: unknown }): Promise<ToolOutput> {
+  const parsed = parseAskSchema({ questions: input.questions, ...(input.title !== undefined ? { title: input.title } : {}) });
+  if (!parsed.ok) throw new Error(parsed.message);
+  if (!ctx.rendersMcpApps) return { text: askFallbackText(parsed.schema) };
+  return { text: askShowText(parsed.schema), structuredContent: { view: 'ask', title: parsed.schema.title ?? 'A few quick questions', questions: parsed.schema.questions } };
+}
+
+/** One ask-view option picture: a design system's swatches, an example's page, or an artifact's or check run's screenshot. */
+async function askImage(ctx: ToolContext, imageRef: string): Promise<PreviewAppAskImage> {
+  const ref = parseAskImageRef(imageRef);
+  if (typeof ref === 'string') throw new Error(ref);
+  switch (ref.kind) {
+    case 'designSystem': {
+      const detail = await ctx.contentIndex.getDesignSystem(ref.value);
+      return detail ? { imageRef, swatches: designSystemTile(detail, undefined).swatches } : { imageRef, fallback: `No design system "${ref.value}".` };
+    }
+    case 'example': {
+      const result = await cachedExamplePreview(ctx, ref.value);
+      if (!result.ok) return { imageRef, fallback: result.message };
+      notePreviewAppOrigins(result.externalDependencies);
+      return { imageRef, html: result.preview.html, fallback: result.preview.fallback };
+    }
+    case 'artifact':
+    case 'checkRun':
+      return buildArtifactAskImage({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, imageRef, entryPath: ref.value, runId: ref.runId, pageFallback: ref.kind === 'artifact' });
+  }
+}
+
 export interface PreviewStateInput {
+  imageRef?: string;
   entryPath?: string;
   explorationId?: string;
   view?: string;
@@ -597,6 +634,10 @@ export interface PreviewStateInput {
 
 /** get_open_design_preview_state (app only): the data behind each view, one page or one preview per call. */
 export async function previewAppState(ctx: ToolContext, input: PreviewStateInput): Promise<ToolOutput> {
+  if (input.imageRef) {
+    const image = await askImage(ctx, input.imageRef);
+    return { text: `Picture for ${input.imageRef}${image.fallback ? `: ${image.fallback}` : ''}.`, structuredContent: { ...image } };
+  }
   if (input.exampleId) {
     const result = await cachedExamplePreview(ctx, input.exampleId);
     if (!result.ok) throw new Error(result.message);

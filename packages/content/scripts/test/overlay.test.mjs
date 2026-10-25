@@ -33,7 +33,7 @@ test('overlay skills and prompts are copied and marked, and re-applying is idemp
   await writeSkill(target, 'skills', 'upstream-skill');
   await fs.writeFile(path.join(target, 'MANIFEST.json'), '{"sourceRef":"x"}');
 
-  const expectedCounts = { skills: 1, examples: 0, prompts: 1, designSystemOverrides: 0, designSystemPackages: 0 };
+  const expectedCounts = { skills: 1, examples: 0, prompts: 1, craft: 0, designSystemOverrides: 0, designSystemPackages: 0 };
   assert.deepEqual(await applyLocalOverlay(target, local), expectedCounts);
   assert.deepEqual(await applyLocalOverlay(target, local), expectedCounts);
 
@@ -51,6 +51,45 @@ test('overlay id colliding with an upstream skill fails and names the id', async
   await writeSkill(local, 'skills', 'card-twitter');
   await writeSkill(target, 'skills', 'card-twitter');
   await assert.rejects(applyLocalOverlay(target, local), /card-twitter \(upstream skill\)/);
+});
+
+async function writeCraft(root, id, body = `# ${id}\n`) {
+  await fs.mkdir(path.join(root, 'craft'), { recursive: true });
+  await fs.writeFile(path.join(root, 'craft', `${id}.md`), body);
+}
+
+test('local craft docs are copied beside upstream ones, re-applied idempotently, and removed when local drops them', async () => {
+  const local = await tmp();
+  const target = await tmp();
+  await writeCraft(target, 'state-coverage');
+  await writeCraft(local, 'ux-writing', 'Buttons say the action.\n');
+  await fs.writeFile(path.join(local, 'craft-requires.json'), '{"requires":{}}\n');
+
+  assert.equal((await applyLocalOverlay(target, local)).craft, 1);
+  assert.equal((await applyLocalOverlay(target, local)).craft, 1);
+  assert.equal(await fs.readFile(path.join(target, 'craft', 'ux-writing.md'), 'utf8'), 'Buttons say the action.\n');
+  assert.equal(await fs.readFile(path.join(target, 'craft', 'state-coverage.md'), 'utf8'), '# state-coverage\n');
+  await fs.access(path.join(target, 'craft-requires.json'));
+  const files = await listOverlayFiles(local);
+  assert.ok(files.includes(path.join('craft', 'ux-writing.md')));
+  assert.ok(files.includes('craft-requires.json'));
+
+  await fs.rm(path.join(local, 'craft'), { recursive: true });
+  await fs.rm(path.join(local, 'craft-requires.json'));
+  await applyLocalOverlay(target, local);
+  await assert.rejects(fs.access(path.join(target, 'craft', 'ux-writing.md')));
+  await assert.rejects(fs.access(path.join(target, 'craft', OVERLAY_MARKER)));
+  await assert.rejects(fs.access(path.join(target, 'craft-requires.json')));
+  await fs.access(path.join(target, 'craft', 'state-coverage.md'));
+});
+
+test('a local craft doc with an upstream craft doc\'s id fails and names it', async () => {
+  const local = await tmp();
+  const target = await tmp();
+  await writeCraft(target, 'state-coverage');
+  await writeCraft(local, 'state-coverage');
+  await assert.rejects(applyLocalOverlay(target, local), /state-coverage \(upstream craft doc\)/);
+  assert.equal(await fs.readFile(path.join(target, 'craft', 'state-coverage.md'), 'utf8'), '# state-coverage\n');
 });
 
 test('overlay id colliding with an upstream design template fails', async () => {
@@ -184,7 +223,7 @@ test('a new design system with no upstream counterpart is copied and marked', as
   await writeNewDesignSystemPackage(local, 'riso');
 
   const counts = await applyLocalOverlay(target, local);
-  assert.deepEqual(counts, { skills: 0, examples: 0, prompts: 0, designSystemOverrides: 0, designSystemPackages: 1 });
+  assert.deepEqual(counts, { skills: 0, examples: 0, prompts: 0, craft: 0, designSystemOverrides: 0, designSystemPackages: 1 });
 
   const dir = path.join(target, 'design-systems', 'riso');
   assert.match(await fs.readFile(path.join(dir, 'DESIGN.md'), 'utf8'), /# riso/);
@@ -202,7 +241,7 @@ test('re-applying a new design system package is idempotent', async () => {
   const target = await tmp();
   await writeNewDesignSystemPackage(local, 'riso');
   await applyLocalOverlay(target, local);
-  assert.deepEqual(await applyLocalOverlay(target, local), { skills: 0, examples: 0, prompts: 0, designSystemOverrides: 0, designSystemPackages: 1 });
+  assert.deepEqual(await applyLocalOverlay(target, local), { skills: 0, examples: 0, prompts: 0, craft: 0, designSystemOverrides: 0, designSystemPackages: 1 });
 });
 
 test('a new design system package colliding with an existing upstream id fails', async () => {
