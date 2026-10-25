@@ -365,6 +365,22 @@
             "fluid": {
               "type": "boolean",
               "description": "With format (or alone): build a fluid design that reflows to any canvas shape, sized in container units with layout rules for wide and tall shapes; the shape is then picked at export (preset/presets) or in the preview, without regenerating. Default: true for print formats, false for screen formats (social recipes need exact pixels). fluid: true without format uses A3 as the default shape. Use it for posters."
+            },
+            "answers": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Optional: the user's answers to the surface's (and the design-system recommender's) questions, by question id, e.g. { \"where\": \"Printed\" }. Written into the instructions as decisions to build to."
+            },
+            "assumptions": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 160
+              },
+              "maxItems": 6,
+              "description": "Optional: what you decided without asking, up to six short lines, e.g. [\"dark theme\", \"one sign-up button\"]. Written into the instructions; list them to the user in one sentence when the design is ready."
             }
           },
           "required": [
@@ -659,6 +675,99 @@
                 "type": "string"
               },
               "description": "Ids of the user's comments (from get_open_design_artifact's openComments) that this edit addressed. They're marked resolved and their pins leave the preview."
+            },
+            "brief": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "maxLength": 500,
+                  "description": "The request in one line."
+                },
+                "answers": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "description": "The same answers passed to prepare_open_design_brief."
+                },
+                "assumptions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "maxLength": 160
+                  },
+                  "maxItems": 6,
+                  "description": "The same assumptions passed to prepare_open_design_brief."
+                }
+              },
+              "description": "What was asked and assumed for this design, stored as the manifest's metadata.brief (the latest replaces the earlier one) so later edits and checks can see it. Leave it out on an edit that changed none of it."
+            },
+            "critique": {
+              "type": "object",
+              "description": "The design critic's latest opinion (from the open-design-critique skill), stored as metadata.critique; only the latest is kept and it must be at most 4 KB. checkRunId defaults to the latest saved check run and at to now.",
+              "properties": {
+                "verdict": {
+                  "type": "string",
+                  "enum": [
+                    "ship",
+                    "polish",
+                    "rework"
+                  ],
+                  "description": "ship (nothing worth a round), polish (one round of the listed fixes) or rework (the direction is wrong)."
+                },
+                "findings": {
+                  "type": "array",
+                  "maxItems": 5,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "area": {
+                        "type": "string",
+                        "enum": [
+                          "purpose-hierarchy",
+                          "typography",
+                          "colour-contrast",
+                          "layout-rhythm",
+                          "copy",
+                          "states",
+                          "fit"
+                        ],
+                        "description": "The rubric area."
+                      },
+                      "where": {
+                        "type": "string",
+                        "description": "Where on the design (section, element, slide, viewport)."
+                      },
+                      "problem": {
+                        "type": "string",
+                        "description": "What is wrong."
+                      },
+                      "fix": {
+                        "type": "string",
+                        "description": "The change to make."
+                      }
+                    },
+                    "required": [
+                      "area",
+                      "fix"
+                    ]
+                  },
+                  "description": "At most five, ordered by impact."
+                },
+                "checkRunId": {
+                  "type": "string",
+                  "description": "The check run the critic judged."
+                },
+                "at": {
+                  "type": "string",
+                  "description": "ISO time of the critique."
+                }
+              },
+              "required": [
+                "verdict",
+                "findings"
+              ]
             }
           },
           "required": [
@@ -671,7 +780,7 @@
       {
         "name": "get_open_design_artifact",
         "displayName": "Get Open Design Artifact",
-        "modelDescription": "Reads back a registered Open Design artifact: its manifest, entry file content, supporting file list, and the user's unaddressed preview comments ('openComments', status open or sent) from the Open Design Artifact Preview editor or the browser preview, with up to 4 comment screenshots attached. Use this to review what was generated, and check 'openComments' before telling the user you're done — address any pending ones, then pass their ids as resolvedCommentIds to register_open_design_artifact.",
+        "modelDescription": "Reads back a registered Open Design artifact: its manifest, entry file content, supporting file list, and the user's unaddressed preview comments ('openComments', status open or sent) from the Open Design Artifact Preview editor or the browser preview, with up to 4 comment screenshots attached. Use this to review what was generated, and check 'openComments' before telling the user you're done — address any pending ones, then pass their ids as resolvedCommentIds to register_open_design_artifact. With critique: true it instead returns what the design critic judges (the open-design-critique prompt): the recorded brief, title and skill id, the design system's DESIGN.md, the latest saved check run's findings and screenshot paths, and the last critique, with that run's screenshots attached.",
         "userDescription": "Read back an Open Design artifact",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-artifact",
@@ -682,6 +791,10 @@
             "entryPath": {
               "type": "string",
               "description": "Workspace-relative path to the artifact's entry file."
+            },
+            "critique": {
+              "type": "boolean",
+              "description": "Return the critique input instead of the entry content and comments. Default false."
             }
           },
           "required": [
@@ -1771,6 +1884,9 @@
       },
       {
         "path": "./prompts/local/open-design-campaign.prompt.md"
+      },
+      {
+        "path": "./prompts/local/open-design-critique.prompt.md"
       },
       {
         "path": "./prompts/local/open-design-deck-from-source.prompt.md"

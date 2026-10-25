@@ -120,6 +120,16 @@ import {
   type Shop,
   resolvePrintHouse,
   type PrintHouse,
+  validateBriefDecisions,
+  validateRegisteredBrief,
+  withBriefMetadata,
+  loadRecentDesigns,
+  recordDesignHistory,
+  buildCritiqueInput,
+  critiqueSummary,
+  prepareCritiqueRecord,
+  readCheckRunImage,
+  withCritique,
 } from '@feimacode/open-design-agent-kit-core';
 import { figmaTokenFilePath } from './env';
 import type { DesignLayout } from './layout';
@@ -258,8 +268,12 @@ export async function prepareBrief(
     sources?: string[];
     format?: string;
     fluid?: boolean;
+    answers?: Record<string, string>;
+    assumptions?: string[];
   },
 ): Promise<string> {
+  const decisions = validateBriefDecisions(input.answers, input.assumptions);
+  if (!decisions.ok) return decisions.error;
   const canvas = resolveBriefCanvas(input.format, input.fluid);
   if ('error' in canvas) return canvas.error;
   const canvasFormat = canvas.format;
@@ -309,6 +323,7 @@ export async function prepareBrief(
   });
   if (!sources.ok) return sources.error;
 
+  const recentDesigns = await loadRecentDesigns(ctx.workspaceRoot, { collectionId: input.collectionId, entryPath: suggestedEntryPath });
   const instructions = composeInstructions({
     skillName: skill.name,
     skillBody: skill.body,
@@ -323,6 +338,8 @@ export async function prepareBrief(
     sourceContext: sources.context,
     canvasFormat,
     fluid: canvas.fluid,
+    decisions: decisions.decisions,
+    recentDesigns,
   });
 
   const payload = {
@@ -358,9 +375,13 @@ export async function registerArtifact(
     sources?: string[];
     format?: string;
     resolvedCommentIds?: string[];
+    brief?: unknown;
+    critique?: unknown;
   },
 ): Promise<string> {
   if (input.format !== undefined && !getFormat(input.format)) return unknownFormatError(input.format);
+  const brief = validateRegisteredBrief(input.brief);
+  if (!brief.ok) return brief.error;
   const renderer = KIND_TO_RENDERER[input.kind];
   const exportsList = exportsForKind(input.kind);
   if (!renderer || !exportsList) {
@@ -368,9 +389,13 @@ export async function registerArtifact(
   }
 
   try {
+    // Checked before anything is written, so a rejected critique leaves the manifest as it was.
+    const critique = input.critique === undefined ? undefined : await prepareCritiqueRecord(ctx.workspaceRoot, ctx.outputDir, input.entryPath, input.critique);
+    if (critique && !critique.ok) return `Failed to register artifact: ${critique.error}`;
     const sourceRegistration = input.sources?.length
       ? await prepareSourceRegistration({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, entryPath: input.entryPath, sourcePaths: input.sources })
       : undefined;
+    const metadata = withBriefMetadata(await posterRegistrationMetadata(ctx.workspaceRoot, input.entryPath, input.format), brief.brief);
     const manifest = await writeArtifactManifest({
       workspaceRoot: ctx.workspaceRoot,
       entryPath: input.entryPath,
@@ -389,8 +414,17 @@ export async function registerArtifact(
         explorationId: input.explorationId,
         directionId: input.directionId,
         sources: sourceRegistration?.sources.length ? sourceRegistration.sources : undefined,
-        metadata: await posterRegistrationMetadata(ctx.workspaceRoot, input.entryPath, input.format),
+        metadata: critique?.ok ? withCritique(metadata, critique.record) : metadata,
       },
+    });
+    await recordDesignHistory(ctx.workspaceRoot, {
+      entryPath: input.entryPath,
+      title: input.title,
+      skillId: input.sourceSkillId,
+      designSystemId: input.designSystemId,
+      collectionId: input.collectionId,
+      explorationId: input.explorationId,
+      directionId: input.directionId,
     });
     const sourceNote = sourceRegistration ? `\n\n${formatSourceRegistration(sourceRegistration)}` : '';
 
@@ -408,7 +442,9 @@ export async function registerArtifact(
       commentsNote = `\n\nMarked ${resolved.length} comment(s) resolved.${unknown.length ? ` No comment with id ${unknown.join(', ')}.` : ''}`;
     }
 
-    return `Artifact registered at ${input.entryPath}.artifact.json\n\n${JSON.stringify(manifest, null, 2)}\n\nWritten to ${path.join(ctx.workspaceRoot, input.entryPath)}.${await previewNoteAfterRegister(ctx, input.entryPath)}${artifactPreviewHint(ctx, manifest)}${commentsNote}${explorationNote}${sourceNote}`;
+    const critiqueNote = critique?.ok ? `\n\nRecorded the critique (${critiqueSummary(critique.record)}) as metadata.critique.` : '';
+
+    return `Artifact registered at ${input.entryPath}.artifact.json\n\n${JSON.stringify(manifest, null, 2)}\n\nWritten to ${path.join(ctx.workspaceRoot, input.entryPath)}.${await previewNoteAfterRegister(ctx, input.entryPath)}${artifactPreviewHint(ctx, manifest)}${commentsNote}${critiqueNote}${explorationNote}${sourceNote}`;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return `Failed to register artifact: ${message}`;
@@ -430,11 +466,12 @@ function artifactPreviewHint(ctx: ToolContext, manifest: JsonRecord): string {
 }
 
 /** get_open_design_artifact: the manifest, entry, supporting files and unaddressed comments, with up to 4 comment crops attached as images. */
-export async function getArtifact(ctx: ToolContext, input: { entryPath: string }): Promise<ToolOutput> {
+export async function getArtifact(ctx: ToolContext, input: { entryPath: string; critique?: boolean }): Promise<ToolOutput> {
   const result = await readArtifact({ workspaceRoot: ctx.workspaceRoot, entryPath: input.entryPath });
   if (!result) {
     return { text: `No artifact found at ${input.entryPath}. It may not have been written yet.` };
   }
+  if (input.critique) return critiqueInputOutput(ctx, input.entryPath, result.manifest);
   const { comments: openComments, crops } = await readUnaddressedComments(ctx.workspaceRoot, input.entryPath);
   const recorded = recordedSources(result.manifest);
   const payload = {
@@ -447,6 +484,29 @@ export async function getArtifact(ctx: ToolContext, input: { entryPath: string }
     previewUrl: latestShareFor(readShareRecords(result.manifest), CLAUDE_ARTIFACT_PROVIDER)?.url,
   };
   return { text: JSON.stringify(payload, null, 2), images: crops.map((c) => ({ data: c.png, mime: 'image/png' })) };
+}
+
+/** get_open_design_artifact with critique: what the design critic judges, with the latest check run's screenshots attached (openspec add-design-critic). */
+async function critiqueInputOutput(ctx: ToolContext, entryPath: string, manifest: JsonRecord | null): Promise<ToolOutput> {
+  const designSystemId = typeof manifest?.designSystemId === 'string' ? manifest.designSystemId : undefined;
+  const ds = designSystemId ? await ctx.contentIndex.getDesignSystem(designSystemId) : undefined;
+  const critiqueInput = await buildCritiqueInput({
+    workspaceRoot: ctx.workspaceRoot,
+    outputDir: ctx.outputDir,
+    entryPath,
+    manifest,
+    designSystem: designSystemId ? { id: designSystemId, name: ds?.name, designMd: ds?.body } : undefined,
+  });
+  const run = critiqueInput.checkRun;
+  const images: Array<{ data: Buffer; mime: string }> = [];
+  for (const img of run?.images ?? []) {
+    const data = await readCheckRunImage(ctx.workspaceRoot, ctx.outputDir, entryPath, run!.id, path.posix.basename(img.path));
+    if (data) images.push({ data, mime: 'image/jpeg' });
+  }
+  const note = run
+    ? `Critique input for ${entryPath}. The ${images.length} attached image(s) are this check run's screenshots, in the order of checkRun.images.`
+    : `No saved check run for ${entryPath} yet: call check_open_design_artifact first, then ask for the critique input again.`;
+  return { text: `${note}\n\n${JSON.stringify({ critiqueInput }, null, 2)}`, images };
 }
 
 // ── Browser preview (openspec add-browser-preview) ─────────────────────────

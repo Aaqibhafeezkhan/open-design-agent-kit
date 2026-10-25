@@ -24,9 +24,11 @@ Call `list_open_design_skills` with `surface: "list"` to get the kinds of thing 
 
 Call `list_open_design_skills` with `surface` set to the chosen id. The result has the surface's `questions` and its `entries`.
 
-Ask only the questions the request doesn't already answer, all at once, in one short message. If the request answers them all, don't ask anything.
+Each question has `options`, a `default` and what the answer `changes`. Ask only the ones the request, the conversation and the workspace don't already answer, all at once, in one short message, as multiple choice, and accept "you pick" (then use the question's `default`). Ask at most three. If the request already says enough, don't ask anything: "a printed A3 poster for our jazz night on 4 May, dark and moody" gets no questions; "a poster for our event" gets a few.
 
-If no design system is active and the request names no look, also call `recommend_open_design_design_systems` with what you know (the surface, what it's for, how it should feel). If its result has `questions`, add the ones the request doesn't answer to that same message, and accept "you pick". Use its first recommendation as the `designSystemId` in step 3, and say which style you used and that they can pick another.
+If no design system is active and the request names no look, also call `recommend_open_design_design_systems` with what you know (the surface, what it's for, how it should feel). If its result has `questions`, add the ones the request doesn't answer to that same message, still three in total at most, surface questions first. Use its first recommendation as the `designSystemId` in step 3, and say which style you used and that they can pick another.
+
+Keep the answers by question id, and note anything you decide without asking (a theme, a layout, how many sections) as a short assumption.
 
 <!-- claude-only -->
 **Asking with taps (Claude Desktop Chat).** Where `show_open_design_questions` is in your tool list (it is listed only where the host shows MCP Apps inline), ask these questions through it instead of a chat message: all of them in one call, at most four, each with a short `id`, its `text` and its choices as `options`. Give a design-system option `imageRef: "designSystem:<id>"` so the user sees its palette. Don't repeat the questions in chat. The answer arrives as a message starting "Answers:" with a line `<!-- od-answers {...} -->`: read that JSON (`you-pick` means choose for them). If the user types their answers instead, use those.
@@ -35,7 +37,8 @@ If no design system is active and the request names no look, also call `recommen
 ## 3. Build it
 
 - If the surface has a `prompt` (for example `open-design-poster` or `open-design-social-post`), follow that flow from its first step with the user's request as the brief. In Copilot Chat it's the `/` command of the same name; in Claude Code and Codex it's the skill of the same name.
-- Otherwise pick the entry that best fits the request. Entries come in curated order: the recipe first, then its remixable example when there is one. To start from a rendered example (an entry with `remixable: true`), call `remix_open_design_example`; otherwise call `prepare_open_design_brief` with its id, the brief and any recommended `designSystemId`, and follow the general Open Design flow: write the files, register the artifact, then check it with `check_open_design_artifact` before saying it's done.
+- Otherwise pick the entry that best fits the request. Entries come in curated order: the recipe first, then its remixable example when there is one. To start from a rendered example (an entry with `remixable: true`), call `remix_open_design_example`; otherwise call `prepare_open_design_brief` with its id, the brief, any recommended `designSystemId`, the `answers` and your `assumptions` (up to six), and follow the general Open Design flow: write the files, register the artifact with `brief` (the request in one line as `text`, plus the same `answers` and `assumptions`), then check it with `check_open_design_artifact` before saying it's done.
+- When you present the design, list your assumptions in one sentence and invite a change: "I assumed a dark theme and one sign-up button; say if you want otherwise."
 
 <!-- claude-only -->
 **Picking by eye (Claude Desktop Chat).** When the user wants to choose a starting example from pictures, and `show_open_design_examples` is in your tool list (it is listed only where the host shows MCP Apps inline), call it with `surface` set to the chosen id instead of listing entries in text. "Remix this" posts the pick in the chat; then call `remix_open_design_example` with the skillId it names. Without that tool, keep to the text list above.

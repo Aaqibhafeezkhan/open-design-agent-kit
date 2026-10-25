@@ -10,6 +10,8 @@ import {
   resolveCraftSections,
   craftRequirementsFor,
   suggestCollectionScreenEntryPath,
+  validateBriefDecisions,
+  loadRecentDesigns,
 } from '@feimacode/open-design-agent-kit-core';
 import { getOutputDirectory, getWorkspaceRoot, slugify, suggestEntryPath } from '../workspace/artifactWriter';
 import { vscodeActiveDesignSystemStore } from '../workspace/activeDesignSystem';
@@ -26,6 +28,8 @@ interface PrepareBriefInput {
   sources?: string[];
   format?: string;
   fluid?: boolean;
+  answers?: Record<string, string>;
+  assumptions?: string[];
 }
 
 export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefInput> {
@@ -34,7 +38,10 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
   async invoke(
     options: vscode.LanguageModelToolInvocationOptions<PrepareBriefInput>,
   ): Promise<vscode.LanguageModelToolResult> {
-    const { skillId, designSystemId: explicitDesignSystemId, brief, collectionId, collectionName, screenRole, screenTotal, sources: sourcePaths, format, fluid } = options.input;
+    const { skillId, designSystemId: explicitDesignSystemId, brief, collectionId, collectionName, screenRole, screenTotal, sources: sourcePaths, format, fluid, answers, assumptions } = options.input;
+
+    const decisions = validateBriefDecisions(answers, assumptions);
+    if (!decisions.ok) return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(decisions.error)]);
 
     const canvas = resolveBriefCanvas(format, fluid);
     if ('error' in canvas) return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(canvas.error)]);
@@ -118,6 +125,7 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
     });
     if (!sources.ok) return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(sources.error)]);
 
+    const recentDesigns = await loadRecentDesigns(vscode.workspace.workspaceFolders?.[0]?.uri.fsPath, { collectionId, entryPath: suggestedEntryPath });
     const instructions = composeInstructions({
       skillName: skill.name,
       skillBody: skill.body,
@@ -132,6 +140,8 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
       sourceContext: sources.context,
       canvasFormat,
       fluid: canvas.fluid,
+      decisions: decisions.decisions,
+      recentDesigns,
     });
 
     const payload = {

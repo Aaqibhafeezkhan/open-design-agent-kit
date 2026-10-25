@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { composePublishCanvaTemplateInstructions, ContentIndex, findBrowser, formatIntegrations, writeArtifactComments, writeArtifactManifest, writeCommentCrop } from '@feimacode/open-design-agent-kit-core';
+import { composePublishCanvaTemplateInstructions, ContentIndex, findBrowser, formatIntegrations, saveCheckRun, writeArtifactComments, writeArtifactManifest, writeCommentCrop } from '@feimacode/open-design-agent-kit-core';
 import * as tools from '../../tools';
 import type { ToolContext } from '../../tools';
 import { createFileActiveDesignSystemStore } from '../../store';
@@ -129,6 +129,47 @@ describe('mcp-server tools', () => {
     const ctx = await makeContext();
     const raw = await tools.prepareBrief(ctx, { skillId: 'nope', brief: 'anything' });
     assert.match(raw, /Unknown skillId "nope"/);
+  });
+
+  it('carries answers and assumptions from the brief to metadata.brief, and refuses a seventh assumption', async () => {
+    const ctx = await makeContext();
+    const tooMany = await tools.prepareBrief(ctx, { skillId: 'od:prototype:landing-page', brief: 'A poster', assumptions: ['a', 'b', 'c', 'd', 'e', 'f', 'g'] });
+    assert.match(tooMany, /Too many assumptions: 7 given, at most 6/);
+    const prepared = JSON.parse(
+      await tools.prepareBrief(ctx, { skillId: 'od:prototype:landing-page', brief: 'A poster for our event', answers: { where: 'Printed' }, assumptions: ['dark theme'] }),
+    );
+    assert.match(prepared.instructions, /## Build to these decisions[\s\S]*- where: Printed\n- Assumed: dark theme/);
+    assert.match(prepared.instructions, /pass `brief`/);
+    const entryAbs = path.join(ctx.workspaceRoot, prepared.suggestedEntryPath);
+    await fs.mkdir(path.dirname(entryAbs), { recursive: true });
+    await fs.writeFile(entryAbs, '<!doctype html><h1>Event</h1>');
+    const brief = { text: 'A poster for our event', answers: { where: 'Printed' }, assumptions: ['dark theme'] };
+    await tools.registerArtifact(ctx, { entryPath: prepared.suggestedEntryPath, kind: 'html', title: 'Event', brief });
+    assert.deepStrictEqual(JSON.parse(await fs.readFile(`${entryAbs}.artifact.json`, 'utf8')).metadata.brief, brief);
+    await tools.registerArtifact(ctx, { entryPath: prepared.suggestedEntryPath, kind: 'html', title: 'Event' });
+    assert.deepStrictEqual(JSON.parse(await fs.readFile(`${entryAbs}.artifact.json`, 'utf8')).metadata.brief, brief, 'an edit without brief keeps the record');
+    assert.match(await tools.registerArtifact(ctx, { entryPath: prepared.suggestedEntryPath, kind: 'html', title: 'Event', brief: { text: 'x'.repeat(501) } }), /at most 500/);
+  });
+
+  it('records each registered design in history.json and lists recent ones in the next brief', async () => {
+    const ctx = await makeContext();
+    const page = (accent: string): string => `<!doctype html><style>:root{--bg:#111;--accent:${accent};--font-display:'Fraunces'}</style><section><h1>Hi</h1></section>`;
+    for (const [name, accent] of [['one', '#ff5a1f'], ['two', '#22c55e']]) {
+      const entryPath = `.open-design/${name}/${name}.html`;
+      await fs.mkdir(path.join(ctx.workspaceRoot, '.open-design', name), { recursive: true });
+      await fs.writeFile(path.join(ctx.workspaceRoot, entryPath), page(accent));
+      await tools.registerArtifact(ctx, { entryPath, kind: 'html', title: `Page ${name}` });
+    }
+    await tools.registerArtifact(ctx, { entryPath: '.open-design/one/one.html', kind: 'html', title: 'Page one' });
+    const history = JSON.parse(await fs.readFile(path.join(ctx.workspaceRoot, '.open-design', 'history.json'), 'utf8'));
+    assert.deepStrictEqual(history.entries.map((e: { title: string }) => e.title), ['Page two', 'Page one']);
+    assert.strictEqual(history.entries[1].signature.accent, '#ff5a1f');
+
+    const next = JSON.parse(await tools.prepareBrief(ctx, { skillId: 'od:prototype:landing-page', brief: 'A third page' }));
+    assert.match(next.instructions, /## Recent designs in this workspace\n\n- "Page one" \([0-9-]+\): dark theme, centred hero, display font Fraunces, accent #ff5a1f\n- "Page two"/);
+    await fs.writeFile(path.join(ctx.workspaceRoot, '.open-design', 'config.json'), JSON.stringify({ variety: false }));
+    const off = JSON.parse(await tools.prepareBrief(ctx, { skillId: 'od:prototype:landing-page', brief: 'A fourth page' }));
+    assert.ok(!off.instructions.includes('Recent designs'));
   });
 
   it('registerArtifact fails when the entry file does not exist yet', async () => {
@@ -259,6 +300,47 @@ describe('mcp-server tools', () => {
     const raw = await tools.registerArtifact(ctx, { entryPath: entry, kind: 'html', title: 'R', resolvedCommentIds: ['c-a', 'c-zz'] });
     assert.match(raw, /Marked 1 comment\(s\) resolved\. No comment with id c-zz\./);
     assert.deepStrictEqual(JSON.parse((await tools.getArtifact(ctx, { entryPath: entry })).text).openComments, []);
+  });
+
+  it('registerArtifact records a critique as metadata.critique and rejects an oversized one, leaving the manifest unchanged', async () => {
+    const ctx = await makeContext();
+    const entry = '.open-design/k/index.html';
+    await fs.mkdir(path.join(ctx.workspaceRoot, '.open-design/k'), { recursive: true });
+    await fs.writeFile(path.join(ctx.workspaceRoot, entry), '<h1>K</h1>');
+    await saveCheckRun(ctx.workspaceRoot, ctx.outputDir, entry, { mode: 'page', findings: [], images: [{ label: 'desktop', data: Buffer.from('jpg'), width: 1, height: 1 }] });
+    const raw = await tools.registerArtifact(ctx, {
+      entryPath: entry,
+      kind: 'html',
+      title: 'K',
+      designSystemId: 'acme',
+      critique: { verdict: 'polish', findings: [{ area: 'copy', where: 'hero button', fix: 'Say "Start free trial"' }] },
+    });
+    assert.match(raw, /Recorded the critique \(Second look: polish, 1 fix\)/);
+    const manifestPath = path.join(ctx.workspaceRoot, `${entry}.artifact.json`);
+    const before = await fs.readFile(manifestPath, 'utf8');
+    const critique = JSON.parse(before).metadata.critique;
+    assert.strictEqual(critique.verdict, 'polish');
+    assert.ok(critique.checkRunId, 'defaults to the latest check run');
+
+    const long = 'x'.repeat(1000);
+    const rejected = await tools.registerArtifact(ctx, { entryPath: entry, kind: 'html', title: 'Changed', critique: { verdict: 'polish', findings: Array(5).fill({ area: 'copy', problem: long, fix: long }) } });
+    assert.match(rejected, /^Failed to register artifact: .*4 KB/);
+    assert.strictEqual(await fs.readFile(manifestPath, 'utf8'), before);
+
+    const input = await tools.getArtifact(ctx, { entryPath: entry, critique: true });
+    const { critiqueInput } = JSON.parse(input.text.slice(input.text.indexOf('{')));
+    assert.strictEqual(critiqueInput.designSystem.designMd.trim().startsWith('# Acme'), true);
+    assert.strictEqual(critiqueInput.lastCritique.verdict, 'polish');
+    assert.strictEqual(input.images?.length, 1);
+  });
+
+  it('getArtifact with critique asks for a check first when there is no saved run', async () => {
+    const ctx = await makeContext();
+    const entry = '.open-design/n/index.html';
+    await fs.mkdir(path.join(ctx.workspaceRoot, '.open-design/n'), { recursive: true });
+    await fs.writeFile(path.join(ctx.workspaceRoot, entry), '<h1>N</h1>');
+    await tools.registerArtifact(ctx, { entryPath: entry, kind: 'html', title: 'N' });
+    assert.match((await tools.getArtifact(ctx, { entryPath: entry, critique: true })).text, /call check_open_design_artifact first/);
   });
 
   it('openPreview refuses unregistered entries and honours OPEN_DESIGN_PREVIEW=off', async () => {

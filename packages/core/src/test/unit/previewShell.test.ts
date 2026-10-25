@@ -129,4 +129,24 @@ describe('browser preview shell (real browser)', function () {
     assert.match(summary, /After: .*0 errors/);
     assert.match(summary, /Before: .*1 error\b/);
   });
+
+  it("shows the design critic's last opinion when the manifest records one", async () => {
+    await writeArtifactManifest({
+      workspaceRoot: root,
+      entryPath: ENTRY,
+      artifactManifest: {
+        kind: 'html',
+        renderer: 'html',
+        exports: ['html'],
+        title: 'Landing',
+        metadata: { critique: { verdict: 'polish', findings: [{ area: 'copy', where: 'Hero button', fix: 'Say what it does' }, { area: 'typography', fix: 'Use the display size' }], at: '2026-10-24T12:00:00.000Z' } },
+      },
+    });
+    const text = await until(async () => {
+      const t = await page.$eval('#od-checks', (el) => el.textContent ?? '');
+      return t.includes('Second look') && t;
+    }, 'the critique in the Checks panel');
+    assert.match(text, /Second look: polish, 2 fixes/);
+    assert.match(text, /Hero button Say what it does/);
+  });
 });

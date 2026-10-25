@@ -14,6 +14,7 @@ import { collectCuratedEntries } from '../../content/scripts/curatedEntries.mjs'
 import { loadLocalPrompts, promptIsForHost, renderPromptBody } from '../../content/scripts/localPrompts.mjs';
 import { buildRemixableExamplesReference } from '../../content/scripts/remixableExamplesReference.mjs';
 import { fillVoiceRegion, loadVoice } from '../../content/scripts/voice.mjs';
+import { fillRubricRegion, rubricFromPrompts } from '../../content/scripts/critiqueRubric.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const pluginRoot = path.resolve(__dirname, '..');
@@ -21,6 +22,8 @@ const assetsRoot = path.resolve(pluginRoot, '..', 'content', 'assets', 'open-des
 const skillsDir = path.join(pluginRoot, 'skills');
 const GENERATED_MARKER = '<!-- generated:curated-entry -->';
 // The hand-authored overviews whose voice region this script fills (openspec plain-language-replies).
+// The hand-authored critic agent whose rubric region this script fills (openspec add-design-critic).
+const CRITIC_AGENT = path.join(pluginRoot, 'agents', 'design-critic.md');
 const VOICE_OVERVIEWS = [path.join(skillsDir, 'open-design', 'SKILL.md'), path.resolve(pluginRoot, '..', 'vscode', 'instructions', 'open-design.instructions.md')];
 
 function skillMdContent(entry) {
@@ -110,6 +113,8 @@ async function main() {
   const referencesDir = path.join(skillsDir, 'open-design', 'references');
   await fs.mkdir(referencesDir, { recursive: true });
   await fs.writeFile(path.join(referencesDir, 'remixable-examples.md'), await buildRemixableExamplesReference(assetsRoot));
+
+  await fs.writeFile(CRITIC_AGENT, fillRubricRegion(await fs.readFile(CRITIC_AGENT, 'utf8'), rubricFromPrompts(localPrompts)));
 
   const voice = await loadVoice(assetsRoot);
   for (const file of VOICE_OVERVIEWS) await fs.writeFile(file, fillVoiceRegion(await fs.readFile(file, 'utf8'), voice));

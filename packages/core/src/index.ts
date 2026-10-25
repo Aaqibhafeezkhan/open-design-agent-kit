@@ -11,6 +11,7 @@ export { startStaticServer, urlForPath, type StaticServer, type StaticServerOpti
 export * from './content/localPrompts';
 
 export * from './generation/composeInstructions';
+export * from './generation/briefDecisions';
 export * from './generation/brandExtraction';
 export * from './generation/collectionEntryPath';
 export * from './generation/customDesignSystemInstructions';
@@ -55,6 +56,8 @@ export * from './workspace/appDetection';
 export * from './workspace/artifactComments';
 export * from './workspace/artifactSync';
 export * from './workspace/collectionScan';
+export * from './workspace/critique';
+export * from './workspace/designHistory';
 export * from './workspace/explorationCompare';
 export * from './workspace/explorationStore';
 export * from './workspace/shareRecords';

@@ -4,6 +4,8 @@ import type { CraftSection, SkillMode } from '../content/contentIndex';
 import type { PlannedDirection } from './explorationPlan';
 import { composeCanvasSection, composeFluidCanvasSection, type CanvasFormat } from '../poster/formats';
 import { composeSourceMaterialSection, composeSourceWorkflowSection, type SourceContext } from './sourceInstructions';
+import { composeDecisionsSection, composeRegisterBriefNote, type BriefDecisions } from './briefDecisions';
+import { composeRecentDesignsSection, type RecentDesignsContext } from '../workspace/designHistory';
 
 const CRAFT_SLUG = /^[a-z0-9][a-z0-9-]*$/;
 
@@ -177,6 +179,10 @@ export interface ComposeInstructionsInput {
   canvasFormat?: CanvasFormat;
   /** With canvasFormat: the fluid (reflowing) contract instead of the fixed one — see ../poster/formats.ts. */
   fluid?: boolean;
+  /** The user's answers and the agent's assumptions — see briefDecisions.ts. */
+  decisions?: BriefDecisions;
+  /** Recent designs in the workspace to differ from or match — see ../workspace/designHistory.ts. */
+  recentDesigns?: RecentDesignsContext;
 }
 
 /**
@@ -207,6 +213,9 @@ export function composeInstructions(input: ComposeInstructionsInput): string {
   );
 
   parts.push(`\n\n## User's brief\n\n${input.brief.trim()}`);
+
+  const decisions = composeDecisionsSection(input.decisions);
+  if (decisions) parts.push(`\n\n${decisions}`);
 
   if (input.sourceContext && input.sourceContext.sources.length > 0) {
     parts.push(`\n\n${composeSourceMaterialSection(input.sourceContext)}`);
@@ -256,6 +265,9 @@ export function composeInstructions(input: ComposeInstructionsInput): string {
     );
   }
 
+  const recent = composeRecentDesignsSection(input.recentDesigns, Boolean(input.designSystemBody?.trim()));
+  if (recent) parts.push(`\n\n${recent}`);
+
   if (input.sourceContext && input.sourceContext.sources.length > 0) {
     parts.push(`\n\n${composeSourceWorkflowSection(input.sourceContext)}`);
   }
@@ -271,7 +283,7 @@ export function composeInstructions(input: ComposeInstructionsInput): string {
   );
 
   parts.push(
-    `\n\n## Output\n\nAuthor the artifact's entry file at \`${input.suggestedEntryPath}\` (adjust the filename to follow the semantic-naming guidance above, or the skill's own fixed-name convention, but keep it under the same directory). Write any supporting files (stylesheets, scripts, imported assets) as siblings under that directory. After writing all files, call register_open_design_artifact with the entry path, a kind, a title, and the supporting file paths (relative to the entry file's own directory)${input.canvasFormat ? `, and \`format: "${input.canvasFormat.id}"\`` : ''} so it is recognized as an Open Design artifact.`,
+    `\n\n## Output\n\nAuthor the artifact's entry file at \`${input.suggestedEntryPath}\` (adjust the filename to follow the semantic-naming guidance above, or the skill's own fixed-name convention, but keep it under the same directory). Write any supporting files (stylesheets, scripts, imported assets) as siblings under that directory. After writing all files, call register_open_design_artifact with the entry path, a kind, a title, and the supporting file paths (relative to the entry file's own directory)${input.canvasFormat ? `, and \`format: "${input.canvasFormat.id}"\`` : ''} so it is recognized as an Open Design artifact. ${composeRegisterBriefNote(input.decisions)}`,
   );
 
   return parts.join('');

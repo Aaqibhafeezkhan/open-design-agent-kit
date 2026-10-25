@@ -62,3 +62,20 @@ test('goals must lead to ready surfaces', async () => {
   assert.ok(problems.some((p) => p.includes('id used twice')));
   assert.ok(problems.some((p) => p.includes('at least one surface')));
 });
+
+test('structured questions need options, a default among them and what they change; plain strings only warn', async () => {
+  const { checkSurfaceQuestions, plainQuestionWarnings } = await import('../surfaces.mjs');
+  const good = { id: 'where', text: 'Where will it be seen?', options: ['Printed', 'On screens', 'Both'], default: 'Both', changes: 'size, bleed and file type' };
+  assert.deepEqual(checkSurfaceQuestions({ id: 'poster', questions: [good, 'A plain question?'] }), []);
+  const problems = checkSurfaceQuestions({ id: 'poster', questions: [{ ...good, options: ['Only'], default: 'Nope', changes: '' }] });
+  assert.ok(problems.some((p) => p.includes('two to four options')));
+  assert.ok(problems.some((p) => p.includes('default must be one of its options')));
+  assert.ok(problems.some((p) => p.includes('"changes"')));
+  assert.deepEqual(plainQuestionWarnings({ surfaces: [{ id: 'poster', questions: [good, 'A plain question?'] }] }).length, 1);
+});
+
+test('every shipped surface question is structured', async () => {
+  const { plainQuestionWarnings } = await import('../surfaces.mjs');
+  const catalog = JSON.parse(await fs.readFile(path.join(import.meta.dirname, '..', '..', 'local', 'surfaces.json'), 'utf8'));
+  assert.deepEqual(plainQuestionWarnings(catalog), []);
+});
