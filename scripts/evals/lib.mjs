@@ -85,12 +85,15 @@ export function parseTranscript(jsonl) {
   return { texts, toolUses, result };
 }
 
-/** Questions in a message the agent ended a round with: lines ending in "?" (one per line, list markers ignored). */
+/**
+ * Questions in a message the agent ended a round with: distinct lines with a "?" in them
+ * (list markers ignored), so "**Print or screens?** If print, …" counts too.
+ */
 export function countQuestions(text) {
   const lines = text
     .split('\n')
     .map((l) => l.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, '').trim())
-    .filter((l) => l.endsWith('?'));
+    .filter((l) => l.includes('?'));
   return new Set(lines).size;
 }
 

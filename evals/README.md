@@ -37,7 +37,7 @@ Agent runs need Claude Code (`claude`) on `PATH`, signed in, and a Chrome, Edge 
 
 1. compiles `packages/mcp-server` and loads this checkout's plugin with that server (`--plugin <dir>` loads another plugin as it is);
 2. starts `claude -p` with the brief's request in a fresh temporary workspace, with a fixed model (`--model`, default `claude-sonnet-5-5`), a turn cap (`--max-turns`, default 80) and permissions bypassed. The only added instruction is that there is no interactive user, so questions are asked as text (the question picker is turned off);
-3. if the agent stops without registering a design, counts the questions in its last message and replies with the brief's `answers` plus "for anything else, you pick", up to three rounds;
+3. if the agent stops without building anything, counts the questions in its last message and replies with the brief's `answers` plus "for anything else, you pick", up to three rounds. A page it built but didn't register ends the run and is reported as "no design";
 4. copies the workspace to `evals/runs/<date-time>/<brief>-<n>/` with the transcript, and scores it.
 
 A run costs model tokens: a full run is sixteen agent sessions. Use `--only` and `--repeat 1` while iterating, and the full run only for the before and after of a PR.
@@ -54,7 +54,7 @@ Per design, all from the kit's own tools:
 |---|---|
 | Errors, error codes, warnings | `open-design-agent-kit check --json` (the same checks `check_open_design_artifact` runs), counted by finding code |
 | Critic | `metadata.critique` on the manifest: verdict and finding count, `n/a` until the design critic records one |
-| Questions | Lines ending in `?` in the messages where the agent stopped to ask; ⚠ when outside the brief's `expect.questions` |
+| Questions | Lines with a `?` in the messages where the agent stopped without building anything (at least one per such stop); ⚠ when outside the brief's `expect.questions` |
 | Assumptions | `metadata.brief.assumptions` on the manifest, else lines in the agent's messages that start "Assumed…", "I picked…" |
 | Tool calls, time | The transcript and the wall clock, all rounds together |
 | Skill | The manifest's `sourceSkillId`; ⚠ when not one of `expect.skills` |

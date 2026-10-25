@@ -30,8 +30,9 @@ test('parseTranscript collects text, tool uses and the result, skipping other ev
   assert.equal(t.result.session_id, 's1');
 });
 
-test('countQuestions counts distinct lines ending in a question mark', () => {
+test('countQuestions counts distinct lines with a question mark', () => {
   assert.equal(countQuestions('Before I start, is this for print?\n- Which size?\n1. Which size?\nThanks.'), 2);
+  assert.equal(countQuestions('1. **Print or screens?** If print, which size.'), 1);
   assert.equal(countQuestions('Done. It is at .open-design/x.html'), 0);
 });
 

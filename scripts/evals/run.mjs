@@ -162,10 +162,9 @@ async function runBrief(brief, repeat, ctx) {
     else if (t.result.is_error) error = String(t.result.result || t.result.subtype || 'agent error').trim();
     // Done once something was built, registered or not (an unregistered page is scored as "no design").
     if (error || (await registeredDesigns(tmp)).length > 0 || (await htmlFiles(tmp)).length > 0) break;
-    // Nothing built: if the agent stopped to ask, count its questions and answer them; otherwise it gave up.
-    const asked = countQuestions(t.result.result ?? t.texts.at(-1) ?? '');
-    if (asked === 0) break;
-    questions += asked;
+    // Nothing built, so the agent stopped to ask for something. Count its questions (at least one:
+    // "I need the 12 dishes" is a question without a "?") and answer them.
+    questions += Math.max(1, countQuestions(t.result.result ?? t.texts.at(-1) ?? ''));
     message = answerMessage(brief);
   }
   const wallSeconds = (Date.now() - started) / 1000;
