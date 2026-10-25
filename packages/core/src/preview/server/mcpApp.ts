@@ -20,7 +20,9 @@ import { MCP_APP_CSS } from '../mcpApp/appCss';
 import {
   PREVIEW_APP_BASE_DOMAINS,
   PREVIEW_APP_MAX_HTML_BYTES,
+  PREVIEW_APP_MAX_TILE_IMAGE_BYTES,
   type PreviewAppArtifactState,
+  type PreviewAppAskImage,
   type PreviewAppCheckImage,
   type PreviewAppExplorationState,
   type ShowTarget,
@@ -175,6 +177,25 @@ export async function buildExplorationPreviewState(input: { workspaceRoot: strin
     state: { view: 'exploration', explorationId: plan.explorationId, title: plan.title, chosenDirectionId: plan.chosen?.directionId, ...(isStyleTileSkill(plan.skillId) ? { styleTiles: true } : {}), directions },
     externalDependencies: [...external],
   };
+}
+
+/**
+ * An ask-view option picture for `artifact:<entryPath>` or `checkRun:<entryPath>[#<runId>]`:
+ * the run's first screenshot (the latest run when no id is given), capped like
+ * a campaign tile; an artifact with no screenshot shows its page instead.
+ */
+export async function buildArtifactAskImage(input: { workspaceRoot: string; outputDir: string; imageRef: string; entryPath: string; runId?: string; pageFallback: boolean }): Promise<PreviewAppAskImage> {
+  const out: PreviewAppAskImage = { imageRef: input.imageRef };
+  const registered = await checkRegistered(input.workspaceRoot, input.entryPath);
+  if (!registered.ok) return { ...out, fallback: registered.message };
+  const runs = await listCheckRuns(input.workspaceRoot, input.outputDir, input.entryPath);
+  const run = input.runId ? runs.find((r) => r.id === input.runId) : runs[0];
+  const first = run?.images[0];
+  const jpg = run && first ? await readCheckRunImage(input.workspaceRoot, input.outputDir, input.entryPath, run.id, first.file) : undefined;
+  if (jpg && jpg.length <= PREVIEW_APP_MAX_TILE_IMAGE_BYTES) return { ...out, image: `data:image/jpeg;base64,${jpg.toString('base64')}` };
+  if (!input.pageFallback) return { ...out, fallback: run ? 'The screenshot is too large to show here.' : `No check run${input.runId ? ` "${input.runId}"` : ''} for ${input.entryPath}.` };
+  const packed = await packForPreview(input.workspaceRoot, input.entryPath, registered.entryContent, manifestString(registered.manifest, 'kind'));
+  return packed.ok ? { ...out, html: packed.html } : { ...out, fallback: packed.reason };
 }
 
 export type ShowResult = { ok: true; target: ShowTarget; text: string } | { ok: false; text: string };

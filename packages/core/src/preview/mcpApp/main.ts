@@ -1,10 +1,11 @@
 /// <reference lib="dom" />
 // The preview MCP App page (openspec add-mcp-app-preview, add-mcp-app-pickers):
 // shown inline in hosts that render MCP Apps (Claude Desktop Chat) for
-// show_open_design_artifact and the picker tools. The structured result's
-// `view` picks the renderer: an artifact, an exploration, the example
-// gallery, the design-system tiles or a campaign sheet. Every pick is a chat
-// message naming the tool the agent should call.
+// show_open_design_artifact, the picker tools and show_open_design_questions
+// (add-mcp-app-ask-view). The structured result's `view` picks the renderer:
+// an artifact, an exploration, the example gallery, the design-system tiles,
+// a campaign sheet or questions. Every pick is a chat message naming the tool
+// the agent should call, or the answers in a fixed form.
 // The design renders in a nested, sandboxed frame from its standalone export
 // with the preview bridge injected; Comment mode reuses the browser preview's
 // comment controller over the MCP Apps transport. Exports and "Ask Claude to
@@ -17,13 +18,22 @@ import { escapeHtml, highlightBox, hostRectOf, selectionGuides } from '../overla
 import { BRIDGE_TAG, isBridgeMessage, type BridgeRect, type ElementSnapshot, type FromBridge, type ToBridge, type Untagged } from '../protocol';
 import {
   applyCommentsMessage,
+  ASK_MAX_TEXT_CHARS,
+  ASK_YOU_PICK,
+  askAnswersMessage,
   exportRequestMessage,
+  FEEDBACK_CHIPS,
+  feedbackChipMessage,
+  parseAskSchema,
   fixCampaignPieceMessage,
   pickDirectionMessage,
   remixExampleMessage,
   saveTileMessage,
   SHOW_ARTIFACT_TOOL,
   useDesignSystemMessage,
+  type AskAnswers,
+  type AskSchema,
+  type FeedbackChipId,
   type PreviewAppArtifactState,
   type PreviewAppCampaignState,
   type PreviewAppDesignSystemsState,
@@ -141,10 +151,14 @@ function renderArtifact(state: PreviewAppArtifactState, reload: () => void): voi
     }
     <div id="od-pins" class="od-pins"></div>
   </div>
+  <div class="od-feedback" role="group" aria-label="Quick replies">${FEEDBACK_CHIPS.map((c) => `<button class="od-chip" data-feedback="${c.id}">${escapeHtml(c.label)}</button>`).join('')}</div>
   <div id="od-panel" class="od-panel" hidden></div>`;
 
   wireFullscreen();
   document.getElementById('od-refresh')!.addEventListener('click', reload);
+  root.querySelectorAll<HTMLButtonElement>('[data-feedback]').forEach((btn) =>
+    btn.addEventListener('click', () => void send(feedbackChipMessage(entryPath, btn.dataset.feedback as FeedbackChipId), 'Sent to Claude.')),
+  );
   root.querySelectorAll<HTMLButtonElement>('[data-export]').forEach((btn) =>
     btn.addEventListener('click', () => void send(exportRequestMessage(entryPath, btn.dataset.export!), 'Asked Claude to export it.')),
   );
@@ -598,6 +612,140 @@ function renderCampaign(state: PreviewAppCampaignState, reload: () => void): voi
   );
 }
 
+// ── Questions ─────────────────────────────────────────────────────────────
+type AskTarget = Extract<ShowTarget, { view: 'ask' }>;
+
+function renderAsk(state: AskTarget): void {
+  const schema: AskSchema = { title: state.title, questions: state.questions };
+  const answers: AskAnswers = {};
+  for (const q of schema.questions) if (q.default !== undefined) answers[q.id] = Array.isArray(q.default) ? [...q.default] : q.default;
+
+  const option = (qid: string, id: string, label: string, imageRef?: string): string =>
+    `<button type="button" class="od-ask-option${imageRef ? ' has-image' : ''}${id === ASK_YOU_PICK ? ' you-pick' : ''}" data-q="${escapeHtml(qid)}" data-option="${escapeHtml(id)}" aria-pressed="false">${
+      imageRef ? `<span class="od-ask-image" data-image-ref="${escapeHtml(imageRef)}" data-name="${escapeHtml(label)}"></span>` : ''
+    }<span class="od-ask-label">${escapeHtml(label)}</span></button>`;
+  const questions = schema.questions
+    .map((q) => {
+      const input =
+        q.kind === 'text'
+          ? `<input class="od-ask-text" data-text="${escapeHtml(q.id)}" maxlength="${ASK_MAX_TEXT_CHARS}" aria-label="${escapeHtml(q.text)}" value="${escapeHtml(typeof q.default === 'string' ? q.default : '')}">`
+          : `<div class="od-ask-options" role="group">${(q.options ?? []).map((o) => option(q.id, o.id, o.label, o.imageRef)).join('')}${option(q.id, ASK_YOU_PICK, 'You pick')}</div>`;
+      return `<fieldset class="od-ask-question"><legend>${escapeHtml(q.text)}${q.kind === 'multi' ? ' <span class="od-card-meta">Pick any</span>' : ''}</legend>${input}</fieldset>`;
+    })
+    .join('');
+  root.innerHTML = `
+  <div class="od-toolbar" role="toolbar" aria-label="Questions">
+    <span class="od-title">${escapeHtml(state.title)}</span>
+    <span class="od-toolbar-spacer"></span>
+    ${fullscreenButton()}
+  </div>
+  <div class="od-stage od-scroll">
+    <div class="od-ask">
+      ${questions}
+      <div class="od-ask-footer">
+        <button type="button" id="od-ask-send" class="od-btn od-btn-primary">${icon('send')}<span class="od-label">Send</span></button>
+        <span id="od-ask-status" class="od-toolbar-note" role="status"></span>
+      </div>
+      <div id="od-ask-copy" class="od-ask-copy" hidden>
+        <p>The chat didn't take the message. Copy your answers and paste them in the chat:</p>
+        <textarea readonly rows="3"></textarea>
+        <button type="button" class="od-btn" data-copy>${icon('clipboard')}<span class="od-label">Copy answers</span></button>
+      </div>
+    </div>
+  </div>`;
+  wireFullscreen();
+
+  // Not a <form>: hosts sandbox the page without allow-forms, which blocks submit.
+  const form = root.querySelector<HTMLElement>('.od-ask')!;
+  const sendBtn = document.getElementById('od-ask-send') as HTMLButtonElement;
+  const status = document.getElementById('od-ask-status')!;
+  const copyBox = document.getElementById('od-ask-copy')!;
+  const copyText = copyBox.querySelector('textarea')!;
+
+  const picked = (qid: string): string[] => {
+    const a = answers[qid];
+    return a === undefined ? [] : Array.isArray(a) ? a : [a];
+  };
+  function sync(): void {
+    root.querySelectorAll<HTMLButtonElement>('[data-option]').forEach((btn) => {
+      const on = picked(btn.dataset.q!).includes(btn.dataset.option!);
+      btn.classList.toggle('active', on);
+      btn.setAttribute('aria-pressed', String(on));
+    });
+    sendBtn.disabled = !schema.questions.some((q) => picked(q.id).some((v) => v.trim()));
+  }
+  root.querySelectorAll<HTMLButtonElement>('[data-option]').forEach((btn) =>
+    btn.addEventListener('click', () => {
+      const q = schema.questions.find((x) => x.id === btn.dataset.q);
+      const id = btn.dataset.option!;
+      if (!q) return;
+      const current = picked(q.id);
+      if (q.kind === 'multi') {
+        // "You pick" stands alone: it replaces the other picks, and a pick replaces it.
+        const next = current.includes(id) ? current.filter((v) => v !== id) : id === ASK_YOU_PICK ? [id] : [...current.filter((v) => v !== ASK_YOU_PICK), id];
+        if (next.length) answers[q.id] = next;
+        else delete answers[q.id];
+      } else if (current.includes(id)) delete answers[q.id];
+      else answers[q.id] = id;
+      sync();
+    }),
+  );
+  root.querySelectorAll<HTMLInputElement>('[data-text]').forEach((input) => {
+    const update = (): void => {
+      if (input.value.trim()) answers[input.dataset.text!] = input.value;
+      else delete answers[input.dataset.text!];
+      sync();
+    };
+    input.addEventListener('input', update);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') sendBtn.click();
+    });
+    update();
+  });
+  copyBox.querySelector('[data-copy]')!.addEventListener('click', async () => {
+    copyText.select();
+    try {
+      await navigator.clipboard.writeText(copyText.value);
+      toast('Copied. Paste it in the chat.');
+    } catch {
+      // The host may block the clipboard: the text is selected for a manual copy.
+      toast('Press Ctrl+C or ⌘C to copy the selected answers.');
+    }
+  });
+  sendBtn.addEventListener('click', async () => {
+    if (sendBtn.disabled) return;
+    const message = askAnswersMessage(schema, answers);
+    sendBtn.disabled = true;
+    if (await send(message, 'Sent your answers to Claude.')) {
+      form.classList.add('sent');
+      form.querySelectorAll<HTMLButtonElement | HTMLInputElement>('button, input').forEach((el) => (el.disabled = true));
+      status.textContent = 'Sent.';
+      copyBox.hidden = true;
+    } else {
+      sendBtn.disabled = false;
+      copyText.value = message;
+      copyBox.hidden = false;
+    }
+  });
+  sync();
+
+  // Option pictures come through the app-only state tool, a few at a time.
+  const enqueue = loadQueue(3);
+  root.querySelectorAll<HTMLElement>('[data-image-ref]').forEach((holder) =>
+    enqueue(async () => {
+      try {
+        const picture = await transport.loadAskImage(holder.dataset.imageRef!);
+        if (picture.swatches?.length) holder.innerHTML = `<span class="od-swatches">${picture.swatches.map((c) => `<span style="background:${escapeHtml(c)}"></span>`).join('')}</span>`;
+        else if (picture.image) holder.innerHTML = `<img src="${picture.image}" alt="">`;
+        else if (picture.html) scaledFrame(holder, picture.html, holder.dataset.name ?? '');
+        else holder.classList.add('empty');
+      } catch {
+        holder.classList.add('empty');
+      }
+    }),
+  );
+}
+
 // ── Start ─────────────────────────────────────────────────────────────────
 let target: ShowTarget | undefined;
 /** Views this one was opened from, newest last. */
@@ -618,6 +766,9 @@ function goBack(): void {
 
 async function render(): Promise<void> {
   if (!target) return;
+  // The questions arrive whole in the show tool's result: nothing to load.
+  document.body.classList.toggle('od-ask-view', target.view === 'ask');
+  if (target.view === 'ask') return renderAsk(target);
   const reload = (): void => void render();
   try {
     const state = await transport.loadState(target);
@@ -654,6 +805,11 @@ function targetFrom(value: unknown): ShowTarget | undefined {
       const t: ShowTarget = { view: 'examples', title: title ?? 'Examples' };
       for (const key of ['query', 'mode', 'surface'] as const) if (str(v[key])) t[key] = v[key] as string;
       return t;
+    }
+    case 'ask': {
+      // Checked again here: the page draws only what the schema allows.
+      const parsed = parseAskSchema({ questions: v.questions, ...(title ? { title } : {}) });
+      return parsed.ok ? { view: 'ask', title: parsed.schema.title ?? 'A few quick questions', questions: parsed.schema.questions } : undefined;
     }
     case 'design-systems': {
       const t: ShowTarget = { view: 'design-systems', title: title ?? 'Design systems' };
