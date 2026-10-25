@@ -18,8 +18,40 @@
         "web-prototype-taste-brutalist"
       ],
       "questions": [
-        "What is the page for, and who is it for?",
-        "Any brand or visual style to follow?"
+        {
+          "id": "purpose",
+          "text": "What is the page for?",
+          "options": [
+            "Sign-ups or a waitlist",
+            "Selling a product",
+            "Explaining a product or service",
+            "A portfolio or event"
+          ],
+          "default": "Explaining a product or service",
+          "changes": "the sections and the main button"
+        },
+        {
+          "id": "theme",
+          "text": "Light or dark?",
+          "options": [
+            "Light",
+            "Dark",
+            "You pick"
+          ],
+          "default": "You pick",
+          "changes": "palette and contrast"
+        },
+        {
+          "id": "density",
+          "text": "How much should it say?",
+          "options": [
+            "One short screen",
+            "A full landing page",
+            "A multi-section site page"
+          ],
+          "default": "A full landing page",
+          "changes": "length and layout density"
+        }
       ]
     },
     {
@@ -34,8 +66,39 @@
         "gamified-app"
       ],
       "questions": [
-        "What does the app do, and which screens matter most?",
-        "Should it look like a particular app (Spotify, Monzo, Strava…)?"
+        {
+          "id": "screens",
+          "text": "Which screens matter most?",
+          "options": [
+            "Home and one detail screen",
+            "Onboarding",
+            "A full core flow (3 to 5 screens)"
+          ],
+          "default": "Home and one detail screen",
+          "changes": "how many screens and which ones"
+        },
+        {
+          "id": "platform",
+          "text": "Which phone?",
+          "options": [
+            "iPhone",
+            "Android",
+            "Either"
+          ],
+          "default": "iPhone",
+          "changes": "navigation patterns and system chrome"
+        },
+        {
+          "id": "theme",
+          "text": "Light or dark?",
+          "options": [
+            "Light",
+            "Dark",
+            "You pick"
+          ],
+          "default": "You pick",
+          "changes": "palette and contrast"
+        }
       ]
     },
     {
@@ -54,8 +117,40 @@
         "html-ppt-tech-sharing"
       ],
       "questions": [
-        "What's the talk about, and for which audience?",
-        "Is there a document or data to build it from?"
+        {
+          "id": "audience",
+          "text": "Who is it for?",
+          "options": [
+            "Investors or executives",
+            "A team or internal review",
+            "A conference audience",
+            "Customers"
+          ],
+          "default": "A team or internal review",
+          "changes": "tone, density and how much each slide says"
+        },
+        {
+          "id": "length",
+          "text": "How long?",
+          "options": [
+            "5 slides",
+            "10 slides",
+            "15 to 20 slides"
+          ],
+          "default": "10 slides",
+          "changes": "number of slides and depth"
+        },
+        {
+          "id": "source",
+          "text": "Is there a document or data to build it from?",
+          "options": [
+            "Yes, in this folder",
+            "I'll paste it",
+            "No, write it from the brief"
+          ],
+          "default": "No, write it from the brief",
+          "changes": "whether numbers come from a source or stay placeholders"
+        }
       ]
     },
     {
@@ -85,7 +180,29 @@
         "article-sketchnote-editorial"
       ],
       "questions": [
-        "What kind of document, and is there source material to start from?"
+        {
+          "id": "kind",
+          "text": "What kind of document?",
+          "options": [
+            "Report or memo",
+            "Article or essay",
+            "One-pager or brochure",
+            "Handbook or guide"
+          ],
+          "default": "Report or memo",
+          "changes": "layout, type scale and page structure"
+        },
+        {
+          "id": "source",
+          "text": "Is there material to start from?",
+          "options": [
+            "Yes, in this folder",
+            "I'll paste it",
+            "No, write it from the brief"
+          ],
+          "default": "No, write it from the brief",
+          "changes": "whether the text comes from a source or is drafted"
+        }
       ]
     },
     {
@@ -101,7 +218,28 @@
         "wireframe-mobile-flow"
       ],
       "questions": [
-        "Which screens or flow, and hand-drawn or grey-box?"
+        {
+          "id": "style",
+          "text": "Hand-drawn or grey-box?",
+          "options": [
+            "Hand-drawn sketch",
+            "Grey-box",
+            "You pick"
+          ],
+          "default": "Grey-box",
+          "changes": "the whole rendering style"
+        },
+        {
+          "id": "scope",
+          "text": "How much of the flow?",
+          "options": [
+            "One screen",
+            "A short flow (3 to 5 screens)",
+            "The whole flow"
+          ],
+          "default": "A short flow (3 to 5 screens)",
+          "changes": "how many screens"
+        }
       ]
     },
     {
@@ -121,7 +259,28 @@
         "vfx-text-cursor"
       ],
       "questions": [
-        "What should it show, and how long should it run?"
+        {
+          "id": "length",
+          "text": "How long should it run?",
+          "options": [
+            "Under 5 seconds",
+            "5 to 15 seconds",
+            "15 to 60 seconds"
+          ],
+          "default": "5 to 15 seconds",
+          "changes": "pacing and how many scenes"
+        },
+        {
+          "id": "shape",
+          "text": "What shape?",
+          "options": [
+            "Landscape 16:9",
+            "Square",
+            "Vertical 9:16"
+          ],
+          "default": "Landscape 16:9",
+          "changes": "canvas size and composition"
+        }
       ]
     },
     {
@@ -134,7 +293,38 @@
         "resume-modern"
       ],
       "questions": [
-        "Paste or point to your experience, and the role you're applying for."
+        {
+          "id": "experience",
+          "text": "Where is your experience?",
+          "options": [
+            "I'll paste it",
+            "A file in this folder",
+            "Make a sample I can fill in"
+          ],
+          "default": "Make a sample I can fill in",
+          "changes": "whether the content is real or placeholder"
+        },
+        {
+          "id": "style",
+          "text": "Which style?",
+          "options": [
+            "Classic and plain",
+            "Modern with some colour",
+            "Design-forward portfolio"
+          ],
+          "default": "Classic and plain",
+          "changes": "layout, type and colour"
+        },
+        {
+          "id": "length",
+          "text": "How long?",
+          "options": [
+            "One page",
+            "Two pages"
+          ],
+          "default": "One page",
+          "changes": "how much detail fits"
+        }
       ]
     },
     {
@@ -149,7 +339,28 @@
         "competitive-teardown"
       ],
       "questions": [
-        "Where are the notes, transcripts or data, and what decision should this inform?"
+        {
+          "id": "source",
+          "text": "Where are the notes, transcripts or data?",
+          "options": [
+            "In this folder",
+            "I'll paste them",
+            "Make a sample"
+          ],
+          "default": "In this folder",
+          "changes": "whether findings come from real material"
+        },
+        {
+          "id": "output",
+          "text": "What should it be?",
+          "options": [
+            "A one-page summary",
+            "A full report",
+            "A slide readout"
+          ],
+          "default": "A one-page summary",
+          "changes": "length and format"
+        }
       ]
     },
     {
@@ -165,7 +376,28 @@
         "info-funnel"
       ],
       "questions": [
-        "Which data file, and what question should the report answer?"
+        {
+          "id": "source",
+          "text": "Which data?",
+          "options": [
+            "A file in this folder",
+            "I'll paste it",
+            "Make sample data"
+          ],
+          "default": "A file in this folder",
+          "changes": "whether the numbers are real"
+        },
+        {
+          "id": "format",
+          "text": "What shape?",
+          "options": [
+            "A dashboard",
+            "A written report with charts",
+            "A one-page summary"
+          ],
+          "default": "A written report with charts",
+          "changes": "layout and chart count"
+        }
       ]
     },
     {
@@ -181,7 +413,41 @@
         "image-poster"
       ],
       "questions": [
-        "What is it for, and is it for print (which size) or screens?"
+        {
+          "id": "where",
+          "text": "Where will it be seen?",
+          "options": [
+            "Printed",
+            "On screens",
+            "Both"
+          ],
+          "default": "Both",
+          "changes": "size, bleed and file type"
+        },
+        {
+          "id": "size",
+          "text": "Which size?",
+          "options": [
+            "A3",
+            "A4",
+            "18×24 in",
+            "You pick"
+          ],
+          "default": "A3",
+          "changes": "canvas size and type scale"
+        },
+        {
+          "id": "mood",
+          "text": "How should it feel?",
+          "options": [
+            "Bold and loud",
+            "Calm and elegant",
+            "Playful",
+            "You pick"
+          ],
+          "default": "You pick",
+          "changes": "type, colour and composition"
+        }
       ]
     },
     {
@@ -199,7 +465,29 @@
         "social-youtube-thumbnail"
       ],
       "questions": [
-        "What's the post about, and which platform is it for?"
+        {
+          "id": "platform",
+          "text": "Which platform?",
+          "options": [
+            "Instagram",
+            "LinkedIn",
+            "X",
+            "Several"
+          ],
+          "default": "Instagram",
+          "changes": "size and aspect ratio"
+        },
+        {
+          "id": "count",
+          "text": "One image or a carousel?",
+          "options": [
+            "One image",
+            "A carousel",
+            "You pick"
+          ],
+          "default": "One image",
+          "changes": "how many frames"
+        }
       ]
     },
     {
@@ -214,8 +502,28 @@
         "social-carousel"
       ],
       "questions": [
-        "What is the campaign for, and which channels does it need?",
-        "Which languages or audiences?"
+        {
+          "id": "channels",
+          "text": "Which channels?",
+          "options": [
+            "Social only",
+            "Social and display ads",
+            "Social, ads, landing page and email"
+          ],
+          "default": "Social only",
+          "changes": "how many sizes and pieces"
+        },
+        {
+          "id": "languages",
+          "text": "Which languages?",
+          "options": [
+            "Just one",
+            "Two or three",
+            "More than three"
+          ],
+          "default": "Just one",
+          "changes": "how many language versions"
+        }
       ]
     },
     {
@@ -228,7 +536,29 @@
         "email-campaign"
       ],
       "questions": [
-        "What's the email announcing, and to whom?"
+        {
+          "id": "kind",
+          "text": "What kind of email?",
+          "options": [
+            "Announcement or launch",
+            "Newsletter",
+            "Promotion or sale",
+            "Welcome or onboarding"
+          ],
+          "default": "Announcement or launch",
+          "changes": "structure and number of sections"
+        },
+        {
+          "id": "theme",
+          "text": "Light or dark?",
+          "options": [
+            "Light",
+            "Dark",
+            "You pick"
+          ],
+          "default": "Light",
+          "changes": "palette and contrast"
+        }
       ]
     },
     {
@@ -241,7 +571,28 @@
         "diagram"
       ],
       "questions": [
-        "What should the diagram explain, and which part of the code is it about?"
+        {
+          "id": "kind",
+          "text": "What kind of diagram?",
+          "options": [
+            "Architecture or system",
+            "Flow or sequence",
+            "Data model",
+            "You pick"
+          ],
+          "default": "You pick",
+          "changes": "layout and shapes"
+        },
+        {
+          "id": "source",
+          "text": "Should it come from the code here?",
+          "options": [
+            "Yes, read the code",
+            "No, from my description"
+          ],
+          "default": "Yes, read the code",
+          "changes": "whether boxes and arrows are taken from real code"
+        }
       ]
     },
     {
@@ -254,7 +605,29 @@
         "style-tile"
       ],
       "questions": [
-        "What's the brand, and how should it feel?"
+        {
+          "id": "feel",
+          "text": "How should the brand feel?",
+          "options": [
+            "Calm and trustworthy",
+            "Bold and energetic",
+            "Warm and friendly",
+            "Minimal and technical"
+          ],
+          "default": "Calm and trustworthy",
+          "changes": "palette and type pairing"
+        },
+        {
+          "id": "theme",
+          "text": "Light or dark?",
+          "options": [
+            "Light",
+            "Dark",
+            "Both"
+          ],
+          "default": "Light",
+          "changes": "background and contrast"
+        }
       ]
     },
     {
@@ -267,8 +640,28 @@
         "3d-object"
       ],
       "questions": [
-        "What object, and do you have a .glb model or an SVG logo of it?",
-        "Where will it go: a hero still, a transparent cut-out, or a turntable video?"
+        {
+          "id": "model",
+          "text": "Do you have a model of it?",
+          "options": [
+            "A .glb model",
+            "An SVG logo",
+            "No, build it from shapes"
+          ],
+          "default": "No, build it from shapes",
+          "changes": "how the object is made"
+        },
+        {
+          "id": "output",
+          "text": "Where will it go?",
+          "options": [
+            "A hero still",
+            "A transparent cut-out",
+            "A turntable video"
+          ],
+          "default": "A hero still",
+          "changes": "framing, background and export"
+        }
       ]
     },
     {
@@ -281,8 +674,27 @@
         "3d-scene"
       ],
       "questions": [
-        "What's the setting, and what must be in it?",
-        "A still, a flythrough video, or both? Does it need to match a real place or photo?"
+        {
+          "id": "output",
+          "text": "A still, a flythrough video, or both?",
+          "options": [
+            "A still",
+            "A flythrough video",
+            "Both"
+          ],
+          "default": "A still",
+          "changes": "camera work and export"
+        },
+        {
+          "id": "match",
+          "text": "Does it need to match a real place or photo?",
+          "options": [
+            "Yes, I'll share a reference",
+            "No, imagine it"
+          ],
+          "default": "No, imagine it",
+          "changes": "how closely the scene follows a reference"
+        }
       ]
     },
     {
@@ -295,8 +707,29 @@
         "shop-pack"
       ],
       "questions": [
-        "What do you sell, and where (Shopify, Big Cartel, Etsy, other)?",
-        "Do you have a product list and photos?"
+        {
+          "id": "platform",
+          "text": "Where do you sell?",
+          "options": [
+            "Shopify",
+            "Etsy",
+            "Big Cartel",
+            "Other or not yet"
+          ],
+          "default": "Shopify",
+          "changes": "image sizes and the hand-off steps"
+        },
+        {
+          "id": "products",
+          "text": "Do you have a product list and photos?",
+          "options": [
+            "Yes, in this folder",
+            "Some of it",
+            "No, make samples"
+          ],
+          "default": "No, make samples",
+          "changes": "whether products are real or placeholders"
+        }
       ]
     },
     {
@@ -309,8 +742,28 @@
         "card-set"
       ],
       "questions": [
-        "Which game or card size, and which print house?",
-        "Do you have the card list and art?"
+        {
+          "id": "size",
+          "text": "Which card size?",
+          "options": [
+            "Poker / trading card",
+            "Tarot",
+            "Mini"
+          ],
+          "default": "Poker / trading card",
+          "changes": "card size, corners and bleed"
+        },
+        {
+          "id": "content",
+          "text": "Do you have the card list and art?",
+          "options": [
+            "Yes, in this folder",
+            "The list but no art",
+            "No, make samples"
+          ],
+          "default": "No, make samples",
+          "changes": "whether cards are real or placeholders"
+        }
       ]
     }
   ],

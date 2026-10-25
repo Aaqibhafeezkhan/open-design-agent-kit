@@ -220,6 +220,19 @@ const TOOL_DEFS: ToolDef[] = [
             description:
               "With format (or alone): build a fluid design that reflows to any canvas shape, sized in container units with layout rules for wide and tall shapes; the shape is then picked at export (preset/presets) or in the preview, without regenerating. Default: true for print formats, false for screen formats (social recipes need exact pixels). fluid: true without format uses A3 as the default shape. Use it for posters.",
           },
+          answers: {
+            type: 'object',
+            additionalProperties: { type: 'string' },
+            description:
+              'Optional: the user\'s answers to the surface\'s (and the design-system recommender\'s) questions, by question id, e.g. { "where": "Printed" }. Written into the instructions as decisions to build to.',
+          },
+          assumptions: {
+            type: 'array',
+            items: { type: 'string', maxLength: 160 },
+            maxItems: 6,
+            description:
+              'Optional: what you decided without asking, up to six short lines, e.g. ["dark theme", "one sign-up button"]. Written into the instructions; list them to the user in one sentence when the design is ready.',
+          },
         },
         required: ['skillId', 'brief'],
       },
@@ -238,6 +251,8 @@ const TOOL_DEFS: ToolDef[] = [
           sources?: string[];
           format?: string;
           fluid?: boolean;
+          answers?: Record<string, string>;
+          assumptions?: string[];
         },
       ),
   },
@@ -373,6 +388,15 @@ const TOOL_DEFS: ToolDef[] = [
             items: { type: 'string' },
             description: "Ids of the user's comments (from get_open_design_artifact's openComments) that this edit addressed. They're marked resolved and their pins leave the preview.",
           },
+          brief: {
+            type: 'object',
+            properties: {
+              text: { type: 'string', maxLength: 500, description: 'The request in one line.' },
+              answers: { type: 'object', additionalProperties: { type: 'string' }, description: 'The same answers passed to prepare_open_design_brief.' },
+              assumptions: { type: 'array', items: { type: 'string', maxLength: 160 }, maxItems: 6, description: 'The same assumptions passed to prepare_open_design_brief.' },
+            },
+            description: "What was asked and assumed for this design, stored as the manifest's metadata.brief (the latest replaces the earlier one) so later edits and checks can see it. Leave it out on an edit that changed none of it.",
+          },
         },
         required: ['entryPath', 'kind', 'title'],
       },
@@ -396,6 +420,7 @@ const TOOL_DEFS: ToolDef[] = [
           sources?: string[];
           format?: string;
           resolvedCommentIds?: string[];
+          brief?: unknown;
         },
       ),
   },
