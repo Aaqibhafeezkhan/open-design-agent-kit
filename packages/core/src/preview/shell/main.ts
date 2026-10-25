@@ -6,6 +6,7 @@
 // EventSource. Bundled by the MCP server and the CLI as shell.js.
 import type { ArtifactComment } from '../../workspace/artifactCommentTypes';
 import type { CheckRun } from '../../export/checkHistory';
+import { critiqueSummary, type CritiqueRecord } from '../../workspace/critiqueTypes';
 import { createCommentController } from '../commentController';
 import { icon } from '../dom/icons';
 import { escapeHtml, highlightBox, hostRectOf, selectionGuides } from '../overlays';
@@ -384,12 +385,14 @@ async function startPreview(entryPath: string): Promise<void> {
 
   // ── Checks panel ──
   let runs: CheckRun[] = [];
+  let critique: CritiqueRecord | undefined;
   let selectedRun: string | undefined;
   async function loadRuns(): Promise<void> {
     try {
-      runs = (await api<{ runs: CheckRun[] }>(`api/checks?${query}`)).runs;
+      ({ runs, critique } = await api<{ runs: CheckRun[]; critique?: CritiqueRecord }>(`api/checks?${query}`));
     } catch {
       runs = [];
+      critique = undefined;
     }
     if (!checksPanel.hidden) renderChecks();
   }
@@ -419,9 +422,19 @@ async function startPreview(entryPath: string): Promise<void> {
                 .join('')}</ul>`
             : ''
         }`;
+    // The design critic's last opinion (openspec add-design-critic), shown whichever run is selected.
+    const critiqueHtml = critique
+      ? `<div class="od-panel-section-title">${escapeHtml(critiqueSummary(critique))}</div>${
+          critique.findings.length
+            ? `<ul class="od-shape-findings">${critique.findings
+                .map((f) => `<li class="od-shape-finding">${f.where ? `<b>${escapeHtml(f.where)}</b> ` : ''}${f.problem ? `${escapeHtml(f.problem)}. ` : ''}${escapeHtml(f.fix)}</li>`)
+                .join('')}</ul>`
+            : ''
+        }`
+      : '';
     checksPanel.innerHTML = `
       <div class="od-panel-header"><span class="od-panel-header-title">Checks</span><button id="od-checks-close" class="od-panel-close" aria-label="Close">×</button></div>
-      <div class="od-panel-body">${body}</div>`;
+      <div class="od-panel-body">${critiqueHtml}${body}</div>`;
     document.getElementById('od-checks-close')!.addEventListener('click', () => toggleChecks(false));
     checksPanel.querySelectorAll<HTMLButtonElement>('[data-run]').forEach((b) =>
       b.addEventListener('click', () => {
@@ -447,6 +460,8 @@ async function startPreview(entryPath: string): Promise<void> {
   events.addEventListener('open', () => live.classList.remove('off'));
   events.addEventListener('error', () => live.classList.add('off'));
   events.addEventListener('source-updated', () => loadDesign(true));
+  // Re-registering rewrites the manifest, which may carry a new critique.
+  events.addEventListener('manifest-updated', () => void loadRuns());
   events.addEventListener('comments-updated', (e) => {
     const data = JSON.parse((e as MessageEvent).data) as { comments?: ArtifactComment[] };
     comments.setComments(data.comments ?? []);

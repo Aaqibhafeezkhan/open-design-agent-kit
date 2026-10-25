@@ -42,7 +42,7 @@ Comments are saved next to the artifact in `<entry>.comments.json`, the same fil
 
 ## Checks
 
-The agent checks its work with [`check_open_design_artifact`](../reference/tools.md#check_open_design_artifact), which renders the design and returns screenshots to the agent. Terminal agents don't show you those images, so every run is also saved, and the preview's **Checks** button shows them: the latest run next to the one before it, image by image, with each run's findings. A dot on the button means a new run arrived. The runs are kept under `.open-design/.checks/`, the last 5 per design.
+The agent checks its work with [`check_open_design_artifact`](../reference/tools.md#check_open_design_artifact), which renders the design and returns screenshots to the agent. Terminal agents don't show you those images, so every run is also saved, and the preview's **Checks** button shows them: the latest run next to the one before it, image by image, with each run's findings. A dot on the button means a new run arrived. The runs are kept under `.open-design/.checks/`, the last 5 per design. When the design has had a [second opinion](generate-a-design.md#second-opinion), the panel starts with it: "Second look", the verdict and each suggested fix.
 
 ## What it doesn't do (yet)
 

@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { composePublishCanvaTemplateInstructions, ContentIndex, findBrowser, formatIntegrations, writeArtifactComments, writeArtifactManifest, writeCommentCrop } from '@feimacode/open-design-agent-kit-core';
+import { composePublishCanvaTemplateInstructions, ContentIndex, findBrowser, formatIntegrations, saveCheckRun, writeArtifactComments, writeArtifactManifest, writeCommentCrop } from '@feimacode/open-design-agent-kit-core';
 import * as tools from '../../tools';
 import type { ToolContext } from '../../tools';
 import { createFileActiveDesignSystemStore } from '../../store';
@@ -259,6 +259,47 @@ describe('mcp-server tools', () => {
     const raw = await tools.registerArtifact(ctx, { entryPath: entry, kind: 'html', title: 'R', resolvedCommentIds: ['c-a', 'c-zz'] });
     assert.match(raw, /Marked 1 comment\(s\) resolved\. No comment with id c-zz\./);
     assert.deepStrictEqual(JSON.parse((await tools.getArtifact(ctx, { entryPath: entry })).text).openComments, []);
+  });
+
+  it('registerArtifact records a critique as metadata.critique and rejects an oversized one, leaving the manifest unchanged', async () => {
+    const ctx = await makeContext();
+    const entry = '.open-design/k/index.html';
+    await fs.mkdir(path.join(ctx.workspaceRoot, '.open-design/k'), { recursive: true });
+    await fs.writeFile(path.join(ctx.workspaceRoot, entry), '<h1>K</h1>');
+    await saveCheckRun(ctx.workspaceRoot, ctx.outputDir, entry, { mode: 'page', findings: [], images: [{ label: 'desktop', data: Buffer.from('jpg'), width: 1, height: 1 }] });
+    const raw = await tools.registerArtifact(ctx, {
+      entryPath: entry,
+      kind: 'html',
+      title: 'K',
+      designSystemId: 'acme',
+      critique: { verdict: 'polish', findings: [{ area: 'copy', where: 'hero button', fix: 'Say "Start free trial"' }] },
+    });
+    assert.match(raw, /Recorded the critique \(Second look: polish, 1 fix\)/);
+    const manifestPath = path.join(ctx.workspaceRoot, `${entry}.artifact.json`);
+    const before = await fs.readFile(manifestPath, 'utf8');
+    const critique = JSON.parse(before).metadata.critique;
+    assert.strictEqual(critique.verdict, 'polish');
+    assert.ok(critique.checkRunId, 'defaults to the latest check run');
+
+    const long = 'x'.repeat(1000);
+    const rejected = await tools.registerArtifact(ctx, { entryPath: entry, kind: 'html', title: 'Changed', critique: { verdict: 'polish', findings: Array(5).fill({ area: 'copy', problem: long, fix: long }) } });
+    assert.match(rejected, /^Failed to register artifact: .*4 KB/);
+    assert.strictEqual(await fs.readFile(manifestPath, 'utf8'), before);
+
+    const input = await tools.getArtifact(ctx, { entryPath: entry, critique: true });
+    const { critiqueInput } = JSON.parse(input.text.slice(input.text.indexOf('{')));
+    assert.strictEqual(critiqueInput.designSystem.designMd.trim().startsWith('# Acme'), true);
+    assert.strictEqual(critiqueInput.lastCritique.verdict, 'polish');
+    assert.strictEqual(input.images?.length, 1);
+  });
+
+  it('getArtifact with critique asks for a check first when there is no saved run', async () => {
+    const ctx = await makeContext();
+    const entry = '.open-design/n/index.html';
+    await fs.mkdir(path.join(ctx.workspaceRoot, '.open-design/n'), { recursive: true });
+    await fs.writeFile(path.join(ctx.workspaceRoot, entry), '<h1>N</h1>');
+    await tools.registerArtifact(ctx, { entryPath: entry, kind: 'html', title: 'N' });
+    assert.match((await tools.getArtifact(ctx, { entryPath: entry, critique: true })).text, /call check_open_design_artifact first/);
   });
 
   it('openPreview refuses unregistered entries and honours OPEN_DESIGN_PREVIEW=off', async () => {

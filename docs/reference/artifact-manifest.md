@@ -49,7 +49,7 @@ Sidecars are named after the entry file (`<entry>.artifact.json`, and so on), so
 | `collectionId`, `collectionName`, `screenRole`, `screenIndex` | string / number | Collection membership. See [Collections](../guides/generate-a-design.md#collections). |
 | `sources` | `{ path, sha256 }[]` | The documents the design was [built from](../guides/deck-from-a-document.md), with their hashes at registration, so [`get_open_design_artifact`](tools.md#get_open_design_artifact) can report sources that changed since. At most 10. |
 | `explorationId`, `directionId` | string | Exploration membership: a sketch carries both; a built-out or merged version carries only `explorationId`. See [Explore design directions](../guides/explore-directions.md). |
-| `metadata` | object | Free-form, at most 16 KB. Uses so far: `metadata.exports`, `metadata.format`, `metadata.fluid`, `metadata.shares`, `metadata.sync` and `metadata.componentLibrary` (below), `metadata.remixedFrom` (the example a remix came from) and `metadata.description` (used for link previews when present). |
+| `metadata` | object | Free-form, at most 16 KB. Uses so far: `metadata.exports`, `metadata.format`, `metadata.fluid`, `metadata.shares`, `metadata.sync`, `metadata.componentLibrary` and `metadata.critique` (below), `metadata.remixedFrom` (the example a remix came from) and `metadata.description` (used for link previews when present). |
 
 ### metadata.exports
 
@@ -119,6 +119,21 @@ The component set built from this design with [`prepare_open_design_component_li
 | `themePath` | string | The theme file. |
 | `components` | `{ name, path, sourceSelectors? }`[] | Each component, its file, and the design selectors it came from (up to 10). |
 | `updatedAt` | ISO date | When it was recorded. |
+
+### metadata.critique
+
+The design critic's latest opinion on the design (a [second opinion](../guides/generate-a-design.md#second-opinion)), written when the agent passes `critique` to [`register_open_design_artifact`](tools.md#register_open_design_artifact). Only the latest is kept, at most 4 KB. The browser preview's [Checks panel](../guides/browser-preview.md#checks) shows it as "Second look".
+
+| Field | Type | Meaning |
+|---|---|---|
+| `verdict` | string | `ship` (nothing worth another round), `polish` (one round of the listed fixes) or `rework` (the direction is wrong). |
+| `findings` | `{ area, where?, problem?, fix }`[] | At most 5, most important first. `area` is one of `purpose-hierarchy`, `typography`, `colour-contrast`, `layout-rhythm`, `copy`, `states`, `fit`. |
+| `checkRunId` | string | The [saved check run](../guides/browser-preview.md#checks) the critic judged. |
+| `at` | ISO date | When it was recorded. |
+
+```json
+"metadata": { "critique": { "verdict": "polish", "findings": [{ "area": "copy", "where": "hero button", "problem": "\"Learn more\" doesn't say what happens.", "fix": "Say \"Start your free trial\"." }], "checkRunId": "2026-10-24T12-00-00", "at": "2026-10-24T12:01:10.000Z" } }
+```
 
 ## Exports by kind
 

@@ -1,7 +1,7 @@
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { getOutputDirectory, getWorkspaceRoot, registerArtifact } from '../workspace/artifactWriter';
-import { exportsForKind, getFormat, posterRegistrationMetadata, unknownFormatError, formatSourceRegistration, prepareSourceRegistration, refreshExplorationCompare, resolveArtifactComments } from '@feimacode/open-design-agent-kit-core';
+import { critiqueSummary, exportsForKind, getFormat, posterRegistrationMetadata, prepareCritiqueRecord, withCritique, unknownFormatError, formatSourceRegistration, prepareSourceRegistration, refreshExplorationCompare, resolveArtifactComments } from '@feimacode/open-design-agent-kit-core';
 import { COMPARE_PAGE_NOTE } from './explorationTools';
 
 interface RegisterArtifactInput {
@@ -20,6 +20,7 @@ interface RegisterArtifactInput {
   sources?: string[];
   format?: string;
   resolvedCommentIds?: string[];
+  critique?: unknown;
 }
 
 const KIND_TO_RENDERER: Record<string, string> = {
@@ -46,7 +47,7 @@ export class RegisterArtifactTool implements vscode.LanguageModelTool<RegisterAr
   async invoke(
     options: vscode.LanguageModelToolInvocationOptions<RegisterArtifactInput>,
   ): Promise<vscode.LanguageModelToolResult> {
-    const { entryPath, kind, title, supportingFiles, sourceSkillId, designSystemId, collectionId, collectionName, screenIndex, screenRole, explorationId, directionId, sources, format, resolvedCommentIds } =
+    const { entryPath, kind, title, supportingFiles, sourceSkillId, designSystemId, collectionId, collectionName, screenIndex, screenRole, explorationId, directionId, sources, format, resolvedCommentIds, critique } =
       options.input;
 
     if (format !== undefined && !getFormat(format)) {
@@ -62,9 +63,15 @@ export class RegisterArtifactTool implements vscode.LanguageModelTool<RegisterAr
     }
 
     try {
+      // Checked before anything is written, so a rejected critique leaves the manifest as it was.
+      const critiqueRecord = critique === undefined ? undefined : await prepareCritiqueRecord(getWorkspaceRoot(), getOutputDirectory(), entryPath, critique);
+      if (critiqueRecord && !critiqueRecord.ok) {
+        return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(`Failed to register artifact: ${critiqueRecord.error}`)]);
+      }
       const sourceRegistration = sources?.length
         ? await prepareSourceRegistration({ workspaceRoot: getWorkspaceRoot(), outputDir: getOutputDirectory(), entryPath, sourcePaths: sources })
         : undefined;
+      const metadata = await posterRegistrationMetadata(getWorkspaceRoot(), entryPath, format);
       const manifest = await registerArtifact({
         entryPath,
         artifactManifest: {
@@ -82,7 +89,7 @@ export class RegisterArtifactTool implements vscode.LanguageModelTool<RegisterAr
           explorationId,
           directionId,
           sources: sourceRegistration?.sources.length ? sourceRegistration.sources : undefined,
-          metadata: await posterRegistrationMetadata(getWorkspaceRoot(), entryPath, format),
+          metadata: critiqueRecord?.ok ? withCritique(metadata, critiqueRecord.record) : metadata,
         },
       });
       const sourceNote = sourceRegistration ? `\n\n${formatSourceRegistration(sourceRegistration)}` : '';
@@ -111,6 +118,8 @@ export class RegisterArtifactTool implements vscode.LanguageModelTool<RegisterAr
         commentsNote = `\n\nMarked ${resolved.length} comment(s) resolved.${unknown.length ? ` No comment with id ${unknown.join(', ')}.` : ''}`;
       }
 
+      const critiqueNote = critiqueRecord?.ok ? `\n\nRecorded the critique (${critiqueSummary(critiqueRecord.record)}) as metadata.critique.` : '';
+
       let explorationNote = '';
       if (explorationId) {
         const compare = await refreshExplorationCompare(getWorkspaceRoot(), getOutputDirectory(), explorationId);
@@ -121,7 +130,7 @@ export class RegisterArtifactTool implements vscode.LanguageModelTool<RegisterAr
 
       return new vscode.LanguageModelToolResult([
         new vscode.LanguageModelTextPart(
-          `Artifact registered at ${entryPath}.artifact.json\n\n${JSON.stringify(manifest, null, 2)}${openNote}${commentsNote}${explorationNote}${sourceNote}`,
+          `Artifact registered at ${entryPath}.artifact.json\n\n${JSON.stringify(manifest, null, 2)}${openNote}${commentsNote}${critiqueNote}${explorationNote}${sourceNote}`,
         ),
       ]);
     } catch (err) {

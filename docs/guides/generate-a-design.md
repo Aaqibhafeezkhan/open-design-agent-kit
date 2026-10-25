@@ -30,12 +30,29 @@ Open Design is set up for your host: [VS Code](../getting-started/vscode.md), [C
 4. **The agent writes the files** with its own file tools, under `.open-design/<name>/`.
 5. **The agent registers the artifact** with [`register_open_design_artifact`](../reference/tools.md#register_open_design_artifact), which writes the `<entry>.artifact.json` manifest.
 6. **The agent looks at it.** [`check_open_design_artifact`](../reference/tools.md#check_open_design_artifact) renders the design (desktop and mobile for a page, slide by slide for a deck) and hands the agent screenshots plus the [preflight](posters.md#preflight-checks) findings. It fixes errors such as clipped text or a page that scrolls sideways on phones, and anything that looks off, for up to two rounds, then tells you about anything left. It needs an installed Chrome, Edge or Chromium; without one the agent skips this step and says so.
+7. **A second look.** Before calling it done, the agent gets a [second opinion](#second-opinion) from a design critic and, if it suggests fixes, applies them once.
 
 To skip the choosing, run a [curated recipe](../reference/prompts-and-commands.md#curated-entries) directly (e.g. `/od-deck-guizang-ppt …`), or [remix a real example](remix-and-gallery.md).
 
 > **In VS Code:** `/open-design-generate` runs the same flow explicitly, and `/open-design-list-skills` just browses. The result opens in the [preview](preview-comments-edit.md).
 
 > **In Claude Code / Codex:** the `open-design` skill drives this flow from any design request, then opens the design in the [browser preview](browser-preview.md).
+
+## Second opinion
+
+The agent that built a design sees what it meant, not always what it made. So once the checks are clean, the `open-design-critique` skill has a critic look at the design fresh: the latest check screenshots and findings, your brief and your design system, and nothing of the conversation. It judges seven things (purpose and hierarchy, typography, colour and contrast, layout and rhythm, copy, states, and fit to the design system) and gives one verdict:
+
+- **ship:** done.
+- **polish:** up to five specific fixes. The agent applies them once, checks again, and tells you it's done.
+- **rework:** the direction is wrong (wrong audience, wrong kind of design, unreadable). The agent tells you what's wrong and asks before rebuilding.
+
+Your brief wins: if you asked for a look, the critic doesn't argue with it. Ask for "another opinion" whenever you like (or run `/open-design-critique`), or say you don't want one.
+
+- **Claude Code with the plugin:** the critic is the plugin's read-only `design-critic` agent, so it runs in a fresh context and edits nothing.
+- **Elsewhere** (Codex, VS Code, Claude Desktop): a subagent where the host has one; otherwise the agent reviews its own screenshots against the same rubric and says it's a self-review, which is weaker.
+- **Claude Desktop:** you hear it as "I had a second look: …" with the one or two things it improved.
+
+The last opinion is kept in the design's manifest ([`metadata.critique`](../reference/artifact-manifest.md#metadatacritique)) and shown as "Second look" in the [browser preview's](browser-preview.md#checks) Checks panel. 3D designs keep their own scorecard critique instead ([3D objects](3d-objects.md)).
 
 ## Grounded in your app
 
