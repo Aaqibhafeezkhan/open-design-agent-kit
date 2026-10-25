@@ -1,5 +1,5 @@
 {
-  "$comment": "Content ported from other projects into local/ (openspec add-dev-doc-templates). check-content-sync.mjs verifies each skill and example carries its provenance header and is listed in docs/contributing/upstream-ports.md.",
+  "$comment": "Content ported from other projects into local/ (openspec add-dev-doc-templates). check-content-sync.mjs verifies each skill, example and craft doc (\"kind\": \"craft\") carries its provenance header and is listed in docs/contributing/upstream-ports.md.",
   "ports": [
     {
       "id": "exec-briefing-memo",
@@ -59,6 +59,14 @@
       "examples": [
         "article-sketchnote-editorial"
       ]
+    },
+    {
+      "id": "ux-writing",
+      "kind": "craft",
+      "source": "https://github.com/plugin87/ux-ui-agent-skills",
+      "path": ".claude/skills/ux-writing/SKILL.md",
+      "commit": "55156b40e3a9aafa52448bde76cdcb5147b958db",
+      "license": "MIT"
     }
   ]
 }
