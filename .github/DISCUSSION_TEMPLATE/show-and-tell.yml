@@ -1,0 +1,28 @@
+labels: ["showcase"]
+body:
+  - type: textarea
+    id: design
+    attributes:
+      label: What you made
+      description: Drop in a screenshot or two, or a link to the published page.
+    validations:
+      required: true
+  - type: textarea
+    id: prompt
+    attributes:
+      label: The prompt you used
+      description: Others learn the most from this part.
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: agent
+    attributes:
+      label: Agent and design system
+      placeholder: "Claude Code, design system: kami"
+  - type: checkboxes
+    id: gallery
+    attributes:
+      label: Gallery
+      options:
+        - label: You may feature this design, with credit to me, in the community gallery and on the project's social accounts.

@@ -1,0 +1,26 @@
+name: Design request
+description: A kind of design the kit can't make yet, or doesn't make well.
+labels: ["design request", "needs triage"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What do you want to make?
+      description: For example "a restaurant menu that prints on A4 and posts as an Instagram story".
+    validations:
+      required: true
+  - type: textarea
+    id: who
+    attributes:
+      label: Who is it for, and what will you do with it?
+      description: Print it, post it, send it to a client, put it in your app…
+  - type: textarea
+    id: tried
+    attributes:
+      label: What did you try, and what came out?
+      description: Your prompt and a screenshot of the result, if you tried.
+  - type: textarea
+    id: examples
+    attributes:
+      label: Examples you like
+      description: Links or images of designs that look the way you want.

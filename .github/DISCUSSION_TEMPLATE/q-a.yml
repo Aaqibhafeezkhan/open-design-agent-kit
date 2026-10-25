@@ -1,0 +1,19 @@
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+    validations:
+      required: true
+  - type: dropdown
+    id: agent
+    attributes:
+      label: Where are you using it?
+      options:
+        - VS Code (GitHub Copilot Chat)
+        - Claude Code
+        - Claude Desktop
+        - Codex
+        - Cursor or another MCP agent
+        - The CLI
+        - Not installed yet
