@@ -19,23 +19,45 @@ Open Design is set up for your host: [VS Code](../getting-started/vscode.md), [C
 
    Ids look like `od:<mode>:<name>`; the mode is `prototype`, `deck`, `design-system`, `image`, `video`, `template`, `utility` or `audio`.
 
-3. **The agent gets instructions.** [`prepare_open_design_brief`](../reference/tools.md#prepare_open_design_brief) combines:
+3. **The agent asks what's missing, if anything.** See [A few questions first](#a-few-questions-first).
+4. **The agent gets instructions.** [`prepare_open_design_brief`](../reference/tools.md#prepare_open_design_brief) combines:
    - the recipe's workflow;
    - your [active design system](design-systems.md), if any;
    - the craft rules the recipe asks for (for example typography, color, accessibility, or avoiding a generic "AI" look). Prototypes, landing pages, dashboards and mobile apps also get the state and words rules: every list and form shows its loading, empty and error states, buttons say what they do ("Save changes", not "Submit"), errors say how to fix them, and a busy button keeps its focus and label;
-   - your brief.
+   - your brief, with your answers and anything the agent assumed;
+   - a short list of your recent designs, so this one doesn't look the same (see [Why designs vary](#why-designs-vary)).
 
    It writes nothing.
 
-4. **The agent writes the files** with its own file tools, under `.open-design/<name>/`.
-5. **The agent registers the artifact** with [`register_open_design_artifact`](../reference/tools.md#register_open_design_artifact), which writes the `<entry>.artifact.json` manifest.
-6. **The agent looks at it.** [`check_open_design_artifact`](../reference/tools.md#check_open_design_artifact) renders the design (desktop and mobile for a page, slide by slide for a deck) and hands the agent screenshots plus the [preflight](posters.md#preflight-checks) findings. It fixes errors such as clipped text or a page that scrolls sideways on phones, and anything that looks off, for up to two rounds, then tells you about anything left. It needs an installed Chrome, Edge or Chromium; without one the agent skips this step and says so.
+5. **The agent writes the files** with its own file tools, under `.open-design/<name>/`.
+6. **The agent registers the artifact** with [`register_open_design_artifact`](../reference/tools.md#register_open_design_artifact), which writes the `<entry>.artifact.json` manifest.
+7. **The agent looks at it.** [`check_open_design_artifact`](../reference/tools.md#check_open_design_artifact) renders the design (desktop and mobile for a page, slide by slide for a deck) and hands the agent screenshots plus the [preflight](posters.md#preflight-checks) findings. It fixes errors such as clipped text or a page that scrolls sideways on phones, and anything that looks off, for up to two rounds, then tells you about anything left. It needs an installed Chrome, Edge or Chromium; without one the agent skips this step and says so.
 
 To skip the choosing, run a [curated recipe](../reference/prompts-and-commands.md#curated-entries) directly (e.g. `/od-deck-guizang-ppt …`), or [remix a real example](remix-and-gallery.md).
 
 > **In VS Code:** `/open-design-generate` runs the same flow explicitly, and `/open-design-list-skills` just browses. The result opens in the [preview](preview-comments-edit.md).
 
 > **In Claude Code / Codex:** the `open-design` skill drives this flow from any design request, then opens the design in the [browser preview](browser-preview.md).
+
+## A few questions first
+
+Each kind of thing to make (a poster, slides, a landing page…) has two or three questions whose answers change the design, each with a few options and a default. For a poster:
+
+> Where will it be seen? Printed · On screens · Both (changes size, bleed and file type)
+
+The agent asks only what your request, the conversation and the folder don't already answer: at most three questions, once, in one message, together with any [design system](design-systems.md#not-sure-which-one) questions. Say "you pick" and it uses the defaults. A detailed request gets no questions:
+
+> A printed A3 poster for our jazz night on 4 May, dark and moody.
+
+Whatever the agent decides without asking (a dark theme, one sign-up button) it passes on as an assumption, and when the design is ready it lists them in one sentence ("I assumed a dark theme and one sign-up button; say if you want otherwise"), so a wrong guess costs one message, not a rebuild. Your answers and its assumptions are kept in the manifest as `metadata.brief`, so a later "make it lighter" can see what was decided.
+
+## Why designs vary
+
+Ask for five designs in a week and, left alone, they come out alike. Each time a design is registered, Open Design writes a line to `.open-design/history.json`: its title, recipe, design system, collection, date and a small **look signature** read from the HTML (accent colour, display and body fonts, light or dark, and the hero layout: centred, split, full-bleed image or none). It keeps the latest 50 and stores no HTML and no brief text.
+
+The next brief lists up to five recent designs and asks for one that is recognisably different in at least two of theme, hero layout, display font and accent, unless you asked for the same look or the design system decides it (its tokens always win). Screens of the same [collection](#collections) are listed as ones to keep consistent with instead, and exploration sketches are left out.
+
+To turn this off, add `"variety": false` to `.open-design/config.json`; the history is still written. Deleting `history.json` is safe.
 
 ## Grounded in your app
 

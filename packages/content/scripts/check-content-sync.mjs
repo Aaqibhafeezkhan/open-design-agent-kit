@@ -11,7 +11,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEFAULT_OPEN_DESIGN_REF } from './sync-open-design-content.mjs';
 import { LOCAL_ROOT, findRedundantOverrides, listOverlayFiles } from './apply-local-overlay.mjs';
-import { checkSurfaces } from './surfaces.mjs';
+import { checkSurfaces, plainQuestionWarnings } from './surfaces.mjs';
 import { checkPrintHouses } from './printHouses.mjs';
 import { checkIntegrations } from './integrations.mjs';
 import { checkPorts } from './ports.mjs';
@@ -102,6 +102,12 @@ async function checkDesignSystemTokens(manifest) {
 // Surfaces must point at real, non-stub entries and existing prompts (openspec add-surface-picker).
 async function checkSurfaceCatalog() {
   const problems = await checkSurfaces(assetsRoot);
+  try {
+    const catalog = JSON.parse(await fs.readFile(path.join(assetsRoot, 'surfaces.json'), 'utf8'));
+    for (const warning of plainQuestionWarnings(catalog)) console.warn(`Surface question: ${warning}`);
+  } catch {
+    // A missing or broken catalog is reported by checkSurfaces.
+  }
   if (problems.length > 0) {
     console.error(`Surface catalog problems (packages/content/local/surfaces.json):\n- ${problems.join('\n- ')}`);
     process.exit(1);

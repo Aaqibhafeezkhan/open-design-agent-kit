@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import * as path from 'node:path';
-import { ContentIndex } from '../../content/contentIndex';
+import { ContentIndex, normalizeSurfaceQuestions, type SurfaceQuestion } from '../../content/contentIndex';
 import { LIST_SKILLS_FULL_LIMIT, LIST_SKILLS_PAGE_SIZE, listSkillsPayload } from '../../content/listSkillsPayload';
 
 const ASSETS = path.resolve(__dirname, '..', '..', '..', '..', 'content', 'assets', 'open-design');
@@ -42,9 +42,14 @@ describe('surfaces and stubs (shipped catalog)', () => {
   it('builds the tool payload for "list", a surface, an unknown surface and a free query', async () => {
     const list = (await listSkillsPayload(index, { surface: 'list' })) as { surfaces: Array<{ id: string; entryCount: number }> };
     assert.ok(list.surfaces.some((s) => s.id === 'poster'));
-    const poster = (await listSkillsPayload(index, { surface: 'poster' })) as { surface: { prompt: string; questions: string[] }; entries: unknown[] };
+    const poster = (await listSkillsPayload(index, { surface: 'poster' })) as { surface: { prompt: string; questions: SurfaceQuestion[] }; entries: unknown[] };
     assert.strictEqual(poster.surface.prompt, 'open-design-poster');
     assert.ok(poster.surface.questions.length > 0 && poster.entries.length > 0);
+    for (const q of poster.surface.questions) {
+      assert.ok(q.options && q.options.length >= 2 && q.options.length <= 4, q.id);
+      assert.ok(q.default && q.options.includes(q.default), q.id);
+      assert.ok(q.changes, q.id);
+    }
     const unknown = (await listSkillsPayload(index, { surface: 'nope' })) as { error: string };
     assert.match(unknown.error, /Unknown surface "nope"\. Valid surfaces: .*diagram/);
     const free = (await listSkillsPayload(index, { query: 'threejs' })) as Array<{ id: string; stub?: boolean }>;
@@ -86,5 +91,13 @@ describe('surfaces and stubs (shipped catalog)', () => {
     assert.strictEqual(ids.size, first.total);
     const remixable = (await listSkillsPayload(index, { remixableOnly: true })) as Page;
     assert.ok(remixable.entries.every((e) => e.remixable === true));
+  });
+
+  it('loads plain-string questions from older content as questions without options', () => {
+    const questions = normalizeSurfaceQuestions(['What is it for?', { id: 'where', text: 'Where?', options: ['Print', 'Screen'], default: 'Both', changes: 'size' }, 7]);
+    assert.deepStrictEqual(questions, [
+      { id: 'what-is-it-for', text: 'What is it for?' },
+      { id: 'where', text: 'Where?', options: ['Print', 'Screen'], changes: 'size' },
+    ]);
   });
 });

@@ -67,9 +67,48 @@ export async function checkSurfaces(assetsRoot) {
       else if ((await Promise.all(dirs.map(isStubEntry))).every(Boolean)) problems.push(`${s.id}: entry "${entry}" is a catalog stub (it only links upstream)`);
     }
     if (s.prompt !== undefined && !prompts.has(s.prompt)) problems.push(`${s.id}: prompt "${s.prompt}" doesn't exist`);
+    problems.push(...checkSurfaceQuestions(s));
   }
   problems.push(...checkGoals(catalog));
   return problems;
+}
+
+/**
+ * Problems with one surface's structured questions (openspec add-brief-questions):
+ * an id, text, two to four options, a default among them and what the answer
+ * changes. Plain-string questions still load; they're reported by
+ * plainQuestionWarnings instead.
+ */
+export function checkSurfaceQuestions(surface) {
+  const problems = [];
+  const ids = new Set();
+  for (const q of Array.isArray(surface.questions) ? surface.questions : []) {
+    if (typeof q === 'string') continue;
+    if (!q || typeof q.id !== 'string' || !q.id || typeof q.text !== 'string' || !q.text) {
+      problems.push(`${surface.id}: a question needs an id and text`);
+      continue;
+    }
+    const where = `${surface.id}: question "${q.id}"`;
+    if (ids.has(q.id)) problems.push(`${where}: id used twice`);
+    ids.add(q.id);
+    const options = Array.isArray(q.options) ? q.options.filter((o) => typeof o === 'string' && o) : [];
+    if (options.length < 2 || options.length > 4) problems.push(`${where}: needs two to four options`);
+    if (!options.includes(q.default)) problems.push(`${where}: default must be one of its options`);
+    if (typeof q.changes !== 'string' || !q.changes) problems.push(`${where}: needs a one-line "changes"`);
+  }
+  if (ids.size > 3) problems.push(`${surface.id}: at most three questions`);
+  return problems;
+}
+
+/** Plain-string questions in the catalog: they load as questions with no options, so warn rather than fail. */
+export function plainQuestionWarnings(catalog) {
+  const warnings = [];
+  for (const s of Array.isArray(catalog?.surfaces) ? catalog.surfaces : []) {
+    for (const q of Array.isArray(s?.questions) ? s.questions : []) {
+      if (typeof q === 'string') warnings.push(`${s.id}: "${q}" is a plain string; give it options, a default and what it changes`);
+    }
+  }
+  return warnings;
 }
 
 /** Problems with the catalog's goals (openspec desktop-first-run-welcome): each must lead to ready surfaces. */

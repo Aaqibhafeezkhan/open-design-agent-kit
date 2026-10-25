@@ -120,6 +120,11 @@ import {
   type Shop,
   resolvePrintHouse,
   type PrintHouse,
+  validateBriefDecisions,
+  validateRegisteredBrief,
+  withBriefMetadata,
+  loadRecentDesigns,
+  recordDesignHistory,
 } from '@feimacode/open-design-agent-kit-core';
 import { figmaTokenFilePath } from './env';
 import type { DesignLayout } from './layout';
@@ -258,8 +263,12 @@ export async function prepareBrief(
     sources?: string[];
     format?: string;
     fluid?: boolean;
+    answers?: Record<string, string>;
+    assumptions?: string[];
   },
 ): Promise<string> {
+  const decisions = validateBriefDecisions(input.answers, input.assumptions);
+  if (!decisions.ok) return decisions.error;
   const canvas = resolveBriefCanvas(input.format, input.fluid);
   if ('error' in canvas) return canvas.error;
   const canvasFormat = canvas.format;
@@ -309,6 +318,7 @@ export async function prepareBrief(
   });
   if (!sources.ok) return sources.error;
 
+  const recentDesigns = await loadRecentDesigns(ctx.workspaceRoot, { collectionId: input.collectionId, entryPath: suggestedEntryPath });
   const instructions = composeInstructions({
     skillName: skill.name,
     skillBody: skill.body,
@@ -323,6 +333,8 @@ export async function prepareBrief(
     sourceContext: sources.context,
     canvasFormat,
     fluid: canvas.fluid,
+    decisions: decisions.decisions,
+    recentDesigns,
   });
 
   const payload = {
@@ -358,9 +370,12 @@ export async function registerArtifact(
     sources?: string[];
     format?: string;
     resolvedCommentIds?: string[];
+    brief?: unknown;
   },
 ): Promise<string> {
   if (input.format !== undefined && !getFormat(input.format)) return unknownFormatError(input.format);
+  const brief = validateRegisteredBrief(input.brief);
+  if (!brief.ok) return brief.error;
   const renderer = KIND_TO_RENDERER[input.kind];
   const exportsList = exportsForKind(input.kind);
   if (!renderer || !exportsList) {
@@ -389,8 +404,17 @@ export async function registerArtifact(
         explorationId: input.explorationId,
         directionId: input.directionId,
         sources: sourceRegistration?.sources.length ? sourceRegistration.sources : undefined,
-        metadata: await posterRegistrationMetadata(ctx.workspaceRoot, input.entryPath, input.format),
+        metadata: withBriefMetadata(await posterRegistrationMetadata(ctx.workspaceRoot, input.entryPath, input.format), brief.brief),
       },
+    });
+    await recordDesignHistory(ctx.workspaceRoot, {
+      entryPath: input.entryPath,
+      title: input.title,
+      skillId: input.sourceSkillId,
+      designSystemId: input.designSystemId,
+      collectionId: input.collectionId,
+      explorationId: input.explorationId,
+      directionId: input.directionId,
     });
     const sourceNote = sourceRegistration ? `\n\n${formatSourceRegistration(sourceRegistration)}` : '';
 
