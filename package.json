@@ -16,6 +16,7 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present && node scripts/check-docs.mjs && tsx scripts/build-claude-design-systems.ts --check",
     "test:unit": "npm run test:unit --workspaces --if-present && node --test scripts/test/*.test.mjs",
+    "evals": "tsx scripts/evals/run.mjs",
     "version": "node scripts/bump-version.mjs"
   },
   "devDependencies": {

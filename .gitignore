@@ -7,3 +7,6 @@ out-webview/
 *.log
 packages/content/scripts/.typeui-scaffold/
 packages/content/scripts/.ios-scaffold/
+# Eval runs stay local except each run's contact sheet (openspec add-output-quality-evals).
+evals/runs/*/*
+!evals/runs/*/contact-sheet.png

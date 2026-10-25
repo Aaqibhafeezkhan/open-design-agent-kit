@@ -1,0 +1,14 @@
+id: shop-pack
+request: "Make the shop graphics for my candle business, Ember & Wick. I sell on Etsy."
+expect:
+  surface: shop
+  skills: [shop-pack]
+  questions: { max: 2 }
+designSystem: null
+answers:
+  products: "Three scents: Cedar Smoke, Fig Leaf, Sea Salt. No photos yet"
+  where: "Etsy"
+must:
+  - "Shop banner and listing images at Etsy's sizes"
+  - "Shop name readable at thumbnail size"
+  - "Missing product photos are placeholders, not invented products"

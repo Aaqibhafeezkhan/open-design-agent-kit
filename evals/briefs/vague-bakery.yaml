@@ -1,0 +1,14 @@
+id: vague-bakery
+request: "Make something for my bakery"
+vague: true
+expect:
+  surface: any
+  questions: { min: 1, max: 3 }
+designSystem: null
+answers:
+  what: "A poster for the window announcing our new sourdough Saturdays"
+  where: "Print, A2"
+  name: "Crumb & Co"
+must:
+  - "Asked what to make before building"
+  - "Asked at most three questions, in one message"

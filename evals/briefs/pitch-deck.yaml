@@ -1,0 +1,15 @@
+id: pitch-deck
+request: "I need a 10-slide seed pitch deck for Tidepool, a marketplace for second-hand sailing gear"
+expect:
+  surface: slides
+  skills: [html-ppt-pitch-deck, deck-swiss-international, simple-deck, deck-guizang-editorial]
+  questions: { max: 2 }
+designSystem: null
+answers:
+  audience: "Seed investors"
+  data: "No document. Use plausible placeholder numbers and mark them as placeholders"
+  raise: "£1.2m seed"
+must:
+  - "Problem, solution, market, traction, team and ask each have a slide"
+  - "No slide has more than about 40 words"
+  - "Placeholder numbers are marked as placeholders"
