@@ -8,7 +8,7 @@ Open Design Agent Kit brings [Open Design](https://github.com/nexu-io/open-desig
 
 ## Why built-in beats another app
 
-Open Design itself is a full local-first desktop app with its own daemon, project database, and model setup. It's excellent, but it's one more thing to install, keep running, configure, and switch into. Most of what makes it valuable day to day isn't the app. It's the **content**: 163 skills, 114 design templates, 152 brand design systems, 167 remixable example artifacts, and 11 craft docs (typography, color, accessibility, anti-"AI slop"). Agent Kit takes that content and the generation workflow around it and builds them directly into your agent:
+Open Design itself is a full local-first desktop app with its own daemon, project database, and model setup. It's excellent, but it's one more thing to install, keep running, configure, and switch into. Most of what makes it valuable day to day isn't the app. It's the **content**: 181 skills, 114 design templates, 198 brand design systems, 193 remixable example artifacts, and 13 craft docs (typography, color, accessibility, anti-"AI slop"). Agent Kit takes that content and the generation workflow around it and builds them directly into your agent:
 
 | | Open Design desktop app | Open Design Agent Kit |
 |---|---|---|
@@ -23,7 +23,7 @@ Open Design itself is a full local-first desktop app with its own daemon, projec
 
 - **Native to each agent.** It isn't a wrapper or a separate UI; each integration uses the agent's own mechanism. In Copilot, that's VS Code `languageModelTools`, chat instructions, and slash commands. In Claude Code, it's a plugin with skills and a bundled MCP server. In Codex, it's `.agents/skills` plus MCP. The agent finds the tools on its own, so you just describe what you want.
 - **A curated library, not a prompt.** Task-specific recipes, brand-accurate design tokens, and hard-won craft rules. That's the difference between "a generic gradient card layout" and something that looks designed.
-- **Remix, don't start blank.** Start from any of 167 real rendered examples, plus a growing community catalog, and let the model adapt one instead of inventing from scratch.
+- **Remix, don't start blank.** Start from any of 193 real rendered examples, plus a growing community catalog, and let the model adapt one instead of inventing from scratch.
 - **Brand-consistent by default.** Pick a design system once (bundled, invented from a brief, or imported from your own) and every generation after that uses it.
 - **Grounded in your codebase, and headed there.** Generation looks at your real components first. When the prototype is right, one tool call ports it into your app as idiomatic production code.
 - **Everything is a file.** Artifacts, manifests, comments, and custom design systems are plain files in your workspace. There's no database, no lock-in, and nothing to export.
