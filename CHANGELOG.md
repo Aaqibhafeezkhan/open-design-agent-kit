@@ -2,6 +2,10 @@
 
 One version covers the VS Code extension and the npm packages (`content`, `mcp-server`, `cli`). The release workflow uses the section for the tag being released as the GitHub Release notes (see [Releasing](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/contributing/releasing.md)).
 
+## Unreleased
+
+- Add a Pinterest Pin export preset at 1000×1500 px with a 20 MB upload budget.
+
 ## [0.3.0] - 2026-10-24
 
 **Claude Desktop extension:** install `open-design-0.3.0.mcpb` from this release to update it.
