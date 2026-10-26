@@ -2364,7 +2364,7 @@
           {
             "id": "gallery",
             "title": "Start from a real example",
-            "description": "Browse 167 rendered examples and remix one instead of starting blank.\n[Open the gallery](command:openDesign.openGalleryGrid)",
+            "description": "Browse 193 rendered examples and remix one instead of starting blank.\n[Open the gallery](command:openDesign.openGalleryGrid)",
             "media": {
               "markdown": "media/walkthrough/gallery.md"
             },
