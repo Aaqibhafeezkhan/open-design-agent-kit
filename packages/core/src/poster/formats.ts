@@ -47,6 +47,7 @@ const LIST: CanvasFormat[] = [
   { id: 'x-image', label: 'X single image', fileLabel: 'x-post', medium: 'screen', width: 1600, height: 900, unit: 'px', safeInset: 48, maxBytes: 5_000_000, skillHint: 'od:prototype:card-twitter' },
   { id: 'ig-square', label: 'Square carousel (Instagram / LinkedIn)', fileLabel: 'instagram-square', medium: 'screen', width: 1080, height: 1080, unit: 'px', safeInset: 48, maxBytes: 8_000_000, multiCard: true, skillHint: 'od:prototype:social-carousel' },
   { id: 'ig-portrait', label: 'Instagram portrait', fileLabel: 'instagram-portrait', medium: 'screen', width: 1080, height: 1350, unit: 'px', safeInset: 48, maxBytes: 8_000_000, skillHint: 'od:prototype:poster-hero' },
+  { id: 'pinterest-pin', label: 'Pinterest Pin', fileLabel: 'pinterest-pin', medium: 'screen', width: 1000, height: 1500, unit: 'px', safeInset: 48, maxBytes: 20_000_000, skillHint: 'od:prototype:poster-hero' },
   { id: 'story', label: 'Story / Reels / TikTok cover', fileLabel: 'story', medium: 'screen', width: 1080, height: 1920, unit: 'px', safeInset: 48, maxBytes: 8_000_000, skillHint: 'od:prototype:poster-hero' },
   { id: 'xhs-card', label: 'Xiaohongshu cards', fileLabel: 'xiaohongshu', medium: 'screen', width: 1080, height: 1440, unit: 'px', safeInset: 48, multiCard: true, skillHint: 'od:prototype:card-xiaohongshu' },
   { id: 'yt-thumbnail', label: 'YouTube thumbnail', fileLabel: 'youtube-thumbnail', medium: 'screen', width: 1280, height: 720, unit: 'px', safeInset: 48, maxBytes: 2_000_000, skillHint: 'od:prototype:social-youtube-thumbnail' },
