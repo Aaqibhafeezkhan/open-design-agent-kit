@@ -23,13 +23,14 @@ If you don't say whether it's for print or screens, the agent asks first. You do
 | Wall poster | `a2`, `a1`, `poster-18x24`, `poster-24x36` | 420×594 mm, 594×841 mm, 18×24 in, 24×36 in |
 | Conference or research poster | `a0` | 841×1189 mm |
 | Instagram, Stories, X, square | `ig-portrait`, `story`, `x-image`, `ig-square` | 1080×1350, 1080×1920, 1600×900, 1080×1080 px |
+| Pinterest Pin | `pinterest-pin` | 1000×1500 px (2:3), up to 20 MB |
 | YouTube thumbnail, Xiaohongshu card | `yt-thumbnail`, `xhs-card` | 1280×720, 1080×1440 px |
 | Insert, care card, postcard, invitation | `a5`, `a6`, `a7`, `postcard-4x6` | 148×210, 105×148, 74×105 mm, 4×6 in |
 | Business card, jewelry display card, swing tag | `business-card`, `business-card-us` | 85×55 mm, 3.5×2 in |
 | Game cards (corners cut round) | `trading-card`, `tarot-card`, `mini-card` | 2.5×3.5, 2.75×4.75, 1.75×2.5 in |
 | Shop product image and banners | `shop-product`, `shop-banner`, `shop-collection` | 2048×2048, 1920×800, 1920×600 px |
 
-Every id, with its safe area, bleed and minimum type size, is in [Canvas formats](../reference/tools.md#canvas-formats).
+Every id, with its safe area, bleed and minimum type size, is in [Canvas formats](../reference/tools.md#canvas-formats). Pinterest recommends a 2:3 image at 1000×1500 px; the desktop upload limit is 20 MB ([official Pinterest specs](https://help.pinterest.com/en/business/article/pinterest-product-specs)).
 
 ## How it works
 
