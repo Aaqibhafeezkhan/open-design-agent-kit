@@ -247,6 +247,7 @@ When `.open-design/history.json` lists earlier designs, the instructions also ge
 | `x-image` | screen | 1600×900 px | 48 px | | | 5 MB |
 | `ig-square` | screen | 1080×1080 px per card | 48 px | | | 8 MB |
 | `ig-portrait` | screen | 1080×1350 px | 48 px | | | 8 MB |
+| `pinterest-pin` | screen | 1000×1500 px (2:3) | 48 px | | | 20 MB |
 | `story` | screen | 1080×1920 px | 48 px | | | 8 MB |
 | `xhs-card` | screen | 1080×1440 px per card | 48 px | | | |
 | `yt-thumbnail` | screen | 1280×720 px | 48 px | | | 2 MB |

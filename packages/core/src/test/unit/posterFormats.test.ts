@@ -14,6 +14,7 @@ describe('poster formats', () => {
       ['x-image', 1600, 900, 5_000_000, 'od:prototype:card-twitter'],
       ['ig-square', 1080, 1080, 8_000_000, 'od:prototype:social-carousel'],
       ['ig-portrait', 1080, 1350, 8_000_000, 'od:prototype:poster-hero'],
+      ['pinterest-pin', 1000, 1500, 20_000_000, 'od:prototype:poster-hero'],
       ['story', 1080, 1920, 8_000_000, 'od:prototype:poster-hero'],
       ['xhs-card', 1080, 1440, undefined, 'od:prototype:card-xiaohongshu'],
       ['yt-thumbnail', 1280, 720, 2_000_000, 'od:prototype:social-youtube-thumbnail'],
