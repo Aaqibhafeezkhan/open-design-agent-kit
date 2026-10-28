@@ -1,5 +1,7 @@
 # Open Design Agent Kit
 
+English | [简体中文](README.zh-CN.md)
+
 **Pro-grade design, built right into the coding agent you already use.**
 
 Open Design Agent Kit brings [Open Design](https://github.com/nexu-io/open-design)'s design skills, brand design systems, and remixable examples into **GitHub Copilot Chat, Claude Code, Codex, Cursor**, and any other MCP-capable agent. Ask for a pitch deck, landing page, dashboard, or mobile prototype in the chat you already have open. Your agent's own model builds it with its own file tools, guided by a library that keeps the result from looking AI-generated.
