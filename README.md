@@ -1,5 +1,6 @@
 # Open Design Agent Kit
-[简体中文](README.zh-CN.md)
+
+English | [简体中文](README.zh-CN.md)
 
 **Pro-grade design, built right into the coding agent you already use.**
 

@@ -1,5 +1,7 @@
 # Open Design Agent Kit
 
+[English](README.md) | 简体中文
+
 **将专业级设计能力直接集成到你日常使用的编程助手中。**
 
 Open Design Agent Kit 将 [Open Design](https://github.com/nexu-io/open-design) 的设计技能、品牌设计系统和可复用示例集成到 **GitHub Copilot Chat、Claude Code、Codex、Cursor** 以及其他支持 MCP 的 AI 编程助手中。只需在当前打开的聊天窗口中描述需求，即可创建演示文稿、落地页、数据仪表板或移动端原型。AI 助手会使用自身的模型和文件工具，借助精心整理的设计资源生成更具专业感的成果。
