@@ -1,6 +1,6 @@
 # Open Design Agent Kit
 
-[English](README.md) | 简体中文
+[English](README.md) | 简体中文 | [日本語](README.ja.md)
 
 **将专业级设计能力直接集成到你日常使用的编程助手中。**
 
