@@ -26,6 +26,13 @@ test('the pilot builds a hub and a spoke per item, with hand-off prompts and dow
   assert.doesNotMatch(kami, /Bundled OpenDesign package/);
   await fs.access(path.join(out, 'design-systems', 'kami', 'preview.html'));
   await fs.access(path.join(out, 'design-systems', 'kami', 'claude', 'design-system.json'));
+  assert.match(kami, /data-src="claude\/view\.html"/);
+  const view = await fs.readFile(path.join(out, 'design-systems', 'kami', 'claude', 'view.html'), 'utf8');
+  assert.match(view, /<h2>Color<\/h2>/);
+  assert.match(view, /<code>#f5f4ed<\/code>/);
+  assert.match(view, /<h2>README<\/h2>/);
+  assert.match(view, /src="cover\.html"/);
+  assert.match(await fs.readFile(path.join(out, 'design-systems', 'kami', 'claude', 'cover.html'), 'utf8'), /--bg:/);
 
   const exHub = await fs.readFile(path.join(out, 'examples', 'index.html'), 'utf8');
   assert.equal(exHub.match(/<li class="card/g)?.length, pilot.examples.length);
