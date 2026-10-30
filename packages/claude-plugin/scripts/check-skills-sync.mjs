@@ -25,13 +25,18 @@ const committedSkillsDir = path.join(pluginRoot, 'skills');
 // check exercises the exact same rendering logic as a fresh copy, not a
 // shared closure that could silently diverge in a way that always agrees
 // with itself.
+function skillDirName(entry) {
+  return entry.publicId.replace(/:/g, '-');
+}
+
 function skillMdContent(entry) {
   const placeholder = entry.examplePrompt
     ? entry.examplePrompt.replace(/"/g, '\\"')
     : `What do you want to build with ${entry.displayName}?`;
   // Kept in sync with generate-claude-skills.mjs's own hyphenated-name
   // rationale (see there): colons render as spaces in VS Code's chat input.
-  const invocationName = entry.publicId.replace(/:/g, '-');
+  // The folder name is the same string.
+  const invocationName = skillDirName(entry);
   return `---
 name: "${invocationName}"
 description: ${entry.displayName} (Open Design) — use only when the user explicitly runs this skill
@@ -103,14 +108,14 @@ const repoRoot = path.resolve(pluginRoot, '..', '..');
 async function main() {
   const entries = await collectCuratedEntries(assetsRoot);
   const localPrompts = (await loadLocalPrompts(assetsRoot)).filter((p) => promptIsForHost(p, 'claude'));
-  const expectedIds = new Set([...entries.map((e) => e.id), ...localPrompts.map((p) => p.name)]);
+  const expectedIds = new Set([...entries.map(skillDirName), ...localPrompts.map((p) => p.name)]);
 
   const problems = [];
 
   for (const entry of entries) {
-    const committedPath = path.join(committedSkillsDir, entry.id, 'SKILL.md');
+    const committedPath = path.join(committedSkillsDir, skillDirName(entry), 'SKILL.md');
     if (!(await pathExists(committedPath))) {
-      problems.push(`missing generated skill for curated entry "${entry.id}"`);
+      problems.push(`missing generated skill for curated entry "${entry.id}" (skills/${skillDirName(entry)})`);
       continue;
     }
     const committed = await fs.readFile(committedPath, 'utf8');
