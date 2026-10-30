@@ -53,6 +53,12 @@ export interface PreviewServerOptions {
    * Another site can trigger the redirect but can't read where it leads.
    */
   rootRedirect?: boolean;
+  /**
+   * Like rootRedirect, but `/` leads to the most recently registered design
+   * (the artifact list when there is none), so Claude Desktop's Browser pane
+   * opens on the design just made (openspec code-tab-browser-pane).
+   */
+  rootLatest?: boolean;
   log?: (message: string) => void;
 }
 
@@ -69,6 +75,20 @@ export interface PreviewServer {
 }
 
 type CropSupport = 'window' | 'rerender' | 'none';
+
+/** The registered previewable design whose manifest changed last. */
+async function newestEntry(workspaceRoot: string, outputDir: string): Promise<string | undefined> {
+  let best: { entryPath: string; at: number } | undefined;
+  for (const a of await scanArtifactManifests(workspaceRoot, outputDir)) {
+    if (!ENTRY_EXT.test(a.entryPath)) continue;
+    const at = await fs
+      .stat(path.join(workspaceRoot, `${a.entryPath}.artifact.json`))
+      .then((s) => s.mtimeMs)
+      .catch(() => 0);
+    if (!best || at > best.at) best = { entryPath: a.entryPath, at };
+  }
+  return best?.entryPath;
+}
 
 class HttpError extends Error {
   constructor(
@@ -279,8 +299,9 @@ export async function startPreviewServer(options: PreviewServerOptions): Promise
     const host = req.headers.host ?? '';
     const port = shellOrigin.split(':').pop();
     if (host !== `127.0.0.1:${port}` && host !== `localhost:${port}`) throw new HttpError(403, 'Unexpected host.');
-    if (options.rootRedirect && url.pathname === '/' && (req.method === 'GET' || req.method === 'HEAD')) {
-      res.writeHead(302, { Location: shellPrefix, 'Cache-Control': 'no-store' });
+    if ((options.rootRedirect || options.rootLatest) && url.pathname === '/' && (req.method === 'GET' || req.method === 'HEAD')) {
+      const latest = options.rootLatest ? await newestEntry(workspaceRoot, outputDir) : undefined;
+      res.writeHead(302, { Location: latest ? `${shellPrefix}?entry=${encodeURIComponent(latest)}` : shellPrefix, 'Cache-Control': 'no-store' });
       res.end();
       return;
     }

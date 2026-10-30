@@ -385,6 +385,40 @@ describe('preview MCP App pickers over MCP', function () {
       assert.deepStrictEqual(calledTools, [], 'the page called no tool');
     });
 
+    it('artifact: follows an edit in place, without a new tool result, and holds it while commenting', async () => {
+      await show('show_open_design_artifact', { entryPath: LANDING }, '#od-preview');
+      const app = appFrame();
+      const toastText = () => app.$eval('.od-toast', (el) => ((el as HTMLElement).hidden ? '' : el.textContent ?? '')).catch(() => '');
+      const file = path.join(root, LANDING);
+      // Comment mode on: the edit waits.
+      await app.click('[data-mode="comment"]');
+      await new Promise((r) => setTimeout(r, 400));
+      await fs.writeFile(file, '<!doctype html><html><head><title>Landing page</title></head><body><h1 class="landing">Landing, edited</h1></body></html>');
+      await new Promise((r) => setTimeout(r, 4500));
+      assert.notStrictEqual(await toastText(), 'Updated to the latest version.');
+      // Back to view: it reloads.
+      await app.click('[data-mode="view"]');
+      await until(async () => (await toastText()) === 'Updated to the latest version.', 'the inline view to follow the edit');
+    });
+
+    it('revisionOnly: changes after an edit and a saved comment, and refuses a path outside the workspace', async () => {
+      const rev = async () => ((await client.callTool({ name: 'get_open_design_preview_state', arguments: { entryPath: MASTER, revisionOnly: true } })) as CallToolResult).structuredContent?.revision as string;
+      const first = await rev();
+      assert.match(first, /^[0-9a-f]{16}$/);
+      assert.strictEqual(await rev(), first);
+      await fs.appendFile(path.join(root, MASTER), '\n<!-- edited -->');
+      const second = await rev();
+      assert.notStrictEqual(second, first);
+      const now = new Date().toISOString();
+      const comment = { id: 'rev-1', selector: 'h1', note: 'Bigger', status: 'open', createdAt: now, updatedAt: now };
+      await client.callTool({ name: 'save_open_design_comment', arguments: { entryPath: MASTER, comment } });
+      const third = await rev();
+      assert.notStrictEqual(third, second);
+      await client.callTool({ name: 'save_open_design_comment', arguments: { entryPath: MASTER, deleteId: 'rev-1' } });
+      const outside = (await client.callTool({ name: 'get_open_design_preview_state', arguments: { entryPath: '../x.html', revisionOnly: true } })) as CallToolResult;
+      assert.ok(outside.isError);
+    });
+
     it('artifact: feedback chips post a quick reply', async () => {
       await show('show_open_design_artifact', { entryPath: LANDING }, '[data-feedback]');
       const message = await clickAndWaitForMessage('[data-feedback="change"]');

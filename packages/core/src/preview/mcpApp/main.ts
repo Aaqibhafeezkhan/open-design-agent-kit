@@ -780,8 +780,58 @@ function goBack(): void {
   void render();
 }
 
+// ── Following edits (openspec inline-preview-in-place) ────────────────────
+// The design, exploration or campaign sheet on screen reloads when its
+// revision changes: checked every 3 s while visible, every 10 s after 2
+// minutes without a change, never while the user is commenting.
+const POLL_FAST_MS = 3000;
+const POLL_SLOW_MS = 10000;
+const POLL_IDLE_MS = 120000;
+let pollToken = 0;
+let lastActivity = Date.now();
+document.addEventListener('click', () => {
+  lastActivity = Date.now();
+});
+
+/** Commenting: a comment panel is open or Comment mode is on. A reload then would throw the user's work away. */
+function userIsCommenting(): boolean {
+  const panel = document.getElementById('od-panel');
+  return (!!panel && !panel.hidden) || !!document.querySelector('[data-mode="comment"].active');
+}
+
+function followEdits(shown: ShowTarget): void {
+  const token = ++pollToken;
+  if (shown.view !== 'artifact' && shown.view !== 'exploration' && shown.view !== 'campaign') return;
+  let revision: string | undefined;
+  const changedAt = Date.now();
+  const tick = async (): Promise<void> => {
+    if (token !== pollToken) return;
+    const idle = Date.now() - Math.max(changedAt, lastActivity) > POLL_IDLE_MS;
+    if (document.visibilityState === 'visible') {
+      let next: string;
+      try {
+        next = await transport.loadRevision(shown);
+      } catch {
+        // The server may have gone (a restarted chat); the reload button still works.
+        return;
+      }
+      if (token !== pollToken) return;
+      if (revision === undefined) revision = next;
+      else if (next !== revision && !userIsCommenting()) {
+        // render() starts a fresh check against the new revision.
+        await render();
+        toast('Updated to the latest version.');
+        return;
+      }
+    }
+    window.setTimeout(() => void tick(), idle ? POLL_SLOW_MS : POLL_FAST_MS);
+  };
+  void tick();
+}
+
 async function render(): Promise<void> {
   if (!target) return;
+  followEdits(target);
   // The questions arrive whole in the show tool's result: nothing to load.
   document.body.classList.toggle('od-ask-view', target.view === 'ask');
   if (target.view === 'ask') return renderAsk(target);

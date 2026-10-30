@@ -12,13 +12,13 @@ In a Claude Desktop **Chat** conversation, Open Design shows the design right in
 
 ## Show a design
 
-The `open-design` skill asks Claude to show the design after it registers one and again after it applies your comments. You can also ask at any time:
+The `open-design` skill asks Claude to show the design once, after it first registers it. After that the shown copy follows the design: it checks for changes every few seconds and updates in place after each round, with a short "Updated to the latest version" note, so Claude doesn't show it again. It waits while you're writing a comment, checks less often after two minutes without a click, and not at all while the page is hidden. You can also ask at any time:
 
 > Show me the coffee poster.
 
 The first time, Claude Desktop asks you to allow the preview. The design renders from a self-contained copy: its local fonts, images and stylesheets are inlined, and Google Fonts load as usual. Images and scripts from other sites load only if the design used them before (the server declares those sites to Claude Desktop the next time the page loads); otherwise they're blocked.
 
-Click **Fullscreen** for more room, and the reload button to fetch the latest version after Claude has changed the files.
+Click **Fullscreen** for more room. The reload button fetches the latest version at once, which helps for an older copy further up the conversation that has stopped following.
 
 Under the design are three quick replies: **Looks good**, **Change something** and **Try another direction**. Each posts a message so Claude knows what to do next (offer an export, ask what to change, or suggest other directions), for when you don't know what to type. They're hidden in fullscreen.
 
@@ -26,7 +26,7 @@ Under the design are three quick replies: **Looks good**, **Change something** a
 
 1. Click **Comment** in the preview's toolbar.
 2. Click an element, type what should change, and click **Add**. A pin marks the element. Click a pin to resolve or delete its comment.
-3. Click **Ask Claude to apply**. A message naming the design and the comment ids appears in the chat, and Claude applies them, re-registers the design with the comments resolved, and shows it again.
+3. Click **Ask Claude to apply**. A message naming the design and the comment ids appears in the chat, and Claude applies them, re-registers the design with the comments resolved, and the preview updates in place.
 
 Comments are saved to the same `<entry>.comments.json` file as the [browser preview](browser-preview.md#comments) and VS Code use, so you can comment in one and apply from another.
 

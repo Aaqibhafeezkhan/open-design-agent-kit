@@ -1,6 +1,8 @@
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import {
+  mergeClaudeLaunchConfig,
+  previewRevision,
   galleryDesignSystemUrl,
   galleryHubUrl,
   hasGalleryPage,
@@ -532,6 +534,8 @@ async function critiqueInputOutput(ctx: ToolContext, entryPath: string, manifest
 // window and the server close when the process exits.
 const previewSessions = new Map<string, PreviewSession>();
 const previewOpenedFor = new Set<string>();
+/** Entries show_open_design_artifact has shown inline in this process, as `<workspaceRoot>\0<entryPath>`: those copies follow edits by themselves. */
+const shownInline = new Set<string>();
 
 function previewSession(ctx: ToolContext): PreviewSession {
   let session = previewSessions.get(ctx.workspaceRoot);
@@ -551,7 +555,20 @@ export async function closePreviews(): Promise<void> {
   const sessions = [...previewSessions.values()];
   previewSessions.clear();
   previewOpenedFor.clear();
+  shownInline.clear();
   await Promise.all(sessions.map((s) => s.close()));
+}
+
+/** set_up_open_design_browser_pane: the Code tab's launch entry for the live preview (openspec code-tab-browser-pane). */
+export async function setUpBrowserPane(ctx: ToolContext, version: string): Promise<string> {
+  try {
+    const { outcome, entry, file } = await mergeClaudeLaunchConfig({ workspaceRoot: ctx.workspaceRoot, version });
+    const what = outcome === 'unchanged' ? `${file} already has the ${entry.name} configuration` : `${outcome === 'created' ? 'Created' : 'Updated'} ${file} with the ${entry.name} configuration`;
+    const tell = outcome === 'unchanged' ? '' : ` Tell the user once, in one sentence, that you added a live-preview entry called "${entry.name}" to .claude/launch.json so the Browser pane can show their designs.`;
+    return `${what} (port ${entry.port}, runs ${entry.runtimeExecutable}). Now start "${entry.name}" with the Code tab's preview tool: the Browser pane opens on the newest registered design, reloads when its files change, and has Comment and Checks.${tell} If it fails to start because the port is busy, another project's preview probably uses it: ask the user to stop that one.`;
+  } catch (err) {
+    return `Couldn't set up the Browser pane: ${err instanceof Error ? err.message : String(err)} Fix or remove that file, or use open_open_design_preview instead.`;
+  }
 }
 
 /** open_open_design_preview: shows a registered artifact (or the picker) in a live browser preview. */
@@ -618,6 +635,7 @@ async function cachedExamplePreview(ctx: ToolContext, exampleId: string): Promis
 export async function showArtifact(ctx: ToolContext, input: { entryPath?: string; explorationId?: string; campaign?: boolean }): Promise<ToolOutput> {
   const shown = await prepareShow({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, ...input, hostRendersApp: ctx.rendersMcpApps === true });
   if (!shown.ok) return { text: shown.text };
+  if (ctx.rendersMcpApps && input.entryPath && !input.campaign) shownInline.add(`${ctx.workspaceRoot}\0${input.entryPath}`);
   return { text: shown.text, structuredContent: { ...shown.target } };
 }
 
@@ -722,10 +740,18 @@ export interface PreviewStateInput {
   cursor?: string;
   exampleId?: string;
   designSystemId?: string;
+  /** Only the shown design's revision, which the inline views poll (openspec inline-preview-in-place). */
+  revisionOnly?: boolean;
 }
 
 /** get_open_design_preview_state (app only): the data behind each view, one page or one preview per call. */
 export async function previewAppState(ctx: ToolContext, input: PreviewStateInput): Promise<ToolOutput> {
+  if (input.revisionOnly) {
+    const target = input.explorationId ? { explorationId: input.explorationId } : input.entryPath ? { entryPath: input.entryPath, campaign: input.view === 'campaign' } : undefined;
+    if (!target) throw new Error('Pass entryPath or explorationId with revisionOnly.');
+    const revision = await previewRevision({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, target });
+    return { text: `Revision ${revision}.`, structuredContent: { revision } };
+  }
   if (input.imageRef) {
     const image = await askImage(ctx, input.imageRef);
     return { text: `Picture for ${input.imageRef}${image.fallback ? `: ${image.fallback}` : ''}.`, structuredContent: { ...image } };
@@ -779,6 +805,12 @@ export async function saveComment(ctx: ToolContext, input: { entryPath: string; 
 }
 
 async function previewNoteAfterRegister(ctx: ToolContext, entryPath: string): Promise<string> {
+  // A host that shows MCP Apps shows the design inline, with no local server (openspec inline-preview-in-place).
+  if (ctx.rendersMcpApps) {
+    return shownInline.has(`${ctx.workspaceRoot}\0${entryPath}`)
+      ? ' The copy shown inline in the chat updates by itself; don\'t show it again.'
+      : ' Call show_open_design_artifact with this entryPath to show it inline in the chat; later rounds update that copy by itself.';
+  }
   const mode = previewMode();
   if (mode === 'off') return '';
   const session = previewSessions.get(ctx.workspaceRoot);
