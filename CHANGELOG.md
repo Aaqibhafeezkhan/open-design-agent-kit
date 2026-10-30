@@ -4,6 +4,7 @@ One version covers the VS Code extension and the npm packages (`content`, `mcp-s
 
 ## Unreleased
 
+- **Claude plugin 0.3.2:** on Windows, the plugin's MCP server starts again when Node.js is installed under a path with spaces, such as the default `C:\Program Files\nodejs` (#66, thanks @mertol84).
 - **Claude plugin 0.3.1:** each per-template skill's folder is now named like the skill (`skills/od-prototype-card-twitter/`), as the Agent Skills spec asks, so the Claude plugin directory can list them. Slash commands don't change.
 - Add a Pinterest Pin export preset at 1000×1500 px with a 20 MB upload budget.
 
