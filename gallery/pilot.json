@@ -1,0 +1,16 @@
+{
+  "$comment": "What scripts/build-gallery.ts builds without --all. Design systems are genre systems only, so the pilot names no brand. Example ids are list_open_design_skills ids.",
+  "designSystems": ["kami", "editorial", "brutalism", "bento", "glassmorphism", "claymorphism", "cafe", "dashboard", "elegant", "futuristic"],
+  "examples": [
+    "od:prototype:magazine-poster:example",
+    "od:prototype:poster-hero:example",
+    "od:prototype:saas-landing:example",
+    "od:prototype:pricing-page:example",
+    "od:prototype:dashboard:example",
+    "od:prototype:mobile-app:example",
+    "od:prototype:resume-modern:example",
+    "od:prototype:email-campaign:example",
+    "od:deck:deck-swiss-international:example",
+    "od:deck:kami-deck:example"
+  ]
+}
