@@ -1,0 +1,43 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { promises as fs } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
+const root = path.resolve(import.meta.dirname, '..', '..');
+const tsx = path.join(root, 'node_modules', '.bin', 'tsx');
+const pilot = JSON.parse(await fs.readFile(path.join(root, 'gallery', 'pilot.json'), 'utf8'));
+
+test('the pilot builds a hub and a spoke per item, with hand-off prompts and downloads', async () => {
+  const out = await fs.mkdtemp(path.join(os.tmpdir(), 'gallery-'));
+  execFileSync(tsx, [path.join(root, 'scripts', 'build-gallery.ts'), '--out', out, '--no-thumbs'], { cwd: root, stdio: 'pipe' });
+
+  const dsHub = await fs.readFile(path.join(out, 'design-systems', 'index.html'), 'utf8');
+  assert.equal(dsHub.match(/<li class="card/g)?.length, pilot.designSystems.length);
+  assert.match(dsHub, /<meta name="robots" content="noindex">/);
+  for (const id of pilot.designSystems) assert.ok(dsHub.includes(`href="${id}/"`), `hub links ${id}`);
+
+  const kami = await fs.readFile(path.join(out, 'design-systems', 'kami', 'index.html'), 'utf8');
+  assert.match(kami, /Use the Open Design design system &quot;kami&quot; for my designs\./);
+  assert.match(kami, /https:\/\/claude\.ai\/new\?q=/);
+  assert.match(kami, /href="claude\/tokens\.json" download/);
+  assert.match(kami, /href="kit\/DESIGN\.md" download/);
+  assert.doesNotMatch(kami, /Bundled OpenDesign package/);
+  await fs.access(path.join(out, 'design-systems', 'kami', 'preview.html'));
+  await fs.access(path.join(out, 'design-systems', 'kami', 'claude', 'design-system.json'));
+
+  const exHub = await fs.readFile(path.join(out, 'examples', 'index.html'), 'utf8');
+  assert.equal(exHub.match(/<li class="card/g)?.length, pilot.examples.length);
+  const poster = await fs.readFile(path.join(out, 'examples', 'magazine-poster', 'index.html'), 'utf8');
+  assert.match(poster, /<h1>Magazine poster<\/h1>/);
+  assert.match(poster, /Remix the Open Design example od:prototype:magazine-poster:example\./);
+  await fs.access(path.join(out, 'examples', 'magazine-poster', 'preview.html'));
+  await fs.access(path.join(out, '.nojekyll'));
+});
+
+test('--index drops the noindex tag', async () => {
+  const out = await fs.mkdtemp(path.join(os.tmpdir(), 'gallery-'));
+  execFileSync(tsx, [path.join(root, 'scripts', 'build-gallery.ts'), '--out', out, '--no-thumbs', '--index'], { cwd: root, stdio: 'pipe' });
+  assert.doesNotMatch(await fs.readFile(path.join(out, 'index.html'), 'utf8'), /noindex/);
+});

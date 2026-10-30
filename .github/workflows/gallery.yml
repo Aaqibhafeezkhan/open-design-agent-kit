@@ -1,0 +1,72 @@
+name: Gallery
+
+# Builds the design-system and example gallery (scripts/build-gallery.ts) and
+# deploys it to GitHub Pages. Run by hand only while it's a pilot: the site is
+# public once deployed, so nothing goes live on a push. Needs Pages enabled with
+# "GitHub Actions" as the source (Settings > Pages).
+#
+# Inputs: `all` builds every bundled design system and example instead of the
+# pilot in gallery/pilot.json; `index` lets search engines index the site.
+
+on:
+  workflow_dispatch:
+    inputs:
+      all:
+        description: 'Build every design system and example, not just the pilot'
+        required: false
+        type: boolean
+        default: false
+      index:
+        description: 'Let search engines index the site (drops the noindex tag)'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # ubuntu-latest ships Google Chrome, which the thumbnails use.
+      - name: Build the gallery
+        run: |
+          ARGS="--out dist/gallery"
+          if [ "${{ inputs.all }}" == "true" ]; then ARGS="$ARGS --all"; fi
+          if [ "${{ inputs.index }}" == "true" ]; then ARGS="$ARGS --index"; fi
+          npx tsx scripts/build-gallery.ts $ARGS
+
+      - name: Upload the site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/gallery
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
