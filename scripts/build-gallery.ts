@@ -14,7 +14,10 @@
 //   npx tsx scripts/build-gallery.ts                 the pilot in gallery/pilot.json
 //   npx tsx scripts/build-gallery.ts --all           every bundled design system and example
 //   options: --out <dir>  --no-thumbs  --index (drop the noindex tag)
-//            --base-url <url> (the site's address, so gallery.json links are absolute)
+//            --base-url <url> (the site's address, so gallery.json links are absolute;
+//            defaults to gallery-site.json's url)
+//   While gallery-site.json says live, every bundled item is built (as --all),
+//   so every gallery link the server gives has a page (openspec link-public-gallery).
 //
 // Generated, never committed (dist/ is ignored); .github/workflows/gallery.yml
 // builds and deploys it to GitHub Pages. No page can act for the visitor: the
@@ -25,6 +28,7 @@ import sharp from 'sharp';
 import { ContentIndex, type DesignSystemDetail, type SkillSummary } from '../packages/core/src/content/contentIndex';
 import { buildDesignSystemPreview, buildExamplePreview, designSystemTile } from '../packages/core/src/preview/server/mcpAppPickers';
 import { findBrowser } from '../packages/core/src/export/browserDiscovery';
+import { hasGalleryPage, loadGallerySite } from '../packages/core/src/content/gallerySite';
 
 const REPO = 'feimacode/open-design-agent-kit';
 const ROOT = path.resolve(__dirname, '..');
@@ -635,11 +639,17 @@ async function startShooter(log: (m: string) => void): Promise<Shooter | undefin
 async function main(): Promise<void> {
   const opts = parseArgs(process.argv.slice(2));
   const log = (m: string): void => console.log(m);
+  const site = await loadGallerySite(path.join(ROOT, 'packages/content/local'));
+  opts.baseUrl ??= site?.url;
+  if (site?.live && !opts.all) {
+    log('The gallery is live (gallery-site.json): building every design system and example.');
+    opts.all = true;
+  }
   const index = new ContentIndex(ASSETS);
   const pilot = JSON.parse(await fs.readFile(PILOT, 'utf8')) as { designSystems: string[]; examples: string[] };
   const descriptors = (JSON.parse(await fs.readFile(DESCRIPTORS, 'utf8')) as { systems: Record<string, Descriptor> }).systems;
 
-  const dsIds = opts.all ? (await index.listDesignSystems()).filter((s) => s.source === 'built-in').map((s) => s.id).sort() : pilot.designSystems;
+  const dsIds = opts.all ? (await index.listDesignSystems()).filter(hasGalleryPage).map((s) => s.id).sort() : pilot.designSystems;
   const remixable = await index.listSkills(undefined, undefined, undefined, true);
   const examples = opts.all ? remixable.filter((s) => s.exampleArtifactPath) : pilot.examples.map((id) => remixable.find((s) => s.id === id)).filter((s): s is SkillSummary => !!s);
   const missing = opts.all ? [] : pilot.examples.filter((id) => !remixable.some((s) => s.id === id));

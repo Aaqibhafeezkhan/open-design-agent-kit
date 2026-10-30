@@ -9,7 +9,7 @@ It is hub and spoke:
 
 A hub's filter lives in its hash, so a link can open it filtered: `examples/#tag=poster`, `design-systems/#q=warm`, or both (`#tag=poster&q=cafe`).
 
-**`gallery.json`** at the site root lists every item for agents: id, title, summary, tags, page and thumbnail URLs, file links, and the same prompts the spokes show, plus each hub's URL and tags. The workflow passes the site's address (`--base-url`), so its links are absolute; a local build without it uses links relative to the site root.
+**`gallery.json`** at the site root lists every item for agents: id, title, summary, tags, page and thumbnail URLs, file links, and the same prompts the spokes show, plus each hub's URL and tags. Its links are absolute: the workflow passes the Pages address (`--base-url`), and a build without it uses the address in `packages/content/local/gallery-site.json`.
 
 No page acts for the visitor. Claude has no API for adding a design system, and a web page can't reach the kit's MCP server, so every button copies a prompt, opens a new chat, or links to files.
 
@@ -24,6 +24,17 @@ npx tsx scripts/build-gallery.ts --no-thumbs    # skip thumbnails (no browser ne
 Thumbnails need Chrome, Edge or Chromium, found the same way as for exports (`OPEN_DESIGN_BROWSER_PATH` overrides it). Design systems use their Claude Design cover with the system's tokens; examples use the top of the page at 1280×800. Without a browser, cards show the system's colors instead.
 
 Every page carries `noindex` until the site is built with `--index`.
+
+## Linking it from the kit
+
+`packages/content/local/gallery-site.json` holds the site's address and a `live` switch, `false` until the site is public. While it's `false`, nothing in the kit links the gallery. With `live: true`:
+
+- `show_open_design_examples` and `show_open_design_design_systems` return `gallery.url` (the hub, filtered with `#q=` when the call had a query), and their inline views show **See them all in the gallery**.
+- `register_open_design_artifact` returns `designSystem.galleryUrl` for a bundled design system.
+- The overview skill tells the agent to link the gallery on browsing requests and to name the design system with its page when a design is ready, once each per conversation.
+- This build always builds every design system and example, whatever `--all` says, so every link has a page.
+
+Turning it on doesn't drop `noindex`; that's still `--index`.
 
 ## Deploy it
 

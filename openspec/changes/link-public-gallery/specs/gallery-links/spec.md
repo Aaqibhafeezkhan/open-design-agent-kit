@@ -1,14 +1,14 @@
 ## ADDED Requirements
 
 ### Requirement: Gallery Address and Switch
-The content SHALL include `packages/content/local/gallery.json` with the gallery's `url` (an `https` URL ending in `/`) and a boolean `live`. The content sync check SHALL fail when either is missing or invalid. While `live` is `false`, no tool result, inline view or skill instruction SHALL contain a gallery link.
+The content SHALL include `packages/content/local/gallery-site.json` with the gallery's `url` (an `https` URL ending in `/`) and a boolean `live`. The content sync check SHALL fail when either is missing or invalid. While `live` is `false`, no tool result, inline view or skill instruction SHALL contain a gallery link.
 
 #### Scenario: Gallery not live
-- **WHEN** `gallery.json` has `live: false` and the agent calls `show_open_design_examples`
+- **WHEN** `gallery-site.json` has `live: false` and the agent calls `show_open_design_examples`
 - **THEN** the result SHALL have no `gallery` field and the view SHALL show no gallery link
 
 #### Scenario: Invalid address
-- **WHEN** `gallery.json` has `url: "feimacode.github.io"`
+- **WHEN** `gallery-site.json` has `url: "feimacode.github.io"`
 - **THEN** the content sync check SHALL fail naming the `url` field
 
 ### Requirement: Gallery Link in Picker Results
@@ -34,7 +34,7 @@ While the gallery is live, the inline examples and design-systems views SHALL sh
 - **THEN** the view SHALL show no gallery link
 
 ### Requirement: Design System Page Link on Register
-While the gallery is live, `register_open_design_artifact` SHALL return `designSystem: { id, galleryUrl }`, with `galleryUrl` set to `<gallery url>design-systems/<id>/`, when the `designSystemId` it records names a bundled (`built-in`) design system. It SHALL NOT return `galleryUrl` for any other design system or when the artifact records none.
+While the gallery is live, `register_open_design_artifact` SHALL return `designSystem: { id, galleryUrl }`, with `galleryUrl` set to `<gallery url>design-systems/<id>/`, when the design system passed as `designSystemId`, or the active one when none is passed, is a bundled (`built-in`) design system. It SHALL NOT return `galleryUrl` for any other design system or when there is none.
 
 #### Scenario: Bundled design system
 - **WHEN** the gallery is live and the agent registers an artifact made with `kami`
@@ -55,7 +55,7 @@ While the gallery is live, the Gallery workflow SHALL build every bundled design
 The overview skill and the `open-design-new` prompt SHALL tell the agent, while the gallery is live:
 - On a **browsing** request (the person wants to look before deciding, e.g. "show me some examples", "what styles are there?"), to show the in-chat gallery where it is in the tools and then add one line linking `gallery.url`, if it hasn't linked the gallery earlier in the conversation.
 - When a design is **ready**, to name its design system with a link to `designSystem.galleryUrl` in the ready sentence, the first time that design system is used in the conversation.
-- Never to link the gallery before building on a **concrete** request, and never in a recurring job run.
+- Never to link the gallery before building on a **concrete** request, after an export or publish, or in a recurring job run.
 
 #### Scenario: Browsing request in Desktop Chat
 - **WHEN** a user in Desktop Chat asks "what kinds of posters can you make?"

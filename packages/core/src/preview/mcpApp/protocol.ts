@@ -136,6 +136,8 @@ export interface PreviewAppExamplesState {
   total: number;
   /** Pass back as `cursor` for the next page. */
   nextCursor?: string;
+  /** The public gallery's examples hub, while it is live (openspec link-public-gallery). */
+  galleryUrl?: string;
 }
 
 export interface PreviewAppExamplePreview {
@@ -164,6 +166,8 @@ export interface PreviewAppDesignSystemsState {
   systems: PreviewAppDesignSystemTile[];
   /** Shortlisted ids that matched nothing. */
   unknownIds?: string[];
+  /** The public gallery's design-systems hub, while it is live (openspec link-public-gallery). */
+  galleryUrl?: string;
 }
 
 /** A design system's Visualize page: script-free, shown in a view-only frame. */

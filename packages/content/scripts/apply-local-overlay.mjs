@@ -28,6 +28,8 @@ export const PRINT_HOUSES_FILE = 'print-houses.json';
 export const INTEGRATIONS_FILE = 'integrations.json';
 /** Curated design-system descriptors (openspec add-design-system-matching): local/design-system-descriptors.json, copied to the assets root. */
 export const DESCRIPTORS_FILE = 'design-system-descriptors.json';
+/** The public gallery's address and switch (openspec link-public-gallery): local/gallery-site.json, copied to the assets root. */
+export const GALLERY_SITE_FILE = 'gallery-site.json';
 /** Third-party licence notices for ported content (openspec add-mobile-design-systems): local/notices/*, copied to the assets' notices/. */
 export const NOTICES_DIR = 'notices';
 /** Kit-owned craft docs (openspec add-states-and-microcopy-craft): local/craft/<id>.md, copied beside upstream's craft/ docs, never over one. */
@@ -115,6 +117,7 @@ export async function listOverlayFiles(localRoot = LOCAL_ROOT) {
   if (await pathExists(path.join(localRoot, PRINT_HOUSES_FILE))) files.push(PRINT_HOUSES_FILE);
   if (await pathExists(path.join(localRoot, INTEGRATIONS_FILE))) files.push(INTEGRATIONS_FILE);
   if (await pathExists(path.join(localRoot, DESCRIPTORS_FILE))) files.push(DESCRIPTORS_FILE);
+  if (await pathExists(path.join(localRoot, GALLERY_SITE_FILE))) files.push(GALLERY_SITE_FILE);
   for (const id of await listDirs(path.join(localRoot, 'design-systems'))) {
     const names = new Set(await listFiles(path.join(localRoot, 'design-systems', id)));
     if (isOverrideShape(names)) {
@@ -311,6 +314,10 @@ export async function applyLocalOverlay(targetRoot, localRoot = LOCAL_ROOT) {
   const hasDescriptors = await pathExists(path.join(localRoot, DESCRIPTORS_FILE));
   if (hasDescriptors) await fs.copyFile(path.join(localRoot, DESCRIPTORS_FILE), path.join(targetRoot, DESCRIPTORS_FILE));
   else await fs.rm(path.join(targetRoot, DESCRIPTORS_FILE), { force: true });
+
+  // gallery-site.json likewise has no upstream counterpart.
+  if (await pathExists(path.join(localRoot, GALLERY_SITE_FILE))) await fs.copyFile(path.join(localRoot, GALLERY_SITE_FILE), path.join(targetRoot, GALLERY_SITE_FILE));
+  else await fs.rm(path.join(targetRoot, GALLERY_SITE_FILE), { force: true });
 
   // Drop overrides from a previous run that local/ no longer has, so a
   // standalone re-apply after deleting one doesn't leave it in effect.
