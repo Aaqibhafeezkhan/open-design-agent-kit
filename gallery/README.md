@@ -7,6 +7,10 @@ It is hub and spoke:
 - **Hubs** (`design-systems/`, `examples/`): a grid of thumbnails, titles and tags, with a search box and tag filters.
 - **Spokes** (`<hub>/<id>/`): the item full size (a design system has two views: **Open Design**, the kit's own page, and **Claude Design**, its cover, tokens by family and README from the Claude-format files; `#claude` links to the second), its files to download, and buttons that hand the next step to the visitor's agent. A design system spoke offers a prompt for the Open Design kit ("Use the Open Design design system …") and one for Claude Design, with an **Open in Claude** link that starts a new chat with it. An example spoke offers the kit's remix prompt and the example's brief.
 
+A hub's filter lives in its hash, so a link can open it filtered: `examples/#tag=poster`, `design-systems/#q=warm`, or both (`#tag=poster&q=cafe`).
+
+**`gallery.json`** at the site root lists every item for agents: id, title, summary, tags, page and thumbnail URLs, file links, and the same prompts the spokes show, plus each hub's URL and tags. The workflow passes the site's address (`--base-url`), so its links are absolute; a local build without it uses links relative to the site root.
+
 No page acts for the visitor. Claude has no API for adding a design system, and a web page can't reach the kit's MCP server, so every button copies a prompt, opens a new chat, or links to files.
 
 ## Build it

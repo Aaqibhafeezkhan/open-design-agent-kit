@@ -9,10 +9,12 @@
 //   dist/gallery/examples/index.html                hub
 //   dist/gallery/examples/<slug>/index.html         spoke: preview.html
 //   dist/gallery/<hub>/thumbs/<slug>.webp           thumbnails (needs Chrome, Edge or Chromium)
+//   dist/gallery/gallery.json                       every item, its links and prompts, for agents
 //
 //   npx tsx scripts/build-gallery.ts                 the pilot in gallery/pilot.json
 //   npx tsx scripts/build-gallery.ts --all           every bundled design system and example
 //   options: --out <dir>  --no-thumbs  --index (drop the noindex tag)
+//            --base-url <url> (the site's address, so gallery.json links are absolute)
 //
 // Generated, never committed (dist/ is ignored); .github/workflows/gallery.yml
 // builds and deploys it to GitHub Pages. No page can act for the visitor: the
@@ -39,6 +41,7 @@ interface Options {
   all: boolean;
   thumbs: boolean;
   index: boolean;
+  baseUrl?: string;
 }
 
 /** A hub card and its spoke: everything the pages need, already resolved. */
@@ -67,6 +70,7 @@ function parseArgs(argv: string[]): Options {
     else if (a === '--no-thumbs') opts.thumbs = false;
     else if (a === '--index') opts.index = true;
     else if (a === '--out') opts.out = path.resolve(argv[++i] ?? '');
+    else if (a === '--base-url') opts.baseUrl = argv[++i] || undefined;
     else throw new Error(`Unknown option ${a}`);
   }
   return opts;
@@ -143,9 +147,12 @@ const TABS_JS = `(function(){var tabs=[].slice.call(document.querySelectorAll('.
 function show(t){tabs.forEach(function(o){o.setAttribute('aria-selected',String(o===t))});if(f.getAttribute('src')!==t.dataset.src)f.setAttribute('src',t.dataset.src);history.replaceState(null,'',t.dataset.hash?'#'+t.dataset.hash:location.pathname)}
 tabs.forEach(function(t){t.addEventListener('click',function(){show(t)})});var h=location.hash.slice(1);tabs.forEach(function(t){if(h&&t.dataset.hash===h)show(t)})})();`;
 
+// Filters the hub's cards. The filter lives in the hash (#tag=poster&q=cafe), so a link can open the hub already filtered.
 const FILTER_JS = `(function(){var q=document.getElementById('q'),chips=[].slice.call(document.querySelectorAll('.chip')),cards=[].slice.call(document.querySelectorAll('.card')),empty=document.getElementById('empty'),tag='';
-function apply(){var s=q.value.trim().toLowerCase(),n=0;cards.forEach(function(c){var ok=(!tag||c.dataset.tags.split('|').indexOf(tag)>=0)&&(!s||c.dataset.search.indexOf(s)>=0);c.hidden=!ok;if(ok)n++});empty.hidden=n>0}
-q.addEventListener('input',apply);chips.forEach(function(ch){ch.addEventListener('click',function(){tag=ch.getAttribute('aria-pressed')==='true'?'':ch.dataset.tag;chips.forEach(function(o){o.setAttribute('aria-pressed',String(o.dataset.tag===tag))});apply()})})})();`;
+function mark(){chips.forEach(function(o){o.setAttribute('aria-pressed',String(o.dataset.tag===tag))})}
+function apply(){var s=q.value.trim().toLowerCase(),n=0;cards.forEach(function(c){var ok=(!tag||c.dataset.tags.split('|').indexOf(tag)>=0)&&(!s||c.dataset.search.indexOf(s)>=0);c.hidden=!ok;if(ok)n++});empty.hidden=n>0;var h=new URLSearchParams();if(tag)h.set('tag',tag);if(q.value.trim())h.set('q',q.value.trim());var t=h.toString();history.replaceState(null,'',t?'#'+t:location.pathname)}
+function read(){var h=new URLSearchParams(location.hash.slice(1)),t=h.get('tag')||'';tag=chips.some(function(c){return c.dataset.tag===t})?t:'';q.value=h.get('q')||'';mark();apply()}
+q.addEventListener('input',apply);chips.forEach(function(ch){ch.addEventListener('click',function(){tag=ch.getAttribute('aria-pressed')==='true'?'':ch.dataset.tag;mark();apply()})});window.addEventListener('hashchange',read);if(location.hash.length>1)read()})();`;
 
 function page(input: { title: string; body: string; depth: number; current?: 'design-systems' | 'examples'; script?: string; index: boolean; description: string }): string {
   const up = '../'.repeat(input.depth);
@@ -202,6 +209,19 @@ export function claudeNewChatUrl(prompt: string): string {
   return `https://claude.ai/new?q=${encodeURIComponent(prompt)}`;
 }
 
+export function designSystemPrompts(id: string, title: string): { githubFolder: string; kit: string; claudeDesign: string } {
+  const githubFolder = `https://github.com/${REPO}/tree/main/claude-design-systems/${id}`;
+  return {
+    githubFolder,
+    kit: `Use the Open Design design system "${id}" for my designs.`,
+    claudeDesign: `Add the "${title}" design system to my Claude design systems. Its files, already in Claude's Design System format, are in ${githubFolder}/project. Build a Design System artifact from them.`,
+  };
+}
+
+export function remixPrompt(id: string): string {
+  return `Remix the Open Design example ${id}.`;
+}
+
 function promptBlock(id: string, text: string, label: string, newChat: boolean): string {
   return `<pre class="prompt" id="${esc(id)}">${esc(text)}</pre>
 <div style="display:flex;flex-wrap:wrap;gap:8px"><button type="button" class="btn" data-copy="${esc(id)}">${esc(label)}</button>${newChat ? `<a class="btn secondary" href="${esc(claudeNewChatUrl(text))}" target="_blank" rel="noopener">Open in Claude</a>` : ''}</div>`;
@@ -217,9 +237,7 @@ export function renderDesignSystemSpoke(input: {
   index: boolean;
 }): string {
   const { item, id } = input;
-  const githubFolder = `https://github.com/${REPO}/tree/main/claude-design-systems/${id}`;
-  const usePrompt = `Use the Open Design design system "${id}" for my designs.`;
-  const claudePrompt = `Add the "${item.title}" design system to my Claude design systems. Its files, already in Claude's Design System format, are in ${githubFolder}/project. Build a Design System artifact from them.`;
+  const { githubFolder, kit: usePrompt, claudeDesign: claudePrompt } = designSystemPrompts(id, item.title);
   const fileList = (dir: string, files: string[]): string => `<ul class="files">${files.map((f) => `<li><a href="${dir}/${esc(f)}" download>${esc(f)}</a></li>`).join('')}</ul>`;
   const body = `<h1>${esc(item.title)}</h1>
 <p class="lede">${esc(item.summary)}</p>
@@ -242,7 +260,6 @@ ${input.kitFiles.length ? `<section><h2>Open Design files</h2>${fileList('kit', 
 
 export function renderExampleSpoke(input: { item: GalleryItem; id: string; examplePrompt?: string; sourcePath: string; hasPreview: boolean; index: boolean }): string {
   const { item, id } = input;
-  const remixPrompt = `Remix the Open Design example ${id}.`;
   const preview = input.hasPreview
     ? `<div class="frame"><iframe src="preview.html" title="${esc(item.title)} preview" sandbox="allow-scripts" loading="lazy"></iframe></div>`
     : `<div class="frame"><p class="empty" style="padding:24px">This example is too large to preview here. <a href="https://github.com/${REPO}/blob/main/${esc(input.sourcePath)}">See its source</a>.</p></div>`;
@@ -252,7 +269,7 @@ export function renderExampleSpoke(input: { item: GalleryItem; id: string; examp
 <div class="spoke">
 ${preview}
 <aside>
-<section><h2>Remix it with Open Design</h2><p>In a chat or editor where the Open Design Agent Kit is installed, paste this. Claude asks what to make, then starts from this example.</p>${promptBlock('p-remix', remixPrompt, 'Copy prompt', false)}</section>
+<section><h2>Remix it with Open Design</h2><p>In a chat or editor where the Open Design Agent Kit is installed, paste this. Claude asks what to make, then starts from this example.</p>${promptBlock('p-remix', remixPrompt(id), 'Copy prompt', false)}</section>
 ${input.examplePrompt ? `<section><h2>Make one like it in Claude</h2><p>The brief this example was made from. Change the details to fit yours.</p>${promptBlock('p-brief', input.examplePrompt, 'Copy brief', true)}</section>` : ''}
 <section><h2>Source</h2><p><a href="https://github.com/${REPO}/blob/main/${esc(input.sourcePath)}">example.html on GitHub</a></p></section>
 </aside>
@@ -266,8 +283,84 @@ function renderLanding(counts: { designSystems: number; examples: number }, inde
 <div class="big">
 <a href="design-systems/"><strong>Design systems</strong><span>${counts.designSystems} systems: colors, type and spacing as tokens, ready for Open Design or Claude Design.</span></a>
 <a href="examples/"><strong>Examples</strong><span>${counts.examples} finished designs to remix: posters, landing pages, decks and more.</span></a>
-</div>`;
+</div>
+<p class="note" style="margin-top:24px">For agents: <a href="gallery.json">gallery.json</a> lists every item with its links, tags and prompts.</p>`;
   return page({ title: 'Open Design gallery', body, depth: 0, index, description: 'Design systems and remixable examples for the Open Design Agent Kit and Claude Design.' });
+}
+
+// ── gallery.json ──────────────────────────────────────────────────────────
+
+export interface DesignSystemRecord {
+  item: GalleryItem;
+  id: string;
+  claudeFiles: string[];
+  kitFiles: string[];
+  claudeView: boolean;
+}
+
+export interface ExampleRecord {
+  item: GalleryItem;
+  id: string;
+  examplePrompt?: string;
+  sourcePath: string;
+  hasPreview: boolean;
+}
+
+/**
+ * The machine-readable gallery: what an agent without the kit needs to search
+ * it and link a person to the right page. Links are absolute when the site's
+ * address is known (--base-url), otherwise relative to the site's root.
+ */
+export function buildGalleryIndex(input: { baseUrl?: string; designSystems: DesignSystemRecord[]; examples: ExampleRecord[]; generatedAt?: string }): Record<string, unknown> {
+  const base = input.baseUrl ? (input.baseUrl.endsWith('/') ? input.baseUrl : `${input.baseUrl}/`) : undefined;
+  const url = (rel: string): string => (base ? new URL(rel, base).href : rel);
+  const tagsOf = (items: GalleryItem[]): string[] => [...new Set(items.flatMap((i) => i.tags))].sort();
+  return {
+    version: 1,
+    generatedAt: input.generatedAt ?? new Date().toISOString(),
+    site: base ?? null,
+    repository: `https://github.com/${REPO}`,
+    hubs: {
+      designSystems: { url: url('design-systems/'), tags: tagsOf(input.designSystems.map((d) => d.item)) },
+      examples: { url: url('examples/'), tags: tagsOf(input.examples.map((e) => e.item)) },
+      filter: 'Append #tag=<tag>, #q=<words> or both (#tag=poster&q=cafe) to a hub URL to open it filtered.',
+    },
+    designSystems: input.designSystems.map((d) => {
+      const dir = `design-systems/${d.id}/`;
+      const prompts = designSystemPrompts(d.id, d.item.title);
+      return {
+        id: d.id,
+        title: d.item.title,
+        summary: d.item.summary,
+        tags: d.item.tags,
+        colors: d.item.swatches,
+        url: url(dir),
+        ...(d.claudeView ? { claudeDesignUrl: url(`${dir}#claude`) } : {}),
+        thumbnail: d.item.thumb ? url(`design-systems/thumbs/${d.item.thumb}`) : null,
+        files: {
+          kit: d.kitFiles.map((f) => url(`${dir}kit/${f}`)),
+          claudeDesign: d.claudeFiles.map((f) => url(`${dir}claude/${f}`)),
+          claudeDesignFolder: prompts.githubFolder,
+        },
+        prompts: { kit: prompts.kit, claudeDesign: prompts.claudeDesign },
+      };
+    }),
+    examples: input.examples.map((e) => {
+      const dir = `examples/${e.item.slug}/`;
+      return {
+        id: e.id,
+        slug: e.item.slug,
+        title: e.item.title,
+        summary: e.item.summary,
+        tags: e.item.tags,
+        url: url(dir),
+        preview: e.hasPreview ? url(`${dir}preview.html`) : null,
+        thumbnail: e.item.thumb ? url(`examples/thumbs/${e.item.thumb}`) : null,
+        source: `https://github.com/${REPO}/blob/main/${e.sourcePath}`,
+        prompts: { remix: remixPrompt(e.id), ...(e.examplePrompt ? { brief: e.examplePrompt } : {}) },
+      };
+    }),
+  };
 }
 
 // ── The Claude Design view ────────────────────────────────────────────────
@@ -557,6 +650,7 @@ async function main(): Promise<void> {
   try {
     // Design systems
     const dsItems: GalleryItem[] = [];
+    const dsRecords: DesignSystemRecord[] = [];
     for (const id of dsIds) {
       const detail = await index.getDesignSystem(id);
       if (!detail) throw new Error(`No bundled design system "${id}".`);
@@ -583,8 +677,10 @@ async function main(): Promise<void> {
       const coverHtml = claudeFiles.includes('components/Cover/preview.html') ? await fs.readFile(path.join(claudeFrom, 'components/Cover/preview.html'), 'utf8') : undefined;
       const shot = coverHtml && detail.tokensCss !== undefined ? withTokens(coverHtml, kitTokensCss(detail)!) : undefined;
       if (shooter && shot && (await shooter.shoot(shot, thumbFile, COVER))) item.thumb = `${id}.webp`;
-      await fs.writeFile(path.join(dir, 'index.html'), renderDesignSystemSpoke({ item, id, claudeFiles, kitFiles, claudeView, index: opts.index }));
+      const record: DesignSystemRecord = { item, id, claudeFiles, kitFiles, claudeView };
+      await fs.writeFile(path.join(dir, 'index.html'), renderDesignSystemSpoke({ ...record, index: opts.index }));
       dsItems.push(item);
+      dsRecords.push(record);
     }
     await fs.writeFile(
       path.join(opts.out, 'design-systems', 'index.html'),
@@ -594,6 +690,7 @@ async function main(): Promise<void> {
 
     // Examples
     const exItems: GalleryItem[] = [];
+    const exRecords: ExampleRecord[] = [];
     for (const s of examples) {
       const rel = s.exampleArtifactPath!;
       const slug = exampleSlug(rel);
@@ -605,8 +702,10 @@ async function main(): Promise<void> {
       if (html) await fs.writeFile(path.join(dir, 'preview.html'), html);
       if (html && shooter && (await shooter.shoot(html, path.join(opts.out, 'examples', 'thumbs', `${slug}.webp`)))) item.thumb = `${slug}.webp`;
       const sourcePath = path.relative(ROOT, path.join(ASSETS, rel)).split(path.sep).join('/');
-      await fs.writeFile(path.join(dir, 'index.html'), renderExampleSpoke({ item, id: s.id, examplePrompt: s.examplePrompt?.trim() || undefined, sourcePath, hasPreview: !!html, index: opts.index }));
+      const record: ExampleRecord = { item, id: s.id, examplePrompt: s.examplePrompt?.trim() || undefined, sourcePath, hasPreview: !!html };
+      await fs.writeFile(path.join(dir, 'index.html'), renderExampleSpoke({ ...record, index: opts.index }));
       exItems.push(item);
+      exRecords.push(record);
     }
     await fs.writeFile(
       path.join(opts.out, 'examples', 'index.html'),
@@ -614,6 +713,7 @@ async function main(): Promise<void> {
     );
     log(`Examples: ${exItems.length} (${exItems.filter((i) => i.thumb).length} thumbnails)`);
 
+    await fs.writeFile(path.join(opts.out, 'gallery.json'), `${JSON.stringify(buildGalleryIndex({ baseUrl: opts.baseUrl, designSystems: dsRecords, examples: exRecords }), null, 2)}\n`);
     await fs.writeFile(path.join(opts.out, 'index.html'), renderLanding({ designSystems: dsItems.length, examples: exItems.length }, opts.index));
     // GitHub Pages: serve files as they are, no Jekyll.
     await fs.writeFile(path.join(opts.out, '.nojekyll'), '');

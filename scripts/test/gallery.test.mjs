@@ -41,6 +41,32 @@ test('the pilot builds a hub and a spoke per item, with hand-off prompts and dow
   assert.match(poster, /Remix the Open Design example od:prototype:magazine-poster:example\./);
   await fs.access(path.join(out, 'examples', 'magazine-poster', 'preview.html'));
   await fs.access(path.join(out, '.nojekyll'));
+
+  const hub = await fs.readFile(path.join(out, 'design-systems', 'index.html'), 'utf8');
+  assert.match(hub, /URLSearchParams\(location\.hash/, 'hub reads its filter from the hash');
+  const json = JSON.parse(await fs.readFile(path.join(out, 'gallery.json'), 'utf8'));
+  assert.equal(json.version, 1);
+  assert.equal(json.site, null);
+  assert.equal(json.designSystems.length, pilot.designSystems.length);
+  assert.equal(json.examples.length, pilot.examples.length);
+  const kamiEntry = json.designSystems.find((d) => d.id === 'kami');
+  assert.equal(kamiEntry.url, 'design-systems/kami/');
+  assert.equal(kamiEntry.claudeDesignUrl, 'design-systems/kami/#claude');
+  assert.ok(kamiEntry.files.claudeDesign.includes('design-systems/kami/claude/tokens.json'));
+  assert.equal(kamiEntry.prompts.kit, 'Use the Open Design design system "kami" for my designs.');
+  const posterEntry = json.examples.find((e) => e.slug === 'magazine-poster');
+  assert.equal(posterEntry.id, 'od:prototype:magazine-poster:example');
+  assert.equal(posterEntry.prompts.remix, 'Remix the Open Design example od:prototype:magazine-poster:example.');
+  assert.ok(json.hubs.examples.tags.length > 0);
+});
+
+test('--base-url makes gallery.json links absolute', async () => {
+  const out = await fs.mkdtemp(path.join(os.tmpdir(), 'gallery-'));
+  execFileSync(tsx, [path.join(root, 'scripts', 'build-gallery.ts'), '--out', out, '--no-thumbs', '--base-url', 'https://example.github.io/kit'], { cwd: root, stdio: 'pipe' });
+  const json = JSON.parse(await fs.readFile(path.join(out, 'gallery.json'), 'utf8'));
+  assert.equal(json.site, 'https://example.github.io/kit/');
+  assert.equal(json.designSystems.find((d) => d.id === 'kami').url, 'https://example.github.io/kit/design-systems/kami/');
+  assert.equal(json.hubs.examples.url, 'https://example.github.io/kit/examples/');
 });
 
 test('--index drops the noindex tag', async () => {
