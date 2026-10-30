@@ -1,6 +1,6 @@
 {
   "name": "@feimacode/open-design-agent-kit-claude-plugin",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "The Open Design Claude Code plugin: MCP server registration, an overview skill, and one explicit-only skill per curated Open Design entry. Installed via a Claude Code plugin marketplace, not `npm install`. Its dependencies pin the MCP server, which Claude Code installs from package-lock.json at plugin install time (regenerate with `npm run update-lock`); the devDependency only feeds the generator scripts in the monorepo's sync-content pipeline.",
   "license": "MIT",

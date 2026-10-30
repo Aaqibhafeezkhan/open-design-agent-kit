@@ -26,6 +26,12 @@ const GENERATED_MARKER = '<!-- generated:curated-entry -->';
 const CRITIC_AGENT = path.join(pluginRoot, 'agents', 'design-critic.md');
 const VOICE_OVERVIEWS = [path.join(skillsDir, 'open-design', 'SKILL.md'), path.resolve(pluginRoot, '..', 'vscode', 'instructions', 'open-design.instructions.md')];
 
+// A skill's folder must be named like its `name` (the Agent Skills spec); the
+// Claude plugin directory's scan can't list a skill whose two differ.
+function skillDirName(entry) {
+  return entry.publicId.replace(/:/g, '-');
+}
+
 function skillMdContent(entry) {
   const placeholder = entry.examplePrompt
     ? entry.examplePrompt.replace(/"/g, '\\"')
@@ -35,7 +41,7 @@ function skillMdContent(entry) {
   // space (`od:video:x` -> `/od video x`), which looks broken next to
   // Claude Code's own colon-preserving display. A hyphenated form renders
   // identically (and is typed identically) everywhere.
-  const invocationName = entry.publicId.replace(/:/g, '-');
+  const invocationName = skillDirName(entry);
   return `---
 name: "${invocationName}"
 description: ${entry.displayName} (Open Design) — use only when the user explicitly runs this skill
@@ -98,7 +104,7 @@ async function main() {
   }
 
   for (const entry of entries) {
-    const dir = path.join(skillsDir, entry.id);
+    const dir = path.join(skillsDir, skillDirName(entry));
     await fs.mkdir(dir, { recursive: true });
     await fs.writeFile(path.join(dir, 'SKILL.md'), skillMdContent(entry));
   }
