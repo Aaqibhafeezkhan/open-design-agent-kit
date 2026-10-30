@@ -5,6 +5,7 @@
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import type { ContentIndex, DesignSystemDetail, SkillSummary } from '../../content/contentIndex';
+import { galleryHubUrl } from '../../content/gallerySite';
 import { readCampaignSheetSidecar, campaignSheetPaths } from '../../export/campaignSheet';
 import { normalizeWorkspacePath, workspaceAssetReader } from '../../export/workspaceAssets';
 import { isSafeCssValue, resolveTokenValue } from '../../generation/designSystemTokens';
@@ -65,6 +66,7 @@ export async function buildExamplesState(index: ContentIndex, input: ExampleFilt
   if (input.query) filters.query = input.query;
   if (mode) filters.mode = mode;
   if (input.surface) filters.surface = input.surface;
+  const gallery = await index.getLiveGallery();
   return {
     ok: true,
     state: {
@@ -75,6 +77,7 @@ export async function buildExamplesState(index: ContentIndex, input: ExampleFilt
       examples: page.map((s) => ({ id: s.id, name: s.name, mode: s.mode, summary: oneLine(s.description) })),
       total: filtered.length,
       nextCursor: offset + page.length < filtered.length ? String(offset + page.length) : undefined,
+      ...(gallery ? { galleryUrl: galleryHubUrl(gallery, 'examples', filters.query) } : {}),
     },
   };
 }
@@ -196,6 +199,8 @@ export async function buildDesignSystemsState(index: ContentIndex, activeId: str
   }
   const state: PreviewAppDesignSystemsState = { view: 'design-systems', title: input.title ?? 'Design systems', filters, systems: details.map((d) => designSystemTile(d, activeId)) };
   if (unknownIds.length) state.unknownIds = unknownIds;
+  const gallery = await index.getLiveGallery();
+  if (gallery) state.galleryUrl = galleryHubUrl(gallery, 'design-systems', filters.query);
   return state;
 }
 

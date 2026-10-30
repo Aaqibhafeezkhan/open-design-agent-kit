@@ -18,7 +18,7 @@ The kit already has the two moments in code. `show_open_design_examples` and `sh
 
 ## Decisions
 
-**1. The URL and switch live in `packages/content/local/gallery.json`, not in code or an env var.** It ships with the content, so the server, the build script and the workflow read the same value, and the sync check validates it. Alternative: a server option or env var. Rejected because the plugin and the extension would each need configuring, and the build script couldn't see it.
+**1. The URL and switch live in `packages/content/local/gallery-site.json`, not in code or an env var.** It ships with the content, so the server, the build script and the workflow read the same value, and the sync check validates it. Alternative: a server option or env var. Rejected because the plugin and the extension would each need configuring, and the build script couldn't see it.
 
 ```json
 { "url": "https://feimacode.github.io/open-design-agent-kit/", "live": false }
@@ -43,7 +43,9 @@ The kit already has the two moments in code. `show_open_design_examples` and `sh
 - **Stale site.** The server's catalog can get ahead of the deployed site (a new bundled system before the workflow reruns). Mitigation: the release checklist reruns the Gallery workflow after a content sync; a missing page is a 404, not a wrong page.
 - **Hosts that strip links.** Desktop Chat renders Markdown links; if a host doesn't, the bare URL still works.
 
-## Open Questions
+## Resolved Questions
 
-- Should the finished-design link also go out after an export or publish, when the person is clearly done? Left out for now to keep it to one moment.
-- Should `live` also drop the gallery's noindex? Probably yes, but that belongs with the decision to make the site public.
+- **A link after an export or publish?** No (Iven, 2026-10-30). The skill says never to link the gallery there.
+- **Should `live` drop the gallery's noindex?** No (Iven, 2026-10-30). Indexing stays the workflow's separate `index` input.
+
+The file is `gallery-site.json`, not `gallery.json`, so it isn't confused with the site's own `gallery.json` for agents. `register_open_design_artifact` uses the design system passed as `designSystemId`, or the active one when none is passed, since agents usually leave it out when one is active.

@@ -235,6 +235,9 @@ describe('preview MCP App pickers over MCP', function () {
     let resource: string;
     const messages: string[] = [];
     const calledTools: string[] = [];
+    const openedLinks: string[] = [];
+    // Set to give picker states a gallery link, as a live gallery-site.json would (the bundled one isn't live).
+    let fakeGalleryUrl: string | undefined;
 
     before(async function () {
       const found = await findBrowser();
@@ -246,13 +249,14 @@ describe('preview MCP App pickers over MCP', function () {
           stdin: {
             contents: `
               import { AppBridge, PostMessageTransport } from '@modelcontextprotocol/ext-apps/app-bridge';
-              window.startHost = async (html, toolInput, toolResult) => {
+              window.startHost = async (html, toolInput, toolResult, opts = {}) => {
                 document.body.innerHTML = '';
                 const frame = document.createElement('iframe');
                 frame.setAttribute('sandbox', 'allow-scripts');
                 frame.style.cssText = 'width:1000px;height:640px;border:0';
                 document.body.appendChild(frame);
-                const bridge = new AppBridge(null, { name: 'reference-host', version: '1.0.0' }, { serverTools: {}, message: { text: {} }, openLinks: {} });
+                const bridge = new AppBridge(null, { name: 'reference-host', version: '1.0.0' }, opts.noLinks ? { serverTools: {}, message: { text: {} } } : { serverTools: {}, message: { text: {} }, openLinks: {} });
+                bridge.onopenlink = async ({ url }) => { await window.hostOpenLink(url); return {}; };
                 bridge.oncalltool = (params) => window.hostCallTool(JSON.stringify(params)).then(JSON.parse);
                 bridge.onmessage = async (params) => { await window.hostMessage(JSON.stringify(params)); return {}; };
                 bridge.setHostContext({ theme: 'dark', displayMode: 'inline', availableDisplayModes: ['inline', 'fullscreen'] });
@@ -278,7 +282,13 @@ describe('preview MCP App pickers over MCP', function () {
       await page.exposeFunction('hostCallTool', async (json: string) => {
         const params = JSON.parse(json) as { name: string };
         calledTools.push(params.name);
-        return JSON.stringify(await client.callTool(params));
+        const result = (await client.callTool(params)) as CallToolResult;
+        const state = result.structuredContent as { view?: string; galleryUrl?: string } | undefined;
+        if (fakeGalleryUrl && state && (state.view === 'examples' || state.view === 'design-systems')) state.galleryUrl = fakeGalleryUrl;
+        return JSON.stringify(result);
+      });
+      await page.exposeFunction('hostOpenLink', async (url: string) => {
+        openedLinks.push(url);
       });
       await page.exposeFunction('hostMessage', async (json: string) => {
         messages.push(text(JSON.parse(json)));
@@ -293,9 +303,9 @@ describe('preview MCP App pickers over MCP', function () {
     });
 
     const appFrame = () => page.frames().find((f) => f !== page.mainFrame() && f.parentFrame() === page.mainFrame())!;
-    async function show(tool: string, input: Record<string, unknown>, ready: string): Promise<void> {
+    async function show(tool: string, input: Record<string, unknown>, ready: string, opts: { noLinks?: boolean } = {}): Promise<void> {
       const result = await client.callTool({ name: tool, arguments: input });
-      await page.evaluate((html, i, r) => (window as unknown as { startHost(...a: unknown[]): Promise<void> }).startHost(html, i, r), resource, input, result as unknown as Record<string, unknown>);
+      await page.evaluate((html, i, r, o) => (window as unknown as { startHost(...a: unknown[]): Promise<void> }).startHost(html, i, r, o), resource, input, result as unknown as Record<string, unknown>, opts);
       await until(async () => !!(await appFrame()?.$(ready).catch(() => null)), ready);
     }
     async function clickAndWaitForMessage(selector: string): Promise<string> {
@@ -322,6 +332,22 @@ describe('preview MCP App pickers over MCP', function () {
         await until(async () => (await app.$eval(`[data-mode-filter="${chip}"]`, (el) => el.classList.contains('active')).catch(() => false)) === true, 'the chip to apply');
         const modes = await app.$$eval('.od-card-meta', (els) => els.map((e) => e.textContent));
         assert.ok(modes.every((m) => m === chip), `only ${chip} cards`);
+      }
+    });
+
+    it('gallery link: absent while the gallery is not live, opens through the host when it is, hidden without link support', async () => {
+      await show('show_open_design_examples', {}, '[data-remix]');
+      assert.strictEqual(await appFrame().$('#od-gallery'), null);
+      fakeGalleryUrl = 'https://gallery.example/kit/examples/';
+      try {
+        await show('show_open_design_examples', {}, '#od-gallery');
+        await appFrame().click('#od-gallery');
+        await until(() => openedLinks.includes(fakeGalleryUrl!), 'the host to open the gallery link');
+        await show('show_open_design_design_systems', {}, '#od-gallery');
+        await show('show_open_design_design_systems', {}, '[data-ds]', { noLinks: true });
+        assert.strictEqual(await appFrame().$('#od-gallery'), null);
+      } finally {
+        fakeGalleryUrl = undefined;
       }
     });
 

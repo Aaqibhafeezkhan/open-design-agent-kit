@@ -11,14 +11,14 @@ The site is still a noindex pilot, and the "-inspired" names and the upstream li
 
 ## What Changes
 
-- **Gallery address as content data.** A new `packages/content/local/gallery.json` holds the site's `url` and a `live` switch (`false` to start). No tool or skill text gives a gallery link while `live` is `false`.
+- **Gallery address as content data.** A new `packages/content/local/gallery-site.json` holds the site's `url` and a `live` switch (`false` to start). No tool or skill text gives a gallery link while `live` is `false`.
 - **Gallery links in the picker results (item 1).** While live, `show_open_design_examples` and `show_open_design_design_systems` return a `gallery` field: the matching hub's URL, filtered with the hub's hash (`#q=<query>`) when the call had a free-text query. The inline gallery views show a **See them all in the gallery** link at the bottom, opened through the host's link handling.
 - **Design-system page link on a finished design (item 3).** While live, `register_open_design_artifact` returns `designSystem: { id, galleryUrl }` when the artifact records a bundled design system (its `designSystemId`). That's the gallery's page for that system. Custom, generated and URL-extracted systems have no page and get no link.
 - **When the agent links (skill text).**
   - Browsing request: show the in-chat gallery where it is in the tools, then add one line linking the gallery (`gallery.url` from the result). Elsewhere, keep today's lists.
   - Finished design: when the agent says the design is ready the first time a design system is used in a session, name the system with a link to its gallery page. Not repeated for later rounds or designs with the same system.
   - Never on a concrete request before the design, never in a recurring job run, and at most once per kind of link per session.
-- **The site deploys everything while live.** The Gallery workflow builds every bundled design system and example (`--all`) whenever `gallery.json` says `live`, so every `galleryUrl` the server returns has a page behind it.
+- **The site deploys everything while live.** The Gallery workflow builds every bundled design system and example (`--all`) whenever `gallery-site.json` says `live`, so every `galleryUrl` the server returns has a page behind it.
 
 Not in this change: links on hosts without inline galleries (terminal, Codex, claude.ai without the kit), linking example pages after a remix, and making the site public (a separate decision on names and licence).
 
@@ -32,9 +32,9 @@ None. The picker and register tools gain fields; their existing behaviour is unc
 
 ## Impact
 
-- `packages/content/local/gallery.json` (new), its loader in `packages/core/src/content/contentIndex.ts`, and the content sync check (valid `https` URL, boolean `live`).
+- `packages/content/local/gallery-site.json` (new), its loader in `packages/core/src/content/contentIndex.ts`, and the content sync check (valid `https` URL, boolean `live`).
 - `packages/mcp-server/src/tools.ts`: `showExamples`, `showDesignSystems`, `registerArtifact`; `packages/mcp-server/src/index.ts` descriptions; unit tests.
 - `packages/core/src/preview/mcpApp/`: footer link in the examples and design-systems views.
 - Skills: `packages/claude-plugin/skills/open-design/SKILL.md` and its generated copies; `packages/content/local/prompts/new.md`.
-- `scripts/build-gallery.ts` and `.github/workflows/gallery.yml`: read `gallery.json`, force `--all` while live, and share the spoke-URL rule with the server.
+- `scripts/build-gallery.ts` and `.github/workflows/gallery.yml`: read `gallery-site.json`, force `--all` while live, and share the spoke-URL rule with the server.
 - Docs: `docs/reference/tools.md` (new fields), `gallery/README.md` (the switch).

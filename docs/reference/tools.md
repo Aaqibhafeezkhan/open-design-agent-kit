@@ -308,7 +308,7 @@ Call after the entry file (and any supporting files) is written. Validates the a
 | `brief` | `{ text?, answers?, assumptions? }` | no | What was asked and assumed: the request in one line (`text`, ≤ 500 characters) and the same `answers` and `assumptions` passed to `prepare_open_design_brief`. Stored as `metadata.brief`; a new one replaces the old, and registering without it keeps the old one. |
 | `critique` | object | no | The design critic's latest opinion from the [`open-design-critique` skill](../guides/generate-a-design.md#second-opinion): `{ verdict, findings, checkRunId?, at? }`, with `verdict` `ship`, `polish` or `rework` and at most 5 `findings` of `{ area, where?, problem?, fix }`. Stored as [`metadata.critique`](artifact-manifest.md#metadatacritique), replacing the last one; `checkRunId` defaults to the latest saved check run and `at` to now. An unknown verdict or area, a finding without `fix`, more than 5 findings or a record over 4 KB fails the registration and leaves the manifest as it was. |
 
-**Result:** the written manifest. See [Artifact manifest](artifact-manifest.md). Registering also adds or updates the design's line in `.open-design/history.json` (see [Why designs vary](../guides/generate-a-design.md#why-designs-vary)). With `explorationId`, the result also reports the comparison page's path and which directions are still missing. If the exploration has no plan, the artifact is still registered and the result carries a warning.
+**Result:** the written manifest. See [Artifact manifest](artifact-manifest.md). Registering also adds or updates the design's line in `.open-design/history.json` (see [Why designs vary](../guides/generate-a-design.md#why-designs-vary)). With `explorationId`, the result also reports the comparison page's path and which directions are still missing. If the exploration has no plan, the artifact is still registered and the result carries a warning. While the [public gallery](../../gallery/README.md#linking-it-from-the-kit) is live, a design made with a bundled design system (the one passed as `designSystemId`, or the active one) also gets `designSystem: { id, name, galleryUrl }`, the system's gallery page, which the skill names when the design is ready.
 
 With `sources`, the result also runs a **number check** on HTML entries: it lists numbers in the page's visible text (speaker notes included) that appear in none of the sources, each with surrounding text, up to 50. Integers 0–12 and years 1900–2100 are ignored, and grouping doesn't matter (`1,200` matches `1200`). It's a prompt to verify, never an error. A source that can't be read is reported and left out.
 
@@ -358,7 +358,7 @@ MCP hosts that render MCP Apps only: the server lists it to no other host, where
 | `mode` | string | no | Exact mode, as `list_open_design_skills` takes. |
 | `surface` | string | no | A surface id (`slides`, `poster`, …): only that surface's examples. |
 
-**Result:** structured content with only the view, the filters and a title; the page reads the examples through `get_open_design_preview_state`. Called anyway by a host without MCP Apps, it returns a short text list of matching ids and names `list_open_design_skills`.
+**Result:** structured content with only the view, the filters and a title; the page reads the examples through `get_open_design_preview_state`. Called anyway by a host without MCP Apps, it returns a short text list of matching ids and names `list_open_design_skills`. While the [public gallery](../../gallery/README.md#linking-it-from-the-kit) is live, the result also has `gallery: { url }`, the gallery's examples hub (filtered with `#q=` when the call had a `query`), and the view shows **See them all in the gallery** where the host opens links.
 
 ### show_open_design_design_systems
 
@@ -370,7 +370,7 @@ MCP hosts that render MCP Apps only, like `show_open_design_examples`; elsewhere
 | `category` | string | no | Exact category. |
 | `ids` | string[] | no | A shortlist, shown in this order; `query` and `category` are ignored. |
 
-**Result:** as for `show_open_design_examples`: only the view, filters and a title, or a short text list for a host without MCP Apps.
+**Result:** as for `show_open_design_examples`: only the view, filters and a title (plus `gallery` while the gallery is live, pointing at its design-systems hub), or a short text list for a host without MCP Apps.
 
 ### show_open_design_questions
 

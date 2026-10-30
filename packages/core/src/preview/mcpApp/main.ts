@@ -104,6 +104,18 @@ function wireFullscreen(): void {
   applyHostContext();
 }
 
+/** The footer link to the public gallery (openspec link-public-gallery): only while it is live and where the host opens links. */
+function galleryLink(url: string | undefined): string {
+  return url && transport.canOpenLinks() ? `<div class="od-more"><a id="od-gallery" class="od-btn" href="${escapeHtml(url)}">See them all in the gallery</a></div>` : '';
+}
+
+function wireGalleryLink(url: string | undefined): void {
+  document.getElementById('od-gallery')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (url) transport.openLink(url).catch((err) => toast(`Couldn't open the gallery: ${errorText(err)}`));
+  });
+}
+
 async function send(text: string, done: string): Promise<boolean> {
   try {
     await transport.sendToChat(text);
@@ -424,8 +436,10 @@ function renderExamples(state: PreviewAppExamplesState, reload: () => void): voi
     ${state.modes.length > 1 ? `<div class="od-chips" role="group" aria-label="Filter by mode">${chips}</div>` : ''}
     ${state.examples.length ? '<div id="od-cards" class="od-cards"></div>' : '<div class="od-message">No remixable examples match. Ask Claude for a broader search.</div>'}
     <div class="od-more"><button id="od-more" class="od-btn" hidden>Show more</button></div>
+    ${galleryLink(state.galleryUrl)}
   </div>`;
   wireFullscreen();
+  wireGalleryLink(state.galleryUrl);
   document.getElementById('od-refresh')!.addEventListener('click', reload);
   root.querySelectorAll<HTMLButtonElement>('[data-mode-filter]').forEach((btn) =>
     btn.addEventListener('click', () => {
@@ -523,10 +537,12 @@ function renderDesignSystems(state: PreviewAppDesignSystemsState, reload: () => 
     <div class="od-scroll">
       ${state.unknownIds?.length ? `<div class="od-message">Not found: ${escapeHtml(state.unknownIds.join(', '))}</div>` : ''}
       ${state.systems.length ? `<div class="od-ds-tiles">${tiles}</div>` : '<div class="od-message">No design systems match.</div>'}
+      ${galleryLink(state.galleryUrl)}
     </div>
     <div id="od-ds-detail" class="od-ds-detail" hidden></div>
   </div>`;
   wireFullscreen();
+  wireGalleryLink(state.galleryUrl);
   document.getElementById('od-refresh')!.addEventListener('click', reload);
   const detail = document.getElementById('od-ds-detail')!;
   root.querySelectorAll<HTMLButtonElement>('[data-ds]').forEach((btn) =>

@@ -1,6 +1,9 @@
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import {
+  galleryDesignSystemUrl,
+  galleryHubUrl,
+  hasGalleryPage,
   type AssetResolution,
   type DesignProfile,
   CLAUDE_ARTIFACT_PROVIDER,
@@ -444,11 +447,26 @@ export async function registerArtifact(
 
     const critiqueNote = critique?.ok ? `\n\nRecorded the critique (${critiqueSummary(critique.record)}) as metadata.critique.` : '';
 
-    return `Artifact registered at ${input.entryPath}.artifact.json\n\n${JSON.stringify(manifest, null, 2)}\n\nWritten to ${path.join(ctx.workspaceRoot, input.entryPath)}.${await previewNoteAfterRegister(ctx, input.entryPath)}${artifactPreviewHint(ctx, manifest)}${commentsNote}${critiqueNote}${explorationNote}${sourceNote}`;
+    return `Artifact registered at ${input.entryPath}.artifact.json\n\n${JSON.stringify(manifest, null, 2)}\n\nWritten to ${path.join(ctx.workspaceRoot, input.entryPath)}.${await previewNoteAfterRegister(ctx, input.entryPath)}${artifactPreviewHint(ctx, manifest)}${commentsNote}${critiqueNote}${explorationNote}${sourceNote}${await designSystemGalleryNote(ctx, input.designSystemId)}`;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return `Failed to register artifact: ${message}`;
   }
+}
+
+/**
+ * The design system's page in the public gallery, while it is live and the
+ * system is a bundled one (openspec link-public-gallery): the one passed, or
+ * the active one when none was.
+ */
+export async function designSystemGalleryNote(ctx: ToolContext, designSystemId: string | undefined): Promise<string> {
+  const gallery = await ctx.contentIndex.getLiveGallery();
+  const id = designSystemId ?? (await ctx.store.get());
+  if (!gallery || !id) return '';
+  const detail = await ctx.contentIndex.getDesignSystem(id);
+  if (!detail || !hasGalleryPage(detail)) return '';
+  const designSystem = { id, name: detail.name, galleryUrl: galleryDesignSystemUrl(gallery, id) };
+  return `\n\nDesign system: ${JSON.stringify({ designSystem })}\nWhen you tell the user this design is ready, name the design system with a link to galleryUrl, the first time you use this design system in the conversation. Not again for later rounds or designs in the same style, and never in a recurring job run.`;
 }
 
 /** Claude Code or Claude Desktop (whose Chat sends "local-agent-mode-plugin:<plugin>:<server>"), by the same rule as the integration setup text. */
@@ -603,6 +621,18 @@ export async function showArtifact(ctx: ToolContext, input: { entryPath?: string
   return { text: shown.text, structuredContent: { ...shown.target } };
 }
 
+/** The matching gallery hub while the public gallery is live (openspec link-public-gallery). */
+async function galleryField(ctx: ToolContext, hub: 'examples' | 'design-systems', query: string | undefined): Promise<{ url: string } | undefined> {
+  const site = await ctx.contentIndex.getLiveGallery();
+  return site ? { url: galleryHubUrl(site, hub, query) } : undefined;
+}
+
+function galleryNote(gallery: { url: string } | undefined): string {
+  return gallery
+    ? `\n\nGallery: ${JSON.stringify({ gallery })}\nIf the user is browsing (wants to look before deciding), add one line linking gallery.url, unless you already linked the gallery in this conversation. Not on a concrete request, and never in a recurring job run.`
+    : '';
+}
+
 export interface ShowExamplesInput {
   query?: string;
   mode?: string;
@@ -616,11 +646,12 @@ export async function showExamples(ctx: ToolContext, input: ShowExamplesInput): 
   const matched = await matchingExamples(ctx.contentIndex, filters);
   if (!matched.ok) return { text: matched.message };
   const examples = filters.mode ? matched.examples.filter((s) => s.mode === filters.mode!.toLowerCase()) : matched.examples;
-  if (!ctx.rendersMcpApps) return { text: examplesFallbackText(examples) };
+  const gallery = await galleryField(ctx, 'examples', filters.query);
+  if (!ctx.rendersMcpApps) return { text: `${examplesFallbackText(examples)}${galleryNote(gallery)}` };
   const title = filters.surface ? `Examples: ${filters.surface}` : filters.query ? `Examples: ${filters.query}` : 'Examples to remix';
   return {
-    text: `Showing ${examples.length} remixable examples inline. The user picks one with "Remix this", which posts a message here naming its skillId; then call remix_open_design_example (ask what to make first if they haven't said).`,
-    structuredContent: { view: 'examples', title, ...filters },
+    text: `Showing ${examples.length} remixable examples inline. The user picks one with "Remix this", which posts a message here naming its skillId; then call remix_open_design_example (ask what to make first if they haven't said).${galleryNote(gallery)}`,
+    structuredContent: { view: 'examples', title, ...filters, ...(gallery ? { gallery } : {}) },
   };
 }
 
@@ -639,12 +670,13 @@ export async function showDesignSystems(ctx: ToolContext, input: ShowDesignSyste
     if (typeof input.category === 'string' && input.category.trim()) filters.category = input.category.trim();
   }
   const state = await buildDesignSystemsState(ctx.contentIndex, await ctx.store.get(), filters);
-  if (!ctx.rendersMcpApps) return { text: designSystemsFallbackText(state) };
+  const gallery = await galleryField(ctx, 'design-systems', filters.query);
+  if (!ctx.rendersMcpApps) return { text: `${designSystemsFallbackText(state)}${galleryNote(gallery)}` };
   const missing = state.unknownIds?.length ? ` Unknown ids, not shown: ${state.unknownIds.join(', ')}.` : '';
   const title = filters.ids ? 'Shortlisted design systems' : filters.category ? `Design systems: ${filters.category}` : filters.query ? `Design systems: ${filters.query}` : 'Design systems';
   return {
-    text: `Showing ${state.systems.length} design systems inline.${missing} The user opens one to see it and picks with "Use this design system", which posts a message here; then call set_active_design_system with that id.`,
-    structuredContent: { view: 'design-systems', title, ...filters },
+    text: `Showing ${state.systems.length} design systems inline.${missing} The user opens one to see it and picks with "Use this design system", which posts a message here; then call set_active_design_system with that id.${galleryNote(gallery)}`,
+    structuredContent: { view: 'design-systems', title, ...filters, ...(gallery ? { gallery } : {}) },
   };
 }
 

@@ -21,6 +21,10 @@ export interface McpAppTransport {
   persist(entryPath: string, changed: ArtifactComment[], deletedIds: string[]): Promise<void>;
   /** Posts a message into the chat as the user. */
   sendToChat(text: string): Promise<void>;
+  /** Whether the host opens external links for the app. */
+  canOpenLinks(): boolean;
+  /** Asks the host to open an external link. */
+  openLink(url: string): Promise<void>;
 }
 
 function resultText(result: CallToolResult): string {
@@ -82,6 +86,13 @@ export function createMcpAppTransport(app: App): McpAppTransport {
     async sendToChat(text) {
       const result = await app.sendMessage({ role: 'user', content: [{ type: 'text', text }] });
       if (result.isError) throw new Error('The chat refused the message.');
+    },
+    canOpenLinks() {
+      return !!app.getHostCapabilities()?.openLinks;
+    },
+    async openLink(url) {
+      const result = await app.openLink({ url });
+      if (result.isError) throw new Error('The host refused to open the link.');
     },
   };
 }

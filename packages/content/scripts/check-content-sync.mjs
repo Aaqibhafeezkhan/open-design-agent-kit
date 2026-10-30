@@ -17,6 +17,7 @@ import { checkIntegrations } from './integrations.mjs';
 import { checkPorts } from './ports.mjs';
 import { checkCraftRequires, checkSupersededQuotes } from './craftRequires.mjs';
 import { checkDescriptors } from './designSystemDescriptors.mjs';
+import { checkGallerySite } from './gallerySite.mjs';
 import { SCAFFOLD_MARKERS, findUnreviewedScaffolds } from './scaffoldGuard.mjs';
 import { checkConsistency } from './audit-design-system-consistency.mjs';
 
@@ -142,6 +143,15 @@ async function checkDesignSystemDescriptors() {
   }
 }
 
+// The public gallery's address and switch (openspec link-public-gallery).
+async function checkGallerySiteConfig() {
+  const problems = await checkGallerySite(assetsRoot);
+  if (problems.length > 0) {
+    console.error(`Gallery site problems (packages/content/local/gallery-site.json):\n- ${problems.join('\n- ')}`);
+    process.exit(1);
+  }
+}
+
 async function checkUnreviewedScaffolds() {
   const found = await findUnreviewedScaffolds(LOCAL_ROOT);
   if (found.length > 0) {
@@ -179,6 +189,7 @@ async function main() {
   await checkPrintHouseCatalog();
   await checkIntegrationRegistry();
   await checkDesignSystemDescriptors();
+  await checkGallerySiteConfig();
   await checkPortProvenance();
   await checkLocalCraft();
   await checkRedundantOverrides();

@@ -4,6 +4,7 @@ import matter from 'gray-matter';
 import { loadIntegrationRegistry, type IntegrationRegistry } from '../integrations/registry';
 import { loadPrintHouses, type PrintHouse } from '../poster/printHouses';
 import { DESIGN_SECTIONS_FILE, applyDesignSections } from './designSections';
+import { loadGallerySite, type GallerySite } from './gallerySite';
 import { computeDesignSystemFacets, loadDesignSystemDescriptors, matchesAllWords, rankDesignSystems, type DesignProfile, type DesignSystemDescriptor, type DesignSystemFacets, type MatchCandidate, type RecommendationResult } from './designSystemMatching';
 
 export type SkillSource = 'skill' | 'design-template' | 'example' | 'community';
@@ -637,6 +638,7 @@ function mergeSkillPools(...pools: Map<string, SkillDetail>[]): Map<string, Skil
 export class ContentIndex {
   private loaded: Promise<LoadedContent> | undefined;
   private integrations: Promise<IntegrationRegistry> | undefined;
+  private gallerySite: Promise<GallerySite | undefined> | undefined;
   private printHouses: Promise<PrintHouse[]> | undefined;
   private readonly facetCache = new Map<string, DesignSystemFacets>();
 
@@ -662,6 +664,13 @@ export class ContentIndex {
   getIntegrationRegistry(): Promise<IntegrationRegistry> {
     if (!this.integrations) this.integrations = loadIntegrationRegistry(this.assetsRoot).then((r) => r.registry);
     return this.integrations;
+  }
+
+  /** The public gallery's settings while it is live (openspec link-public-gallery); undefined otherwise, so callers give no links. */
+  async getLiveGallery(): Promise<GallerySite | undefined> {
+    if (!this.gallerySite) this.gallerySite = loadGallerySite(this.assetsRoot);
+    const site = await this.gallerySite;
+    return site?.live ? site : undefined;
   }
 
   private ensureLoaded(): Promise<LoadedContent> {
