@@ -114,7 +114,10 @@ h2{font-size:20px;color:var(--strong);margin:32px 0 12px}
 .tags li{font-size:12px;padding:3px 8px;border-radius:999px;background:var(--chip);color:var(--muted)}
 .empty{color:var(--muted)}
 .spoke{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:28px;align-items:start}
-@media (max-width:860px){.spoke{grid-template-columns:1fr}}
+@media (max-width:860px){.spoke{grid-template-columns:minmax(0,1fr)}}
+.tabs{display:flex;gap:4px;margin-bottom:8px}
+.tab{font:600 14px/1 var(--font);padding:9px 14px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--muted);cursor:pointer}
+.tab[aria-selected="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .frame{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
 .frame iframe{display:block;width:100%;height:min(78vh,820px);border:0}
 aside{display:grid;gap:18px}
@@ -134,6 +137,11 @@ footer{margin-top:48px;font-size:13px;color:var(--muted)}
 `;
 
 const COPY_JS = `document.querySelectorAll('[data-copy]').forEach(function(b){b.addEventListener('click',function(){var t=document.getElementById(b.getAttribute('data-copy')).textContent;var done=function(){var l=b.textContent;b.textContent='Copied';setTimeout(function(){b.textContent=l},1500)};if(navigator.clipboard){navigator.clipboard.writeText(t).then(done,function(){})}})});`;
+
+// Switches the spoke's frame between the two views; #claude opens (and links to) the Claude Design one.
+const TABS_JS = `(function(){var tabs=[].slice.call(document.querySelectorAll('.tab')),f=document.getElementById('view');if(!tabs.length)return;
+function show(t){tabs.forEach(function(o){o.setAttribute('aria-selected',String(o===t))});if(f.getAttribute('src')!==t.dataset.src)f.setAttribute('src',t.dataset.src);history.replaceState(null,'',t.dataset.hash?'#'+t.dataset.hash:location.pathname)}
+tabs.forEach(function(t){t.addEventListener('click',function(){show(t)})});var h=location.hash.slice(1);tabs.forEach(function(t){if(h&&t.dataset.hash===h)show(t)})})();`;
 
 const FILTER_JS = `(function(){var q=document.getElementById('q'),chips=[].slice.call(document.querySelectorAll('.chip')),cards=[].slice.call(document.querySelectorAll('.card')),empty=document.getElementById('empty'),tag='';
 function apply(){var s=q.value.trim().toLowerCase(),n=0;cards.forEach(function(c){var ok=(!tag||c.dataset.tags.split('|').indexOf(tag)>=0)&&(!s||c.dataset.search.indexOf(s)>=0);c.hidden=!ok;if(ok)n++});empty.hidden=n>0}
@@ -204,6 +212,8 @@ export function renderDesignSystemSpoke(input: {
   id: string;
   claudeFiles: string[];
   kitFiles: string[];
+  /** Whether claude/view.html was written: the system as Claude Design shows it. */
+  claudeView: boolean;
   index: boolean;
 }): string {
   const { item, id } = input;
@@ -215,7 +225,10 @@ export function renderDesignSystemSpoke(input: {
 <p class="lede">${esc(item.summary)}</p>
 <ul class="tags" style="margin-bottom:20px">${item.tags.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>
 <div class="spoke">
-<div class="frame"><iframe src="preview.html" title="${esc(item.title)} preview" sandbox="allow-scripts" loading="lazy"></iframe></div>
+<div>
+${input.claudeView ? `<div class="tabs" role="tablist" aria-label="Which view"><button type="button" role="tab" class="tab" data-src="preview.html" data-hash="" aria-selected="true">Open Design</button><button type="button" role="tab" class="tab" data-src="claude/view.html" data-hash="claude" aria-selected="false">Claude Design</button></div>` : ''}
+<div class="frame"><iframe id="view" src="preview.html" title="${esc(item.title)} preview" sandbox="allow-scripts" loading="lazy"></iframe></div>
+</div>
 <aside>
 <section><h2>Use it with Open Design</h2><p>In a chat or editor where the Open Design Agent Kit is installed, paste this.</p>${promptBlock('p-use', usePrompt, 'Copy prompt', false)}</section>
 <section><h2>Add it to Claude Design</h2><p>Claude builds the design system for you from its files.</p>${promptBlock('p-claude', claudePrompt, 'Copy prompt', true)}
@@ -224,7 +237,7 @@ ${input.claudeFiles.length ? `<section><h2>Claude Design files</h2>${fileList('c
 ${input.kitFiles.length ? `<section><h2>Open Design files</h2>${fileList('kit', input.kitFiles)}</section>` : ''}
 </aside>
 </div>`;
-  return page({ title: `${item.title} · Open Design gallery`, body, depth: 2, current: 'design-systems', script: COPY_JS, index: input.index, description: item.summary });
+  return page({ title: `${item.title} · Open Design gallery`, body, depth: 2, current: 'design-systems', script: COPY_JS + TABS_JS, index: input.index, description: item.summary });
 }
 
 export function renderExampleSpoke(input: { item: GalleryItem; id: string; examplePrompt?: string; sourcePath: string; hasPreview: boolean; index: boolean }): string {
@@ -255,6 +268,153 @@ function renderLanding(counts: { designSystems: number; examples: number }, inde
 <a href="examples/"><strong>Examples</strong><span>${counts.examples} finished designs to remix: posters, landing pages, decks and more.</span></a>
 </div>`;
   return page({ title: 'Open Design gallery', body, depth: 0, index, description: 'Design systems and remixable examples for the Open Design Agent Kit and Claude Design.' });
+}
+
+// ── The Claude Design view ────────────────────────────────────────────────
+
+type TokenValue = string | Record<string, string>;
+interface ClaudeToken { name: string; value: TokenValue; usage?: string }
+interface ClaudeTokens {
+  name?: string;
+  color?: { themes?: Array<{ id: string; name: string }>; tokens?: ClaudeToken[] };
+  type?: { families?: Record<string, string>; groups?: Array<{ name: string; family: string; styles: Array<{ name: string; fontSize: string; lineHeight?: number | string; letterSpacing?: string; usage?: string }> }> };
+  spacing?: { tokens?: ClaudeToken[] };
+  radius?: { tokens?: ClaudeToken[] };
+  shadow?: { tokens?: ClaudeToken[] };
+}
+
+/** The handful of Markdown a design-system README uses: headings, lists, quotes, paragraphs, bold, italics and code. */
+export function miniMarkdown(md: string): string {
+  const inline = (t: string): string =>
+    esc(t)
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>');
+  const out: string[] = [];
+  let list = false;
+  let para: string[] = [];
+  const flush = (): void => {
+    if (para.length) out.push(`<p>${inline(para.join(' '))}</p>`);
+    para = [];
+  };
+  const endList = (): void => {
+    if (list) out.push('</ul>');
+    list = false;
+  };
+  for (const raw of md.split(/\r?\n/)) {
+    const line = raw.trimEnd();
+    const h = /^(#{1,4})\s+(.*)$/.exec(line);
+    const li = /^\s*[-*]\s+(.*)$/.exec(line);
+    if (!line.trim()) {
+      flush();
+      endList();
+    } else if (h) {
+      flush();
+      endList();
+      const level = Math.min(h[1].length + 1, 4);
+      out.push(`<h${level}>${inline(h[2])}</h${level}>`);
+    } else if (li) {
+      flush();
+      if (!list) out.push('<ul>');
+      list = true;
+      out.push(`<li>${inline(li[1])}</li>`);
+    } else if (line.startsWith('>')) {
+      flush();
+      endList();
+      out.push(`<blockquote>${inline(line.replace(/^>\s?/, ''))}</blockquote>`);
+    } else para.push(line.trim());
+  }
+  flush();
+  endList();
+  return out.join('\n');
+}
+
+function tokenRows(tokens: ClaudeToken[] | undefined, themes: string[], cell: (value: string) => string): string {
+  if (!tokens?.length) return '';
+  return tokens
+    .map((t) => {
+      const values = typeof t.value === 'string' ? [t.value] : themes.map((id) => (t.value as Record<string, string>)[id] ?? '');
+      return `<tr><td><code>${esc(t.name)}</code></td>${values.map((v) => `<td>${cell(v)}</td>`).join('')}<td>${esc(t.usage ?? '')}</td></tr>`;
+    })
+    .join('');
+}
+
+/** The system as Claude Design presents it: its cover, its tokens by family and its README, all from the Claude-format files. */
+export function renderClaudeView(input: { tokens: ClaudeTokens; readme: string; hasCover: boolean }): string {
+  const { tokens } = input;
+  const themes = tokens.color?.themes?.map((t) => t.id) ?? ['light'];
+  const themeNames = tokens.color?.themes?.map((t) => t.name) ?? ['Value'];
+  const swatch = (v: string): string => (v ? `<span class="sw" style="background:${esc(v)}"></span><code>${esc(v)}</code>` : '');
+  const plain = (v: string): string => `<code>${esc(v)}</code>`;
+  const table = (title: string, head: string[], rows: string): string =>
+    rows ? `<section><h2>${title}</h2><div class="scroll"><table><thead><tr>${head.map((x) => `<th>${esc(x)}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div></section>` : '';
+  const families = tokens.type?.families ?? {};
+  const typeRows = (tokens.type?.groups ?? [])
+    .flatMap((g) =>
+      g.styles.map(
+        (st) =>
+          `<tr><td><code>${esc(st.name)}</code></td><td><span style="font-family:${esc(families[g.family] ?? 'inherit')};font-size:min(${esc(st.fontSize)},40px);line-height:1.1">Aa ${esc(g.name)}</span></td><td><code>${esc(st.fontSize)}${st.lineHeight !== undefined ? ` / ${esc(String(st.lineHeight))}` : ''}</code></td><td>${esc(st.usage ?? '')}</td></tr>`,
+      ),
+    )
+    .join('');
+  const familyRows = Object.entries(families).map(([k, v]) => `<tr><td><code>${esc(k)}</code></td><td style="font-family:${esc(v)}">${esc(v)}</td></tr>`).join('');
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${esc(tokens.name ?? 'Design system')} in Claude Design</title>
+<style>
+body{margin:0;font:15px/1.55 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#2a2a2a;background:#fff}
+main{padding:20px 24px 40px;display:grid;grid-template-columns:minmax(0,1fr);gap:28px}
+@media (max-width:520px){main{padding:16px}}
+.note{margin:0;font-size:13px;color:#6b6b6b}
+.cover{border:1px solid #e3e3e3;border-radius:10px;overflow:hidden;aspect-ratio:10/3;position:relative}
+.cover iframe{position:absolute;left:0;top:0;width:960px;height:288px;border:0;transform-origin:0 0}
+h2{font-size:16px;margin:0 0 10px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;vertical-align:middle;padding:7px 10px;border-bottom:1px solid #eee}
+th{font-weight:600;color:#6b6b6b;font-size:12px}
+code{font:12px ui-monospace,Menlo,Consolas,monospace}
+.sw{display:inline-block;width:22px;height:22px;border-radius:5px;border:1px solid rgba(0,0,0,.12);vertical-align:middle;margin-right:8px}
+.readme{max-width:72ch}
+.readme h2,.readme h3,.readme h4{margin:1.4em 0 .4em}
+.readme blockquote{margin:0 0 1em;padding-left:12px;border-left:3px solid #ddd;color:#555}
+</style>
+</head>
+<body>
+<main>
+<p class="note">What Claude Design shows for this system, built from its Claude Design files: the cover, the tokens by family and the README.</p>
+${input.hasCover ? '<div class="cover"><iframe src="cover.html" title="Cover" scrolling="no"></iframe></div>' : ''}
+${table('Color', ['Token', ...themeNames, 'Usage'], tokenRows(tokens.color?.tokens, themes, swatch))}
+${table('Type families', ['Family', 'Stack'], familyRows)}
+${table('Type scale', ['Style', 'Sample', 'Size / line height', 'Usage'], typeRows)}
+${table('Spacing', ['Token', 'Value', 'Usage'], tokenRows(tokens.spacing?.tokens, ['value'], plain))}
+${table('Radius', ['Token', 'Value', 'Usage'], tokenRows(tokens.radius?.tokens, ['value'], plain))}
+${table('Shadow', ['Token', 'Value', 'Usage'], tokenRows(tokens.shadow?.tokens, ['value'], plain))}
+${input.readme ? `<section class="readme"><h2>README</h2>${miniMarkdown(input.readme)}</section>` : ''}
+</main>
+${input.hasCover ? `<script>(function(){var c=document.querySelector('.cover'),f=c.querySelector('iframe');function fit(){f.style.transform='scale('+c.clientWidth/960+')'}fit();addEventListener('resize',fit)})();</script>` : ''}
+</body>
+</html>
+`;
+}
+
+/** Writes claude/view.html (and claude/cover.html with the tokens inlined); false when the system has no Claude-format files. */
+async function writeClaudeView(from: string, to: string, tokensCss: string | undefined): Promise<boolean> {
+  let tokens: ClaudeTokens;
+  try {
+    tokens = JSON.parse(await fs.readFile(path.join(from, 'tokens.json'), 'utf8')) as ClaudeTokens;
+  } catch {
+    return false;
+  }
+  const readme = await fs.readFile(path.join(from, 'README.md'), 'utf8').catch(() => '');
+  const cover = await fs.readFile(path.join(from, 'components/Cover/preview.html'), 'utf8').catch(() => undefined);
+  const hasCover = cover !== undefined && tokensCss !== undefined;
+  if (hasCover) await fs.writeFile(path.join(to, 'cover.html'), withTokens(cover, tokensCss));
+  await fs.writeFile(path.join(to, 'view.html'), renderClaudeView({ tokens, readme, hasCover }));
+  return true;
 }
 
 // ── Content ───────────────────────────────────────────────────────────────
@@ -356,14 +516,15 @@ async function startShooter(log: (m: string) => void): Promise<Shooter | undefin
     async shoot(html, file, size = THUMB) {
       const tab = await browser.newPage();
       try {
-        await tab.setViewport({ width: size.width, height: size.height });
+        await tab.setViewport({ width: size.width, height: size.height, deviceScaleFactor: 1 });
         // 'load' waits for fonts and images in the page; a stalled remote asset only delays the shot.
         await tab.setContent(html, { waitUntil: 'load', timeout: 20_000 }).catch(() => undefined);
         await tab.evaluate(() => document.fonts.ready).catch(() => undefined);
         await new Promise((r) => setTimeout(r, 400));
-        const png = await tab.screenshot({ type: 'png' });
+        // A fixed clip, so the shot is exactly the viewport whatever the browser's window does.
+        const png = await tab.screenshot({ type: 'png', clip: { x: 0, y: 0, width: size.width, height: size.height } });
         await fs.mkdir(path.dirname(file), { recursive: true });
-        await sharp(png).resize(size.out).webp({ quality: 78 }).toFile(file);
+        await sharp(png).resize(size.out, Math.round(size.out * (size.height / size.width)), { fit: 'cover', position: 'top' }).webp({ quality: 78 }).toFile(file);
         return true;
       } catch (err) {
         log(`Thumbnail failed for ${path.basename(file)}: ${err instanceof Error ? err.message : String(err)}`);
@@ -409,6 +570,7 @@ async function main(): Promise<void> {
       const claudeFrom = path.join(CLAUDE_DS, id, 'project');
       const claudeFiles = await listFiles(claudeFrom);
       await copyFiles(claudeFrom, path.join(dir, 'claude'), claudeFiles);
+      const claudeView = await writeClaudeView(claudeFrom, path.join(dir, 'claude'), kitTokensCss(detail));
       const kitFiles: string[] = [];
       await fs.mkdir(path.join(dir, 'kit'), { recursive: true });
       await fs.writeFile(path.join(dir, 'kit', 'DESIGN.md'), detail.body);
@@ -421,7 +583,7 @@ async function main(): Promise<void> {
       const coverHtml = claudeFiles.includes('components/Cover/preview.html') ? await fs.readFile(path.join(claudeFrom, 'components/Cover/preview.html'), 'utf8') : undefined;
       const shot = coverHtml && detail.tokensCss !== undefined ? withTokens(coverHtml, kitTokensCss(detail)!) : undefined;
       if (shooter && shot && (await shooter.shoot(shot, thumbFile, COVER))) item.thumb = `${id}.webp`;
-      await fs.writeFile(path.join(dir, 'index.html'), renderDesignSystemSpoke({ item, id, claudeFiles, kitFiles, index: opts.index }));
+      await fs.writeFile(path.join(dir, 'index.html'), renderDesignSystemSpoke({ item, id, claudeFiles, kitFiles, claudeView, index: opts.index }));
       dsItems.push(item);
     }
     await fs.writeFile(

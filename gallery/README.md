@@ -5,7 +5,7 @@ A static site of the bundled design systems and remixable examples, built by `sc
 It is hub and spoke:
 
 - **Hubs** (`design-systems/`, `examples/`): a grid of thumbnails, titles and tags, with a search box and tag filters.
-- **Spokes** (`<hub>/<id>/`): the item full size, its files to download, and buttons that hand the next step to the visitor's agent. A design system spoke offers a prompt for the Open Design kit ("Use the Open Design design system …") and one for Claude Design, with an **Open in Claude** link that starts a new chat with it. An example spoke offers the kit's remix prompt and the example's brief.
+- **Spokes** (`<hub>/<id>/`): the item full size (a design system has two views: **Open Design**, the kit's own page, and **Claude Design**, its cover, tokens by family and README from the Claude-format files; `#claude` links to the second), its files to download, and buttons that hand the next step to the visitor's agent. A design system spoke offers a prompt for the Open Design kit ("Use the Open Design design system …") and one for Claude Design, with an **Open in Claude** link that starts a new chat with it. An example spoke offers the kit's remix prompt and the example's brief.
 
 No page acts for the visitor. Claude has no API for adding a design system, and a web page can't reach the kit's MCP server, so every button copies a prompt, opens a new chat, or links to files.
 
