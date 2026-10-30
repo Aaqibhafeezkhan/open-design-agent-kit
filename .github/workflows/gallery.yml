@@ -47,10 +47,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Gives the site's address, so gallery.json's links are absolute.
+      - name: Configure Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
       # ubuntu-latest ships Google Chrome, which the thumbnails use.
       - name: Build the gallery
         run: |
-          ARGS="--out dist/gallery"
+          ARGS="--out dist/gallery --base-url ${{ steps.pages.outputs.base_url }}"
           if [ "${{ inputs.all }}" == "true" ]; then ARGS="$ARGS --all"; fi
           if [ "${{ inputs.index }}" == "true" ]; then ARGS="$ARGS --index"; fi
           npx tsx scripts/build-gallery.ts $ARGS
