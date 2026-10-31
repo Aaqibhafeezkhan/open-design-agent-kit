@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
-import { pinned } from './packageVersion';
+import { mergeClaudeLaunchConfig as mergeLaunchConfig } from '@feimacode/open-design-agent-kit-core';
+import { cliVersion, pinned } from './packageVersion';
 import { writeSkillTree } from './skillWriter';
 
 /** Writes the bundled Claude Code skill content into `<targetPath>/.claude/skills/`. */
@@ -57,53 +58,14 @@ export async function mergeClaudeMcpConfig(targetPath: string): Promise<{ create
   return { created };
 }
 
-/** Fixed so the `.claude/launch.json` entry can name it; loopback-only, like every preview. */
-export const LAUNCH_PREVIEW_PORT = 5317;
-
-/**
- * The browser preview as a Claude Desktop launch configuration, so the Code
- * tab can open it in its Browser pane (openspec add-claude-desktop-guide).
- * Uses the launch.json configuration shape (name, runtimeExecutable, runtimeArgs, port).
- */
-export function openDesignLaunchEntry(version?: string) {
-  return {
-    name: 'open-design-preview',
-    runtimeExecutable: 'npx',
-    runtimeArgs: ['-y', pinned('@feimacode/open-design-agent-kit', version), 'preview', '--no-open', '--root-redirect', '--port', String(LAUNCH_PREVIEW_PORT)],
-    port: LAUNCH_PREVIEW_PORT,
-  };
-}
-
 /**
  * Merges the `open-design-preview` configuration into
- * `<targetPath>/.claude/launch.json`, creating the file if absent, replacing
- * our own entry in place and leaving every other configuration untouched.
- * Doesn't rewrite the file when nothing would change.
+ * `<targetPath>/.claude/launch.json`, pinned to this CLI's version, so Claude
+ * Desktop's Code tab can open the preview in its Browser pane. The merge
+ * itself lives in core, shared with the MCP server's
+ * set_up_open_design_browser_pane (openspec code-tab-browser-pane).
  */
 export async function mergeClaudeLaunchConfig(targetPath: string): Promise<{ outcome: 'created' | 'updated' | 'unchanged' }> {
-  const launchJsonPath = path.join(targetPath, '.claude', 'launch.json');
-
-  let config: Record<string, unknown> = { version: '0.0.1' };
-  let raw: string | undefined;
-  if (await pathExists(launchJsonPath)) {
-    raw = await fs.readFile(launchJsonPath, 'utf8');
-    try {
-      if (raw.trim().length > 0) config = JSON.parse(raw);
-    } catch (err) {
-      throw new MalformedMcpJsonError(launchJsonPath, err);
-    }
-  }
-
-  const entry = openDesignLaunchEntry();
-  const configurations = Array.isArray(config.configurations) ? [...config.configurations] : [];
-  const ours = configurations.findIndex((c) => (c as { name?: unknown } | null)?.name === entry.name);
-  if (ours >= 0) configurations[ours] = entry;
-  else configurations.push(entry);
-  config.configurations = configurations;
-
-  const next = JSON.stringify(config, null, 2) + '\n';
-  if (raw === next) return { outcome: 'unchanged' };
-  await fs.mkdir(path.dirname(launchJsonPath), { recursive: true });
-  await fs.writeFile(launchJsonPath, next, 'utf8');
-  return { outcome: raw === undefined ? 'created' : 'updated' };
+  const { outcome } = await mergeLaunchConfig({ workspaceRoot: targetPath, version: cliVersion() });
+  return { outcome };
 }

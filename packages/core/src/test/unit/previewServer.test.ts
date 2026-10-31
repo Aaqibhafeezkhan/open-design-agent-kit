@@ -109,6 +109,31 @@ describe('preview server', () => {
     }
   });
 
+  it('rootLatest redirects / to the newest registered design, or the list without one', async () => {
+    const empty = await fs.mkdtemp(path.join(os.tmpdir(), 'od-preview-empty-'));
+    const none = await startPreviewServer({ workspaceRoot: empty, assets: { shellJs: '', bridgeJs: '' }, rootLatest: true });
+    try {
+      const res = await fetch(`${new URL(none.shellBaseUrl).origin}/`, { redirect: 'manual' });
+      assert.strictEqual(res.headers.get('location'), new URL(none.shellBaseUrl).pathname);
+    } finally {
+      await none.close();
+    }
+    const NEWER = '.open-design/newer/index.html';
+    await fs.mkdir(path.join(root, path.dirname(NEWER)), { recursive: true });
+    await fs.writeFile(path.join(root, NEWER), '<!doctype html><title>Newer</title>');
+    await new Promise((r) => setTimeout(r, 20));
+    await writeArtifactManifest({ workspaceRoot: root, entryPath: NEWER, artifactManifest: { kind: 'html', renderer: 'html', exports: ['html'], title: 'Newer' } });
+    const latest = await startPreviewServer({ workspaceRoot: root, assets: { shellJs: '', bridgeJs: '' }, rootLatest: true });
+    try {
+      const res = await fetch(`${new URL(latest.shellBaseUrl).origin}/`, { redirect: 'manual' });
+      assert.strictEqual(res.status, 302);
+      assert.strictEqual(res.headers.get('location'), `${new URL(latest.shellBaseUrl).pathname}?entry=${encodeURIComponent(NEWER)}`);
+    } finally {
+      await latest.close();
+      await fs.rm(path.join(root, '.open-design', 'newer'), { recursive: true, force: true });
+    }
+  });
+
   it('serves the shell page with the entry and a CSP framing only the design origin', async () => {
     const res = await fetch(server.urlFor(ENTRY));
     assert.strictEqual(res.status, 200);

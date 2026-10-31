@@ -2,10 +2,10 @@ import * as assert from 'node:assert';
 import { promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { MalformedMcpJsonError, mergeClaudeLaunchConfig, mergeClaudeMcpConfig, openDesignLaunchEntry, writeClaudeSkills } from '../../claudeSetup';
+import { MalformedLaunchJsonError, openDesignLaunchEntry } from '@feimacode/open-design-agent-kit-core';
+import { MalformedMcpJsonError, mergeClaudeLaunchConfig, mergeClaudeMcpConfig, writeClaudeSkills } from '../../claudeSetup';
 import { cliVersion } from '../../packageVersion';
 
-const OPEN_DESIGN_LAUNCH_ENTRY = openDesignLaunchEntry();
 
 const GENERATED_MARKER = '<!-- generated:open-design-agent-kit -->';
 
@@ -104,6 +104,7 @@ describe('mergeClaudeMcpConfig', () => {
 
 describe('mergeClaudeLaunchConfig', () => {
   const launchJson = (target: string) => path.join(target, '.claude', 'launch.json');
+  const entryFor = (target: string) => openDesignLaunchEntry({ workspaceRoot: target, version: cliVersion() });
 
   it('creates .claude/launch.json with only the open-design-preview configuration', async () => {
     const target = await makeTargetPath();
@@ -111,8 +112,8 @@ describe('mergeClaudeLaunchConfig', () => {
     assert.strictEqual(outcome, 'created');
     const config = JSON.parse(await fs.readFile(launchJson(target), 'utf8'));
     assert.strictEqual(config.version, '0.0.1');
-    assert.deepStrictEqual(config.configurations, [OPEN_DESIGN_LAUNCH_ENTRY]);
-    assert.deepStrictEqual(OPEN_DESIGN_LAUNCH_ENTRY.runtimeArgs.slice(1, 4), [`@feimacode/open-design-agent-kit@${cliVersion()}`, 'preview', '--no-open']);
+    assert.deepStrictEqual(config.configurations, [entryFor(target)]);
+    assert.deepStrictEqual(entryFor(target).runtimeArgs.slice(1, 5), [`@feimacode/open-design-agent-kit@${cliVersion()}`, 'preview', '--no-open', '--root-latest']);
   });
 
   it('adds itself beside existing configurations and leaves them unchanged', async () => {
@@ -124,7 +125,7 @@ describe('mergeClaudeLaunchConfig', () => {
     const { outcome } = await mergeClaudeLaunchConfig(target);
     assert.strictEqual(outcome, 'updated');
     const config = JSON.parse(await fs.readFile(launchJson(target), 'utf8'));
-    assert.deepStrictEqual(config.configurations, [web, OPEN_DESIGN_LAUNCH_ENTRY]);
+    assert.deepStrictEqual(config.configurations, [web, entryFor(target)]);
   });
 
   it('updates its own configuration in place', async () => {
@@ -136,7 +137,7 @@ describe('mergeClaudeLaunchConfig', () => {
 
     await mergeClaudeLaunchConfig(target);
     const config = JSON.parse(await fs.readFile(launchJson(target), 'utf8'));
-    assert.deepStrictEqual(config.configurations, [OPEN_DESIGN_LAUNCH_ENTRY, web]);
+    assert.deepStrictEqual(config.configurations, [entryFor(target), web]);
   });
 
   it('is a no-op on re-run', async () => {
@@ -152,7 +153,7 @@ describe('mergeClaudeLaunchConfig', () => {
     const target = await makeTargetPath();
     await fs.mkdir(path.join(target, '.claude'), { recursive: true });
     await fs.writeFile(launchJson(target), '{ nope');
-    await assert.rejects(() => mergeClaudeLaunchConfig(target), MalformedMcpJsonError);
+    await assert.rejects(() => mergeClaudeLaunchConfig(target), MalformedLaunchJsonError);
     assert.strictEqual(await fs.readFile(launchJson(target), 'utf8'), '{ nope');
   });
 });

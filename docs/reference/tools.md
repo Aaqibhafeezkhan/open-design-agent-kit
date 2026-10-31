@@ -2,7 +2,7 @@
 
 Every tool the agent can call. In VS Code these are language-model tools (reference one in chat with `#<ref>`, e.g. `#od-export`). Over MCP (Claude Code, Codex, Cursor and others) they're MCP tools on the `open-design` server with the same names and the same arguments.
 
-Two rules apply to every tool:
+Two rules apply to every tool (and over MCP every tool declares `readOnlyHint`, `destructiveHint` and `openWorldHint` annotations, so hosts can tell reads from writes and local from online):
 
 - **Tools never write your design.** The generation tools return *instructions*; the agent writes the HTML with its own file-editing tools and then calls [`register_open_design_artifact`](#register_open_design_artifact). The only files these tools write themselves are manifests, copied examples ([`remix_open_design_example`](#remix_open_design_example)) and export outputs ([`export_open_design_artifact`](#export_open_design_artifact), [`publish_open_design_artifact`](#publish_open_design_artifact)). No tool deploys anything or talks to a hosting service.
 - **Paths are workspace-relative**, e.g. `.open-design/coffee-landing/coffee-landing.html`. The workspace is the open VS Code folder, or for MCP the server's working directory (see [`OPEN_DESIGN_WORKSPACE_ROOT`](settings-and-env.md#open_design_workspace_root)) unless the agent sets it with [`set_open_design_workspace`](#set_open_design_workspace).
@@ -44,6 +44,7 @@ Two rules apply to every tool:
 | [`set_open_design_workspace`](#set_open_design_workspace) | none | yes (MCP only) | Tell the server which folder to work in, for hosts that start it elsewhere (Claude Desktop) |
 | [`use_open_design_managed_workspace`](#use_open_design_managed_workspace) | none | yes (MCP only, chats with no folder) | Open a folder the server keeps for a design, in a Claude Desktop chat with no folder |
 | [`write_open_design_file`](#write_open_design_file) | none | yes (MCP only, chats with no folder) | Save a design file Claude wrote into that folder |
+| [`set_up_open_design_browser_pane`](#set_up_open_design_browser_pane) | none | yes (MCP only) | Set up the live preview for Claude Desktop's Code tab Browser pane, in `.claude/launch.json` |
 
 ## Workspace
 
@@ -336,6 +337,12 @@ MCP hosts only (Claude Code, Codex, Cursor and others). Shows a registered artif
 
 **Result:** the preview URL and how it was opened (browser window, default browser, or not opened and why). With [`OPEN_DESIGN_PREVIEW`](settings-and-env.md#open_design_preview) set to `off`, it starts nothing and says so.
 
+### set_up_open_design_browser_pane
+
+MCP only, for Claude Desktop's Code tab. Adds an `open-design-preview` entry to the workspace's `.claude/launch.json`, so the Browser pane can start the live preview and show it beside the chat. The entry runs this server's own kit version with `preview --no-open --root-latest --port <port>`: the port is fixed per project (5317–5416, from the workspace's path), and `--root-latest` makes the pane's address open the newest registered design. It uses the `npx` beside the Node that runs the server when there is one. Other entries in the file are kept; an existing `open-design-preview` entry is updated to this version, so rename it to keep a custom one. A file that isn't valid JSON is left alone, and the result says so.
+
+No arguments. **Result:** whether the file was created, updated or already up to date, and the port. The skill then asks the host's preview tool to start `open-design-preview`, and falls back to [`open_open_design_preview`](#open_open_design_preview) when there is no Browser pane.
+
 ### show_open_design_artifact
 
 MCP hosts only. Shows a registered artifact, an exploration's directions side by side, or a fluid master's campaign sheet, [inline in the conversation](../guides/inline-preview.md) in hosts that render MCP Apps (Claude Desktop Chat). There the user can comment on elements and click **Ask Claude to apply**, which posts a message naming the entry and the comment ids; the export buttons post a request for `export_open_design_artifact`, since the host doesn't allow downloads. For an exploration, **Take this one** posts the user's pick, and the agent confirms the next step before calling `choose_open_design_direction`; a [style-tile](../guides/explore-directions.md) exploration also offers **Use as design system**, which asks for `next: "save-design-system"` directly. With `campaign: true` the page shows each tile of the master's last campaign sheet with its errors: a page-type piece opens in the artifact view, and **Fix this piece** posts the tile and its errors.
@@ -346,7 +353,7 @@ MCP hosts only. Shows a registered artifact, an exploration's directions side by
 | `explorationId` | string | no | An [exploration](#exploring-directions) to show instead: its directions side by side. |
 | `campaign` | boolean | no | With a fluid master's `entryPath`: show its last campaign sheet (from `exports/campaign-sheet.json`) instead of the design. Without a sidecar the page shows `campaign-sheet.png`, or asks for an export with `campaignSheet: true`. |
 
-**Result:** text for every host: the title, entry path and open comments (with `campaign`, each tile and its errors). A host without MCP Apps (the Claude Code terminal, Codex) gets only this text, plus a hint to use [`open_open_design_preview`](#open_open_design_preview). An unregistered entry returns a not-registered result. The tool declares the `ui://open-design/preview` resource as its UI and returns the target as structured content for it.
+**Result:** text for every host: the title, entry path and open comments (with `campaign`, each tile and its errors). The shown page follows the design: it checks for changes every few seconds (less often when idle, not while hidden) and re-renders after a new round, unless the user is writing a comment. So the skills show a design once; after that, in a host with MCP Apps, [`register_open_design_artifact`](#register_open_design_artifact) says whether the design is already shown inline or should be shown now. A host without MCP Apps (the Claude Code terminal, Codex) gets only this text, plus a hint to use [`open_open_design_preview`](#open_open_design_preview). An unregistered entry returns a not-registered result. The tool declares the `ui://open-design/preview` resource as its UI and returns the target as structured content for it.
 
 ### show_open_design_examples
 
@@ -410,6 +417,7 @@ Called only by the inline preview page, never by the model: hosts that render MC
 | `exampleId` | string | no | One example's view-only preview (text instead over 5 MiB). |
 | `designSystemId` | string | no | One design system's Visualize page. |
 | `imageRef` | string | no | One [`show_open_design_questions`](#show_open_design_questions) option's picture: swatches, a screenshot (at most 1 MiB) or a view-only page. |
+| `revisionOnly` | boolean | no | With `entryPath` or `explorationId`: return only `{ revision }`, a short hash of the files the view shows (entry, manifest, comments, checks, files beside it). The page polls it to follow edits. |
 
 ### save_open_design_comment
 

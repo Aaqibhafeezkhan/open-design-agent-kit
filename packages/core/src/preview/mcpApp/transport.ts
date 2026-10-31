@@ -11,6 +11,8 @@ import { PREVIEW_APP_VIEWS, PREVIEW_STATE_TOOL, SAVE_COMMENT_TOOL, type PreviewA
 export interface McpAppTransport {
   /** A view's data from get_open_design_preview_state: the design with its comments, or one page of a picker (`cursor` for the next). */
   loadState(target: ShowTarget, cursor?: string): Promise<PreviewAppState>;
+  /** The shown design's revision, which changes when it does (openspec inline-preview-in-place). */
+  loadRevision(target: ShowTarget): Promise<string>;
   /** One gallery card's preview. */
   loadExamplePreview(exampleId: string): Promise<PreviewAppExamplePreview>;
   /** One design system's Visualize page. */
@@ -69,6 +71,11 @@ export function createMcpAppTransport(app: App): McpAppTransport {
       const state = await structured<PreviewAppState>(app, stateArgs(target, cursor));
       if (!state || !PREVIEW_APP_VIEWS.includes(state.view) || state.view !== target.view) throw new Error('The preview state was malformed.');
       return state;
+    },
+    async loadRevision(target) {
+      const result = await structured<{ revision?: unknown }>(app, { ...stateArgs(target), revisionOnly: true });
+      if (typeof result?.revision !== 'string') throw new Error('The revision was malformed.');
+      return result.revision;
     },
     async loadExamplePreview(exampleId) {
       return structured<PreviewAppExamplePreview>(app, { exampleId });

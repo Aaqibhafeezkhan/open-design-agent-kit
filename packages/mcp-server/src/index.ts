@@ -44,6 +44,7 @@ import { DEFERRED_TO_EXTENSION_MESSAGE, extensionLockPath, holdExtensionLock, re
 import { desktopLayout, type WorkspaceLayout } from './layout';
 import { getManagedRoot, openManagedWorkspace } from './managedWorkspace';
 import { createFileActiveDesignSystemStore } from './store';
+import { TOOL_ANNOTATIONS } from './toolAnnotations';
 import * as tools from './tools';
 import type { ToolContext } from './tools';
 import {
@@ -489,9 +490,18 @@ const TOOL_DEFS: ToolDef[] = [
   },
   {
     tool: {
+      name: 'set_up_open_design_browser_pane',
+      description:
+        "For Claude Desktop's Code tab only (where its preview tool, named like preview_start, is in your tools): adds the open-design-preview configuration to this workspace's .claude/launch.json (created if missing; other configurations are kept; only its own entry is replaced), so the Code tab can run the live browser preview in its Browser pane. Returns the configuration name and port. Then start that configuration with the Code tab's preview tool; the pane opens on the newest registered design. Call it once per project, before the first time you show a design in the Code tab, and tell the user once that you added a preview entry to .claude/launch.json. Elsewhere use open_open_design_preview.",
+      inputSchema: { type: 'object', properties: {} },
+    },
+    handler: (ctx) => tools.setUpBrowserPane(ctx, SERVER_VERSION),
+  },
+  {
+    tool: {
       name: 'show_open_design_artifact',
       description:
-        "Shows a registered Open Design artifact, or an exploration's directions side by side, or a fluid master's campaign sheet, to the user inline in the conversation, in hosts that render MCP Apps (Claude Desktop Chat). There the user can switch to Comment mode, click an element and leave a comment, then click \"Ask Claude to apply\", which posts a message here naming the comment ids; export buttons post a request for export_open_design_artifact (the page never downloads). For an exploration, \"Take this one\" posts the user's pick; confirm the next step with them before calling choose_open_design_direction. A style-tile exploration also offers \"Use as design system\", which asks directly for next: \"save-design-system\". With campaign: true (after export_open_design_artifact with campaignSheet: true) it shows every tile of the master's campaign sheet with its errors; \"Fix this piece\" posts the tile and its errors here. Every host also gets a text result (title, path, open comments, or the campaign tiles); hosts without MCP Apps are told to use open_open_design_preview. In Claude Desktop Chat call it after register_open_design_artifact and after applying comments. Pass entryPath, or explorationId for an exploration.",
+        "Shows a registered Open Design artifact, or an exploration's directions side by side, or a fluid master's campaign sheet, to the user inline in the conversation, in hosts that render MCP Apps (Claude Desktop Chat). There the user can switch to Comment mode, click an element and leave a comment, then click \"Ask Claude to apply\", which posts a message here naming the comment ids; export buttons post a request for export_open_design_artifact (the page never downloads). For an exploration, \"Take this one\" posts the user's pick; confirm the next step with them before calling choose_open_design_direction. A style-tile exploration also offers \"Use as design system\", which asks directly for next: \"save-design-system\". With campaign: true (after export_open_design_artifact with campaignSheet: true) it shows every tile of the master's campaign sheet with its errors; \"Fix this piece\" posts the tile and its errors here. Every host also gets a text result (title, path, open comments, or the campaign tiles); hosts without MCP Apps are told to use open_open_design_preview. In Claude Desktop Chat call it after the first register_open_design_artifact of a design: the copy shown then follows later edits and comments by itself, so call it again only for another design or when the user asks to see it again. Pass entryPath, or explorationId for an exploration.",
       inputSchema: {
         type: 'object',
         properties: {
@@ -607,6 +617,7 @@ const TOOL_DEFS: ToolDef[] = [
           exampleId: { type: 'string' },
           designSystemId: { type: 'string' },
           imageRef: { type: 'string' },
+          revisionOnly: { type: 'boolean', description: "Only the shown design's revision, to tell whether it changed." },
         },
       },
       _meta: appOnlyToolMeta(),
@@ -1624,7 +1635,7 @@ async function main(): Promise<void> {
     if (deferred()) return { tools: [] };
     const showFolderless = folderless();
     return {
-      tools: TOOL_DEFS.filter((d) => (!(d.appOnly || d.appsHostOnly) || rendersMcpApps()) && (showFolderless || !FOLDERLESS_TOOLS.has(d.tool.name))).map((d) => d.tool),
+      tools: TOOL_DEFS.filter((d) => (!(d.appOnly || d.appsHostOnly) || rendersMcpApps()) && (showFolderless || !FOLDERLESS_TOOLS.has(d.tool.name))).map((d) => ({ ...d.tool, annotations: TOOL_ANNOTATIONS[d.tool.name] })),
     };
   });
 

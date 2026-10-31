@@ -64,7 +64,9 @@ Click it and the design opens in the Browser pane. The same works for the compar
 
 The [browser preview](../guides/browser-preview.md), with its live reload, **Comment** button and **Checks** panel, can run inside the Browser pane too. Desktop opens local servers listed in `.claude/launch.json`.
 
-If you set the project up with `npx @feimacode/open-design-agent-kit init --tools claude`, that entry is already there. With the plugin, add it yourself to `.claude/launch.json` in your project (merge it into `configurations` if the file exists):
+The easiest way is to ask Claude to "show the live preview". It adds an `open-design-preview` entry to `.claude/launch.json` in your project (with [`set_up_open_design_browser_pane`](../reference/tools.md#set_up_open_design_browser_pane), once per project), tells you so, and starts it in the Browser pane. The pane's address always opens the newest design you registered; reload it after Claude makes another, or pick one from the preview's list. If you set the project up with `npx @feimacode/open-design-agent-kit init --tools claude`, the entry is already there.
+
+Each project gets its own port between 5317 and 5416 (from the project's path), so two projects' previews can run at once, and the entry uses the `npx` beside the Node that runs Open Design. To add it by hand, merge something like this into `configurations`:
 
 ```json
 {
@@ -73,14 +75,14 @@ If you set the project up with `npx @feimacode/open-design-agent-kit init --tool
     {
       "name": "open-design-preview",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["-y", "@feimacode/open-design-agent-kit", "preview", "--no-open", "--root-redirect", "--port", "5317"],
+      "runtimeArgs": ["-y", "@feimacode/open-design-agent-kit", "preview", "--no-open", "--root-latest", "--port", "5317"],
       "port": 5317
     }
   ]
 }
 ```
 
-Then ask Claude to "start open-design-preview in the Browser pane". If it fails to start because `npx` isn't found (common when Node comes from nvm), set `runtimeExecutable` to the full path that `which npx` prints in a terminal. Comments you leave there are saved next to the design, the same as in any other browser. The pane has no chat box of its own, so when you're done, tell Claude in the Code tab "apply my comments on the coffee poster".
+Claude and `init` update an entry named `open-design-preview` to the current version; rename yours to keep custom settings. If the preview fails to start because `npx` isn't found (common when Node comes from nvm), set `runtimeExecutable` to the full path that `which npx` prints in a terminal. Comments you leave there are saved next to the design, the same as in any other browser. The pane has no chat box of its own, so when you're done, tell Claude in the Code tab "apply my comments on the coffee poster".
 
 ## Your first design
 

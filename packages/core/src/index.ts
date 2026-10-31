@@ -52,6 +52,7 @@ export * from './vendored/artifactCreate';
 export * from './vendored/designDirections';
 export * from './vendored/documentExtract';
 
+export * from './setup/claudeLaunch';
 export * from './workspace/activeDesignSystemStore';
 export * from './workspace/appDetection';
 export * from './workspace/artifactComments';
@@ -113,4 +114,5 @@ export { loadPreviewAssets, type PreviewAssets } from './preview/server/assets';
 // The preview MCP App (openspec add-mcp-app-preview).
 export * from './preview/mcpApp/protocol';
 export * from './preview/server/mcpApp';
+export * from './preview/server/previewRevision';
 export * from './preview/server/mcpAppPickers';

@@ -13,6 +13,8 @@ export interface PreviewCliOptions {
   workspace?: string;
   /** --root-redirect: `/` redirects to the preview, for Claude Desktop's launch.json. */
   rootRedirect?: boolean;
+  /** --root-latest: `/` redirects to the newest design, for the Browser pane (openspec code-tab-browser-pane). */
+  rootLatest?: boolean;
 }
 
 export function parsePreviewPort(raw: string | undefined): number | undefined {
@@ -64,7 +66,7 @@ export async function runPreview(entryArg: string | undefined, flags: PreviewCli
   const out = deps.out ?? ((line: string) => console.log(line));
   const err = deps.err ?? ((line: string) => console.error(line));
 
-  const session = (deps.createSession ?? ((o) => new PreviewSession(o)))({ workspaceRoot, ...(designsDir ? { outputDir: designsDir } : {}), browserPath: flags.browser, port, rootRedirect: flags.rootRedirect, log: err });
+  const session = (deps.createSession ?? ((o) => new PreviewSession(o)))({ workspaceRoot, ...(designsDir ? { outputDir: designsDir } : {}), browserPath: flags.browser, port, rootRedirect: flags.rootRedirect, rootLatest: flags.rootLatest, log: err });
   try {
     const outcome = await session.open(entryPath, flags.open !== false);
     // stdout: the URL alone, for scripts; details to stderr.

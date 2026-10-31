@@ -15,4 +15,7 @@ Request: {{brief}}
 
 1. Work out which artifact is meant. Registered artifacts are the files under the Open Design output folder (default `.open-design/`) that have a `.artifact.json` file next to them. Use the one the request names; if it names none, use the one you made or changed most recently in this conversation. If that still doesn't settle it, call `open_open_design_preview` without `entryPath`: the preview then lists every design, and the user picks there.
 2. Call `open_open_design_preview` with that `entryPath`.
+<!-- claude-only -->
+   In Claude Desktop's Code tab (its preview tool, named like `preview_start`, is in your tools), use the Browser pane instead: call `set_up_open_design_browser_pane` (tell the user once that you added a preview entry to `.claude/launch.json` if it says so), then start the `open-design-preview` configuration with that preview tool. The pane opens on the newest registered design; if the request names an older one, tell the user to pick it from the pane's list. In Claude Desktop Chat, call `show_open_design_artifact` with the `entryPath` instead, unless the user asked for a browser window.
+<!-- /claude-only -->
 3. Tell the user in one or two sentences what happened, using the tool's result: where the preview opened (or the URL to open, when it couldn't open a window), that it reloads by itself when the design changes, and that they can click **Comment**, then an element, to leave a comment, and **Send to agent** when they want you to apply them.
