@@ -2,8 +2,16 @@
 
 One version covers the VS Code extension and the npm packages (`content`, `mcp-server`, `cli`). The release workflow uses the section for the tag being released as the GitHub Release notes (see [Releasing](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/contributing/releasing.md)).
 
-## Unreleased
+## [0.4.0-beta.1] - 2026-10-31
 
+A prerelease for testing: npm dist-tag `next`, a GitHub pre-release with `open-design-0.4.0-beta.1.mcpb`. The Claude plugin stays on 0.3.0.
+
+**Claude Desktop extension:** install `open-design-0.4.0-beta.1.mcpb` from this release to try it.
+
+- **The inline preview follows edits.** In Claude Desktop Chat and Cowork, a design shown in the conversation updates in place after each round, so Claude shows it once. It waits while you write a comment, checks less often when idle and not while hidden. [Inline preview](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/guides/inline-preview.md)
+- **The live preview in the Code tab's Browser pane, set up for you.** Ask Claude to show the live preview and it adds an `open-design-preview` entry to `.claude/launch.json` (new tool `set_up_open_design_browser_pane`) and starts it. Each project gets its own port (5317–5416), the entry uses the `npx` beside your Node, and the pane opens the newest design (`preview --root-latest`). [Claude Desktop](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/getting-started/claude-desktop.md#the-live-preview-in-the-browser-pane)
+- **Tool annotations.** Every MCP tool says whether it only reads, writes in the workspace, or reaches another service (`readOnlyHint`, `destructiveHint`, `openWorldHint`).
+- **Links to the public gallery**, behind a switch that stays off until the gallery goes public.
 - **Claude plugin 0.3.2:** on Windows, the plugin's MCP server starts again when Node.js is installed under a path with spaces, such as the default `C:\Program Files\nodejs` (#66, thanks @mertol84).
 - **Claude plugin 0.3.1:** each per-template skill's folder is now named like the skill (`skills/od-prototype-card-twitter/`), as the Agent Skills spec asks, so the Claude plugin directory can list them. Slash commands don't change.
 - Add a Pinterest Pin export preset at 1000×1500 px with a 20 MB upload budget.
